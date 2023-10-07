@@ -23,7 +23,7 @@ class MonarchLinear(StructuredLinear):
     """
     The original class supports Dense-init training only. Modified it for dense to sparse training. 
     """
-    def __init__(self, *args, nblocks=4, weights: torch.Tensor = None, rank=1, **kwargs):
+    def __init__(self, *args, nblocks=4, weights: torch.Tensor = None, rank=1, device="cuda", **kwargs):
         super().__init__(*args, **kwargs)
         
         in_blksz = int(math.ceil(self.in_features / nblocks))
@@ -31,10 +31,11 @@ class MonarchLinear(StructuredLinear):
         out_blksz = int(math.ceil(self.out_features / nblocks)) * rank
         self.in_features_extended = in_blksz * nblocks
         self.out_features_extended = out_blksz * nblocks
+        self.device = device
         assert rank <= min(in_blksz, out_blksz), "rank must be smaller than the smaller block size"
         
         if weights is not None:
-            self.dense_to_sparse(weights, rank)
+            self.set_weights_from_dense_init(weights, rank)
         else:
             if self.in_features_extended < self.out_features_extended:
                 self.blkdiag1 = nn.Parameter(torch.empty(nblocks, mid_blksz, in_blksz))
@@ -43,6 +44,8 @@ class MonarchLinear(StructuredLinear):
                 self.blkdiag1 = nn.Parameter(torch.empty(nblocks, out_blksz, in_blksz))
                 self.blkdiag2 = nn.Parameter(torch.empty(nblocks, out_blksz, out_blksz))    
             self.reset_parameters()
+        
+        self.to(device)
         logger.info(f'Linear class {self.__class__}: saving={self.saving}')
 
     def reset_parameters(self) -> None:
@@ -65,20 +68,17 @@ class MonarchLinear(StructuredLinear):
         output = blockdiag_butterfly_multiply(self.preprocess(x), self.blkdiag1, self.blkdiag2)
         return self.postprocess(output)
     
-    def dense_to_sparse(self, w: torch.Tensor, rank = 1):
+    def set_weights_from_dense_init(self, w: torch.Tensor, rank = 1):
         assert w.ndim == 2, "w must be a 2D weight matrix"
         is_square = (w.shape[0] == w.shape[1])
         # project to monarch matrix
         if is_square:
-            self.blkdiag1, self.blkdiag2 = blockdiag_butterfly_project(w)
+            blkdiag1, blkdiag2 = blockdiag_butterfly_project(w)
         else:
-            self.blkdiag1, self.blkdiag2 = blockdiag_butterfly_project_einsum_rank(w, rank=rank)
-        try:
-            self.register_parameter('blkdiag1', self.blkdiag1)
-            self.register_parameter('blkdiag2', self.blkdiag2)
-        except Exception as e:
-            breakpoint()
-            
+            blkdiag1, blkdiag2 = blockdiag_butterfly_project_einsum_rank(w, rank=rank)
+        self.blkdiag1 = nn.Parameter(blkdiag1)
+        self.blkdiag2 = nn.Parameter(blkdiag2)
+        
     def __repr__(self):
         return (f'{self.__class__.__name__}({self.in_features}, {self.out_features}, '
                 f'nblocks={self.blkdiag1.shape[0]}, requires_grad={list(self.parameters())[0].requires_grad})')

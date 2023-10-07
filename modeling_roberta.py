@@ -220,7 +220,6 @@ class RobertaSelfAttention(nn.Module):
                 new_layer.bias = layer.bias
             new_layer.requires_grad_(True) # must go after setting bias, otherwise requires_grad will be set to False
             setattr(self, name, new_layer)
-        # breakpoint()
         
     def transpose_for_scores(self, x: torch.Tensor) -> torch.Tensor:
         new_x_shape = x.size()[:-1] + (self.num_attention_heads, self.attention_head_size)

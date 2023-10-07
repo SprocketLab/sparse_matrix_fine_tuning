@@ -15,23 +15,23 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 # wget and unzip to download data
 # [2021-09-09] TD: zsh, stow, subversion, fasd are for setting up my personal environment.
 # [2021-12-07] TD: openmpi-bin for MPI (multi-node training)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    cmake \
-    curl \
-    ca-certificates \
-    sudo \
-    less \
-    htop \
-    git \
-    tzdata \
-    wget \
-    tmux \
-    zip \
-    unzip \
-    zsh stow subversion fasd \
-    && rm -rf /var/lib/apt/lists/*
-    # openmpi-bin \
+#RUN apt-get update && apt-get install -y --no-install-recommends \
+#    build-essential \
+#    cmake \
+#    curl \
+#    ca-certificates \
+#    sudo \
+#    less \
+#    htop \
+#    git \
+#    tzdata \
+#    wget \
+#    tmux \
+#    zip \
+#    unzip \
+#    zsh stow subversion fasd \
+#    && rm -rf /var/lib/apt/lists/*
+#    # openmpi-bin \
 
 # Allow running runmpi as root
 # ENV OMPI_ALLOW_RUN_AS_ROOT=1 OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
@@ -136,4 +136,5 @@ RUN pip install tensorboard seqeval psutil sacrebleu rouge-score tensorflow_data
 
 # added libs for PEFT
 RUN pip install loralib scikit-learn tqdm
-RUN rm /opt/conda/lib/python3.8/site-packages/transformers/models/roberta/modeling_roberta.py; ln modeling_roberta.py /opt/conda/lib/python3.8/site-packages/transformers/models/roberta
+RUN ls 
+#RUN rm /opt/conda/lib/python3.8/site-packages/transformers/models/roberta/modeling_roberta.py; ln /fly/modeling_roberta.py /opt/conda/lib/python3.8/site-packages/transformers/models/roberta
