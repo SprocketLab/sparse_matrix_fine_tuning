@@ -135,6 +135,9 @@ RUN pip install tensorboard seqeval psutil sacrebleu rouge-score tensorflow_data
 # ENV NVIDIA_REQUIRE_CUDA=cuda>=10.1
 
 # added libs for PEFT
-RUN pip install loralib scikit-learn tqdm
+RUN pip install scikit-learn tqdm loralib
 RUN ls 
+
+# TODO: must remove this when the repo goes public!
+RUN export WANDB_API_KEY=16d21dc747a6f33247f1e9c96895d4ffa5ea0b27
 #RUN rm /opt/conda/lib/python3.8/site-packages/transformers/models/roberta/modeling_roberta.py; ln /fly/modeling_roberta.py /opt/conda/lib/python3.8/site-packages/transformers/models/roberta

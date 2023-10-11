@@ -1,2 +1,6 @@
 results/**
 wandb/**
+__pycache__/**
+
+.vscode/**
+```

@@ -16,7 +16,7 @@ from transformers import (
     AutoConfig,
 ) 
 import json
-from utils import *
+from train_utils import *
 import argparse
 # parser = argparse.ArgumentParser()
 # parser.add_argument("--rank", type=int, default=1)
@@ -25,8 +25,7 @@ import argparse
 # parser.add_argument("--monarch", action="store_true")
 # parser.add_argument("--lora_alpha", type=float, default=2)
 
-print("total GPU memory: %f GB" % (torch.cuda.mem_get_info()[1] / 1024 ** 3))
-print("available GPU memory %f GB" % (torch.cuda.mem_get_info()[0] / 1024 ** 3))
+
 device = "cuda" if torch.cuda.is_available() else "cpu"
 if device == "cpu":
     logging.warning("No GPU available, using CPU will be super slow")
@@ -37,31 +36,17 @@ dataset_id = "ag_news"
 model_id = "roberta-base"
 save_dir = "./results/lora_roberta_agnews"
 os.makedirs(save_dir, exist_ok=True)
+
 # set training config
 peft_config = {"lora": False, "monarch": True, "rank": 1, "nblocks": 4, "layers_to_replace": ["query", "value"]}
-
-dataset = load_dataset(dataset_id)
-train_dataset = dataset['train']
-test_dataset = dataset["test"].shard(num_shards=2, index=0)
-val_dataset = dataset["test"].shard(num_shards=2, index=1)
-
 tokenizer = RobertaTokenizerFast.from_pretrained(model_id)
 
-def tokenize(batch):
-    return tokenizer(batch["text"], padding=True, truncation=True, max_length=256, return_tensors="pt")
-
-train_dataset = train_dataset.map(tokenize, batched=True, batch_size=len(train_dataset))
-val_dataset = val_dataset.map(tokenize, batched=True, batch_size=len(val_dataset))
-test_dataset = test_dataset.map(tokenize, batched=True, batch_size=len(test_dataset))
-
-train_dataset.set_format("torch", columns=["input_ids", "attention_mask", "label"])
-val_dataset.set_format("torch", columns=["input_ids", "attention_mask", "label"])
-test_dataset.set_format("torch", columns=["input_ids", "attention_mask", "label"])
-
+dataset, train_dataset, val_dataset, test_dataset = prep_data(dataset_id, tokenizer)
 num_labels = dataset['train'].features['label'].num_classes
 class_names = dataset["train"].features["label"].names
 print(f"number of labels: {num_labels}")
 print(f"the labels: {class_names}")
+
 # update labels 
 id2label = {i: label for i, label in enumerate(class_names)}
 config = AutoConfig.from_pretrained(model_id)
@@ -72,14 +57,7 @@ json.dump(peft_config, open(save_dir + "/peft_config.json", "w"))
 # load model 
 roberta_model = RobertaForSequenceClassification.from_pretrained(model_id, config=config).to(device)
 roberta_model.init_monarch_layers() # project weights to monarch matrices
-
-# TODO why init_monarch_layers() can't set requires_grad to True????
-for name, module in roberta_model.named_modules():
-    if any([layer in name for layer in peft_config["layers_to_replace"]]):
-        module.requires_grad_(True)
-        print("name: ", name, " ", module)
-        
-param_stats(roberta_model, training=True)
+param_stats(roberta_model, training=True, print_trainable=True)
 
 
 # ### Evaluate performance before fine-tuning

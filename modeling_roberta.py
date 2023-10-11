@@ -171,7 +171,7 @@ class RobertaSelfAttention(nn.Module):
         self.num_attention_heads = config.num_attention_heads
         self.attention_head_size = int(config.hidden_size / config.num_attention_heads)
         self.all_head_size = self.num_attention_heads * self.attention_head_size
-        if self.peft_config == None:
+        if self.peft_config == None or self.peft_config == {}:
             self.query = nn.Linear(config.hidden_size, self.all_head_size)
             self.key = nn.Linear(config.hidden_size, self.all_head_size)
             self.value = nn.Linear(config.hidden_size, self.all_head_size)
@@ -209,18 +209,19 @@ class RobertaSelfAttention(nn.Module):
             m, n = weights.shape         
             bias =  (layer.bias != None)
             
-            new_layer = MonarchLinear(nblocks=self.nblocks,
-                                  rank=self.rank,
-                                  weights=weights,
-                                  in_features=n,
-                                  out_features=m,
-                                  bias=bias
-                                  )
+            new_layer = MonarchLinear(
+                                nblocks=self.nblocks,
+                                rank=self.rank,
+                                weights=weights,
+                                in_features=n,
+                                out_features=m,
+                                bias=bias
+                                )
             if bias:
                 new_layer.bias = layer.bias
             new_layer.requires_grad_(True) # must go after setting bias, otherwise requires_grad will be set to False
             setattr(self, name, new_layer)
-        
+            
     def transpose_for_scores(self, x: torch.Tensor) -> torch.Tensor:
         new_x_shape = x.size()[:-1] + (self.num_attention_heads, self.attention_head_size)
         x = x.view(new_x_shape)
@@ -1215,12 +1216,15 @@ class RobertaForSequenceClassification(RobertaPreTrainedModel):
         
     def init_monarch_layers(self):
         assert self.peft_config["monarch"], "not using Monarch layers"
-        for module in self.modules():
+        for name, module in self.named_modules():
             if isinstance(module, RobertaSelfAttention):
                 module.init_monarch_layers()
+                
+            if isinstance(module, MonarchLinear): 
+                module.requires_grad_(True)
             else:
                 module.requires_grad_(False)
-                # don't set to eval
+                
         
     @add_start_docstrings_to_model_forward(ROBERTA_INPUTS_DOCSTRING.format("batch_size, sequence_length"))
     @add_code_sample_docstrings(

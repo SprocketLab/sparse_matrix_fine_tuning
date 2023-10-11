@@ -23,7 +23,7 @@ class MonarchLinear(StructuredLinear):
     """
     The original class supports Dense-init training only. Modified it for dense to sparse training. 
     """
-    def __init__(self, *args, nblocks=4, weights: torch.Tensor = None, rank=1, device="cuda", **kwargs):
+    def __init__(self, *args, nblocks=4, weights: torch.Tensor=None, rank=1, device="cuda", **kwargs):
         super().__init__(*args, **kwargs)
         
         in_blksz = int(math.ceil(self.in_features / nblocks))
@@ -78,7 +78,7 @@ class MonarchLinear(StructuredLinear):
             blkdiag1, blkdiag2 = blockdiag_butterfly_project_einsum_rank(w, rank=rank)
         self.blkdiag1 = nn.Parameter(blkdiag1)
         self.blkdiag2 = nn.Parameter(blkdiag2)
-        
+
     def __repr__(self):
         return (f'{self.__class__.__name__}({self.in_features}, {self.out_features}, '
                 f'nblocks={self.blkdiag1.shape[0]}, requires_grad={list(self.parameters())[0].requires_grad})')
