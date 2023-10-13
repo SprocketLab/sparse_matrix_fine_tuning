@@ -23,7 +23,7 @@ def low_rank_project(M, rank):
 def factors(n):
     return [(i, n // i) for i in range(1, math.floor(math.sqrt(n)) + 1) if n % i == 0]
 
-# @Wenxuan: use this for square weight matrices!
+# @Wenxuan: for square weight matrices with rank 1 approximation
 def blockdiag_butterfly_project(M, sizes=None):
     """Only works for square matrices for now
         rank 1 projection

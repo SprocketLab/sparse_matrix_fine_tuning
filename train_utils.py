@@ -43,7 +43,9 @@ def select_gpu():
     print("Selected GPU: %d" % max_gpu)
     
 def prep_data(dataset_id, tokenizer):
-    
+    """
+    Load dataset from huggingface and map to tensor ids
+    """
     dataset = load_dataset(dataset_id)
     train_dataset = dataset['train']
     test_dataset = dataset["test"].shard(num_shards=2, index=0)

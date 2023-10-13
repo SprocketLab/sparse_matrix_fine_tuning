@@ -201,7 +201,8 @@ class RobertaSelfAttention(nn.Module):
             self.max_position_embeddings = config.max_position_embeddings
             self.distance_embedding = nn.Embedding(2 * config.max_position_embeddings - 1, self.attention_head_size)
         self.is_decoder = config.is_decoder
-        
+    
+    # @Wenxuan
     def init_monarch_layers(self):
         for name in self.peft_config["layers_to_replace"]:
             layer = getattr(self, name)
@@ -1213,7 +1214,7 @@ class RobertaForSequenceClassification(RobertaPreTrainedModel):
 
         # Initialize weights and apply final processing
         self.post_init()
-        
+    # @Wenxuan
     def init_monarch_layers(self):
         assert self.peft_config["monarch"], "not using Monarch layers"
         for name, module in self.named_modules():

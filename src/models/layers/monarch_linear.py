@@ -18,12 +18,19 @@ from src.ops.blockdiag_butterfly_einsum import (
     )
 logger = get_logger()
 
-# @Wenxuan: ??? never called, codebase so messy....
+# @Wenxuan
 class MonarchLinear(StructuredLinear):
     """
     The original class supports Dense-init training only. Modified it for dense to sparse training. 
     """
     def __init__(self, *args, nblocks=4, weights: torch.Tensor=None, rank=1, device="cuda", **kwargs):
+        """
+        Args:
+            nblocks (int, optional): _description_. Defaults to 4.
+            weights (torch.Tensor, optional): dense weight matrix for projection. If none will init with Kaiming
+            rank (int, optional): _description_. Defaults to 1.
+            device (str, optional): _description_. Defaults to "cuda".
+        """
         super().__init__(*args, **kwargs)
         
         in_blksz = int(math.ceil(self.in_features / nblocks))

@@ -63,6 +63,7 @@ def test_block_diag_butterfly_project_einsum_sqrtn(log_n, device):
     assert torch.allclose(bfly_projected, bfly, rtol=1e-4, atol=1e-4)
 
 # @Wenxuan: this gives the monarch matrix decomposition and composition
+# TODO why is the erorr so low with rank 1 approximation?
 @pytest.mark.parametrize('device', ['cpu', 'cuda'])
 def test_block_diag_butterfly_project_einsum_simple(device):
     # set seed

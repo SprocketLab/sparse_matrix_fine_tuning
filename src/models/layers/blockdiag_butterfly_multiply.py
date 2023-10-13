@@ -14,9 +14,9 @@ def blockdiag_butterfly_multiply_reference(x, w1_bfly, w2_bfly, version=2):
     There are 3 implementations, which should all yield the same answer
     (q, p) and (s, r) are blocks in the monarch matrix
     Arguments:
-        x: (batch, n)
-        w1_bfly: (k, q, p), where k = n / p, NOTE k = num_blocks, q = out_dim and p = reshaped_in_dim 
-        w2_bfly: (l, s, r), where l = k * q / r = n * q / (p * r), NOTE l = num_blocks, r = reshaped_in_dim and s = out_dim
+        x: (batch, n) 
+        w1_bfly: (k, q, p), where k = n / p, NOTE k = num_blocks, q = out_dim, p = block1_indim (reshaped)
+        w2_bfly: (l, s, r), where l = k * q / r = n * q / (p * r), NOTE l = num_blocks, r = block2_indim, s = out_dim
     Outputs:
         out: (batch, m), where m = l * s = n * s * q / (p * r) 
     """
@@ -46,7 +46,7 @@ def blockdiag_butterfly_multiply_reference(x, w1_bfly, w2_bfly, version=2):
         out2 = rearrange(out2, 'b (l s) -> b (s l)', l=l)
         return out2
 
-# @Wenxuan same use as above 
+# @Wenxuan figure out the dimensions here 
 class BlockdiagButterflyMultiply(torch.autograd.Function):
 
     """This is a faster implementation, with careful memory copies for the fastest

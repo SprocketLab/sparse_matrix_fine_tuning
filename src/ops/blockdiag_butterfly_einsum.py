@@ -32,13 +32,13 @@ def blockdiag_butterfly_project_einsum_simple(M, nblocks1, nblocks2):
     Arguments:
         M: (m, n)
     Outputs:
-        w1_bfly: (nblocks1, nblocks2, i)
+        w1_bfly: (nblocks1, nblocks2, i), where n = nblocks1 * i
         w2_bfly: (nblocks2, l, nblocks1)
     """
     m, n = M.shape
     k, j = nblocks1, nblocks2
     M_permuted_batched = rearrange(M, '(l j) (k i) -> k j l i', k=nblocks1, j=nblocks2)
-    U, Vt = low_rank_project(M_permuted_batched, rank=1)
+    U, Vt = low_rank_project(M_permuted_batched, rank=1) # U (l, l) Vt (i, i)
     w1_bfly = rearrange(Vt, 'k j 1 i -> k j i')
     w2_bfly = rearrange(U, 'k j l 1 -> j l k')
     return w1_bfly, w2_bfly
