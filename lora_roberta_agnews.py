@@ -16,6 +16,7 @@ from transformers import (
 import json
 import loralib
 from train_utils import *
+import time
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 if device == "cpu":
@@ -96,12 +97,16 @@ trainer = Trainer(
 )
 with torch.autocast(device, cache_enabled=False):
     trainer.train()
-
-
-trainer.evaluate() # calls model.eval(), which causes lora layers to merge 
-finetuned_roberta_outputs = trainer.predict(test_dataset)
-finetuned_roberta_predictions = finetuned_roberta_outputs[1]
-print("fine-tuned roberta accuracy: ", round(accuracy_score(test_dataset["label"], finetuned_roberta_predictions), 3))
+    
+    # test set eval
+    trainer.evaluate() # calls model.eval(), which causes lora layers to merge 
+    t1 = time.time()
+    finetuned_roberta_outputs = trainer.predict(test_dataset)
+    print("Inference time: ", time.time() - t1)
+    
+    finetuned_roberta_predictions = finetuned_roberta_outputs[1]
+    print("fine-tuned roberta accuracy: ", round(accuracy_score(test_dataset["label"], finetuned_roberta_predictions), 3))
+    
 torch.save(loralib.lora_state_dict(roberta_model), os.path.join(save_dir, "model.pt"))
 
 # # ### Load fine-tuned Roberta

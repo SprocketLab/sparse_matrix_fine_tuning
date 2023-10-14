@@ -2,15 +2,51 @@ import math
 
 import torch
 import pytest
-
 from einops import rearrange
-
 from src.models.layers.blockdiag_butterfly_multiply import blockdiag_butterfly_multiply
 from src.ops.blockdiag_butterfly_projection import blockdiag_butterfly_project, factors
 from src.ops.blockdiag_butterfly_projection import ButterflyFFT, ButterflyFFT2
-# from src.ops.permutation import bitreversal_permutation
+from src.models.layers.monarch_linear import MonarchLinear
+import os
 
 
+# @Wenxuan: Tests whether trained weights instead of random weights 
+# can be approximated by low rank with low error
+@pytest.mark.parametrize('device', ['cpu', 'cuda'])
+@pytest.mark.parametrize('rank', [1, 2])
+@pytest.mark.parametrize('nblocks', [2, 3, 4])
+@pytest.mark.parametrize('sdict_path', ["results/lora_roberta_agnews/model.pt"])
+def test_trained_weight_approx(device, rank, nblocks, sdict_path):
+    torch.random.manual_seed(0)
+    
+    assert os.path.exists(sdict_path), "you should finetune the model first"
+    state_dict = torch.load(sdict_path, map_location=device)
+    layers_to_test = ["query.weight", "key.weight"]
+    monarch_out = []
+    dense_out = []
+    atol = 1e-4
+    rtol = 1e-4
+
+    # avg error across all layers
+    for name, weights in state_dict.items():
+        if any([layer in name for layer in layers_to_test]):
+            m, n = weights.shape
+            x = torch.eye(n, device=device)
+            layer = MonarchLinear(in_features=n, out_features=m, nblocks=nblocks, rank=rank, weights=weights, device=device)
+            monarch_out = [layer(x)]
+            dense_out += [weights @ x]
+    
+    dense_out = torch.stack(dense_out).mean(dim=0) # (m, n)
+    monarch_out = torch.stack(monarch_out).mean(dim=0) # (m, n)
+    
+    # check any(ele_wise_err), if this failed but total err low then it's ok
+    if not torch.allclose(monarch_out, dense_out, rtol=rtol, atol=atol):
+        print("num_total entries:", monarch_out.numel())
+        print("num_failed:", ((dense_out - monarch_out).abs() <= atol + rtol * monarch_out.abs()).sum())
+        # check mean err instead
+        if not torch.allclose(monarch_out.mean(), dense_out.mean(), rtol=rtol, atol=atol):
+            raise AssertionError(f" Failed with mean err {(monarch_out - dense_out).mean()}")
+            
 @pytest.mark.parametrize('device', ['cpu', 'cuda'])
 @pytest.mark.parametrize('log_n', [2, 4, 10, 12])
 def test_block_diag_butterfly_project_sqrtn(log_n, device):

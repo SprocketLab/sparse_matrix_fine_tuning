@@ -211,11 +211,11 @@ class RobertaSelfAttention(nn.Module):
             bias =  (layer.bias != None)
             
             new_layer = MonarchLinear(
+                                in_features=n,
+                                out_features=m,
                                 nblocks=self.nblocks,
                                 rank=self.rank,
                                 weights=weights,
-                                in_features=n,
-                                out_features=m,
                                 bias=bias
                                 )
             if bias:

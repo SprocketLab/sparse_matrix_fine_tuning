@@ -18,6 +18,7 @@ from transformers import (
     AutoConfig,
 )
 from train_utils import * 
+import time
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 if device == "cpu":
@@ -82,14 +83,14 @@ trainer = Trainer(
 with torch.autocast(device, cache_enabled=False):
     trainer.train()
 
-# test set acc
-trainer.evaluate()
-finetuned_roberta_outputs = trainer.predict(test_dataset)
-finetuned_roberta_predictions = finetuned_roberta_outputs[1]
-print("fine-tuned roberta accuracy: ", round(accuracy_score(test_dataset["label"], finetuned_roberta_predictions), 3))
-
+    # test set eval
+    trainer.evaluate()
+    t1 = time.time()
+    finetuned_roberta_outputs = trainer.predict(test_dataset)
+    print("Inferece time: ", time.time() - t1)
+    finetuned_roberta_predictions = finetuned_roberta_outputs[1]
+    print("fine-tuned roberta accuracy: ", round(accuracy_score(test_dataset["label"], finetuned_roberta_predictions), 3))
 
 # ### Load fine-tuned Roberta
-
 finetuned_model = RobertaForSequenceClassification.from_pretrained("./result/fine_tuned_agnews/checkpoint-667/", local_files_only=True)
 

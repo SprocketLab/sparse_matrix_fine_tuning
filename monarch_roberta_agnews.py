@@ -18,6 +18,7 @@ from transformers import (
 import json
 from train_utils import *
 import argparse
+import time
 # parser = argparse.ArgumentParser()
 # parser.add_argument("--rank", type=int, default=1)
 # parser.add_argument("--nblocks", type=int, default=4)
@@ -97,12 +98,15 @@ trainer = Trainer(
 )
 with torch.autocast(device, cache_enabled=False):
     trainer.train()
-
-
-trainer.evaluate()
-finetuned_roberta_outputs = trainer.predict(test_dataset)
-finetuned_roberta_predictions = finetuned_roberta_outputs[1]
-print("fine-tuned roberta accuracy: ", round(accuracy_score(test_dataset["label"], finetuned_roberta_predictions), 3))
+    # test set eval
+    trainer.evaluate()
+    t1 = time.time()
+    finetuned_roberta_outputs = trainer.predict(test_dataset)
+    print("Inferece time: ", time.time() - t1)
+    
+    finetuned_roberta_predictions = finetuned_roberta_outputs[1]
+    print("fine-tuned roberta accuracy: ", round(accuracy_score(test_dataset["label"], finetuned_roberta_predictions), 3))
+    
 torch.save(roberta_model.state_dict(), os.path.join(save_dir, "model.pt" ))
 
 # ### Load fine-tuned Roberta

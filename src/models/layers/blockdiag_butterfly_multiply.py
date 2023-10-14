@@ -15,8 +15,12 @@ def blockdiag_butterfly_multiply_reference(x, w1_bfly, w2_bfly, version=2):
     (q, p) and (s, r) are blocks in the monarch matrix
     Arguments:
         x: (batch, n) 
-        w1_bfly: (k, q, p), where k = n / p, NOTE k = num_blocks, q = out_dim, p = block1_indim (reshaped)
-        w2_bfly: (l, s, r), where l = k * q / r = n * q / (p * r), NOTE l = num_blocks, r = block2_indim, s = out_dim
+        
+        Assume we project dense W (m, n) to w1_bfly and w2_bfly.
+        w1_bfly: (k, q, p), NOTE where n = k * p = in_dim,  k = num_blocks, q = intermediate_out_dim, p = block1_in_dim  
+        NOTE Both q and p can be called "block size", and generally you can set q = p = sqrt(n).
+        w2_bfly: (l, s, r), where l = k * q / r = n * q / (p * r)
+        NOTE l * s = m, l = num_blocks, r = block2_in_dim, s = blk_out_dim
     Outputs:
         out: (batch, m), where m = l * s = n * s * q / (p * r) 
     """
