@@ -110,7 +110,7 @@ def blockdiag_butterfly_multiply_einsum_rank(x, w1_bfly, w2_bfly):
     out = torch.einsum('b k i, k r j i, j l k r -> b l j', x_reshaped, w1_bfly, w2_bfly)
     return rearrange(out, 'b l j -> b (l j)')
 
-#@Wenxuan: use this one for rectangular weights!!
+#@Wenxuan: use for rectangular weights and see how rank affects param count
 def blockdiag_butterfly_project_einsum_rank(M, nblocks1, nblocks2, rank):
     """
     Maximum rank is min(l, i), which is min(m / nblocks1, n / nblocks2)  (look inside low_rank_project)

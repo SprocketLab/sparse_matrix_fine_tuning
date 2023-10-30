@@ -1,0 +1,1086 @@
+versions pytest-6.2.5, py-1.11.0, python-3.8.13.final.0
+cwd=/fly/tests/ops
+args=('--debug', 'test_blockdiag_butterfly_projection.py')
+
+  pytest_cmdline_main [hook]
+      config: <_pytest.config.Config object at 0x7f9d25d9b250>
+    pytest_plugin_registered [hook]
+        plugin: <Session fly exitstatus='<UNSET>' testsfailed=0 testscollected=0>
+        manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+    finish pytest_plugin_registered --> [] [hook]
+    pytest_configure [hook]
+        config: <_pytest.config.Config object at 0x7f9d25d9b250>
+      pytest_plugin_registered [hook]
+          plugin: <_pytest.cacheprovider.LFPlugin object at 0x7f9d25ceaaf0>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <_pytest.cacheprovider.NFPlugin object at 0x7f9d25ceac70>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+    find_module called for: faulthandler [assertion]
+      pytest_configure [hook]
+          config: <_pytest.config.Config object at 0x7f9d25d9b250>
+      finish pytest_configure --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <_pytest.faulthandler.FaultHandlerHooks object at 0x7f9d25cea130>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+    find_module called for: pdb [assertion]
+    find_module called for: cmd [assertion]
+    find_module called for: code [assertion]
+    find_module called for: codeop [assertion]
+      pytest_plugin_registered [hook]
+          plugin: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <_pytest.config.Config object at 0x7f9d25d9b250>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.mark' from '/opt/conda/lib/python3.8/site-packages/_pytest/mark/__init__.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.main' from '/opt/conda/lib/python3.8/site-packages/_pytest/main.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.runner' from '/opt/conda/lib/python3.8/site-packages/_pytest/runner.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.fixtures' from '/opt/conda/lib/python3.8/site-packages/_pytest/fixtures.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.helpconfig' from '/opt/conda/lib/python3.8/site-packages/_pytest/helpconfig.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.python' from '/opt/conda/lib/python3.8/site-packages/_pytest/python.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.terminal' from '/opt/conda/lib/python3.8/site-packages/_pytest/terminal.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.debugging' from '/opt/conda/lib/python3.8/site-packages/_pytest/debugging.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.unittest' from '/opt/conda/lib/python3.8/site-packages/_pytest/unittest.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.capture' from '/opt/conda/lib/python3.8/site-packages/_pytest/capture.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.skipping' from '/opt/conda/lib/python3.8/site-packages/_pytest/skipping.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.tmpdir' from '/opt/conda/lib/python3.8/site-packages/_pytest/tmpdir.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.monkeypatch' from '/opt/conda/lib/python3.8/site-packages/_pytest/monkeypatch.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.recwarn' from '/opt/conda/lib/python3.8/site-packages/_pytest/recwarn.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.pastebin' from '/opt/conda/lib/python3.8/site-packages/_pytest/pastebin.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.nose' from '/opt/conda/lib/python3.8/site-packages/_pytest/nose.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.assertion' from '/opt/conda/lib/python3.8/site-packages/_pytest/assertion/__init__.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.junitxml' from '/opt/conda/lib/python3.8/site-packages/_pytest/junitxml.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.doctest' from '/opt/conda/lib/python3.8/site-packages/_pytest/doctest.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.cacheprovider' from '/opt/conda/lib/python3.8/site-packages/_pytest/cacheprovider.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.freeze_support' from '/opt/conda/lib/python3.8/site-packages/_pytest/freeze_support.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.setuponly' from '/opt/conda/lib/python3.8/site-packages/_pytest/setuponly.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.setupplan' from '/opt/conda/lib/python3.8/site-packages/_pytest/setupplan.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.stepwise' from '/opt/conda/lib/python3.8/site-packages/_pytest/stepwise.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.warnings' from '/opt/conda/lib/python3.8/site-packages/_pytest/warnings.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.logging' from '/opt/conda/lib/python3.8/site-packages/_pytest/logging.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.reports' from '/opt/conda/lib/python3.8/site-packages/_pytest/reports.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.unraisableexception' from '/opt/conda/lib/python3.8/site-packages/_pytest/unraisableexception.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.threadexception' from '/opt/conda/lib/python3.8/site-packages/_pytest/threadexception.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.faulthandler' from '/opt/conda/lib/python3.8/site-packages/_pytest/faulthandler.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module 'hydra.extra.pytest_plugin' from '/opt/conda/lib/python3.8/site-packages/hydra/extra/pytest_plugin.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module 'pytest_cov.plugin' from '/opt/conda/lib/python3.8/site-packages/pytest_cov/plugin.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module 'pytest_pythonpath' from '/opt/conda/lib/python3.8/site-packages/pytest_pythonpath.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module 'hypothesis.extra.pytestplugin' from '/opt/conda/lib/python3.8/site-packages/hypothesis/extra/pytestplugin.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <CaptureManager _method='fd' _global_capturing=<MultiCapture out=<FDCapture 1 oldfd=6 _state='suspended' tmpfile=<_io.TextIOWrapper name="<_io.FileIO name=7 mode='rb+' closefd=True>" mode='r+' encoding='utf-8'>> err=<FDCapture 2 oldfd=8 _state='suspended' tmpfile=<_io.TextIOWrapper name="<_io.FileIO name=9 mode='rb+' closefd=True>" mode='r+' encoding='utf-8'>> in_=<FDCapture 0 oldfd=4 _state='started' tmpfile=<_io.TextIOWrapper name='/dev/null' mode='r' encoding='UTF-8'>> _state='suspended' _in_suspended=False> _capture_fixture=None>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <Session fly exitstatus=<ExitCode.OK: 0> testsfailed=0 testscollected=0>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <_pytest.cacheprovider.LFPlugin object at 0x7f9d25ceaaf0>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <_pytest.cacheprovider.NFPlugin object at 0x7f9d25ceac70>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <_pytest.faulthandler.FaultHandlerHooks object at 0x7f9d25cea130>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <_pytest.terminal.TerminalReporter object at 0x7f9d25cea7f0>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <_pytest.logging.LoggingPlugin object at 0x7f9d25c7b820>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+    finish pytest_configure --> [] [hook]
+    pytest_sessionstart [hook]
+        session: <Session fly exitstatus=<ExitCode.OK: 0> testsfailed=0 testscollected=0>
+      pytest_plugin_registered [hook]
+          plugin: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <_pytest.config.Config object at 0x7f9d25d9b250>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.mark' from '/opt/conda/lib/python3.8/site-packages/_pytest/mark/__init__.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.main' from '/opt/conda/lib/python3.8/site-packages/_pytest/main.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.runner' from '/opt/conda/lib/python3.8/site-packages/_pytest/runner.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.fixtures' from '/opt/conda/lib/python3.8/site-packages/_pytest/fixtures.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.helpconfig' from '/opt/conda/lib/python3.8/site-packages/_pytest/helpconfig.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.python' from '/opt/conda/lib/python3.8/site-packages/_pytest/python.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.terminal' from '/opt/conda/lib/python3.8/site-packages/_pytest/terminal.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.debugging' from '/opt/conda/lib/python3.8/site-packages/_pytest/debugging.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.unittest' from '/opt/conda/lib/python3.8/site-packages/_pytest/unittest.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.capture' from '/opt/conda/lib/python3.8/site-packages/_pytest/capture.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.skipping' from '/opt/conda/lib/python3.8/site-packages/_pytest/skipping.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.tmpdir' from '/opt/conda/lib/python3.8/site-packages/_pytest/tmpdir.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.monkeypatch' from '/opt/conda/lib/python3.8/site-packages/_pytest/monkeypatch.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.recwarn' from '/opt/conda/lib/python3.8/site-packages/_pytest/recwarn.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.pastebin' from '/opt/conda/lib/python3.8/site-packages/_pytest/pastebin.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.nose' from '/opt/conda/lib/python3.8/site-packages/_pytest/nose.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.assertion' from '/opt/conda/lib/python3.8/site-packages/_pytest/assertion/__init__.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.junitxml' from '/opt/conda/lib/python3.8/site-packages/_pytest/junitxml.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.doctest' from '/opt/conda/lib/python3.8/site-packages/_pytest/doctest.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.cacheprovider' from '/opt/conda/lib/python3.8/site-packages/_pytest/cacheprovider.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.freeze_support' from '/opt/conda/lib/python3.8/site-packages/_pytest/freeze_support.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.setuponly' from '/opt/conda/lib/python3.8/site-packages/_pytest/setuponly.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.setupplan' from '/opt/conda/lib/python3.8/site-packages/_pytest/setupplan.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.stepwise' from '/opt/conda/lib/python3.8/site-packages/_pytest/stepwise.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.warnings' from '/opt/conda/lib/python3.8/site-packages/_pytest/warnings.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.logging' from '/opt/conda/lib/python3.8/site-packages/_pytest/logging.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.reports' from '/opt/conda/lib/python3.8/site-packages/_pytest/reports.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.unraisableexception' from '/opt/conda/lib/python3.8/site-packages/_pytest/unraisableexception.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.threadexception' from '/opt/conda/lib/python3.8/site-packages/_pytest/threadexception.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.faulthandler' from '/opt/conda/lib/python3.8/site-packages/_pytest/faulthandler.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module 'hydra.extra.pytest_plugin' from '/opt/conda/lib/python3.8/site-packages/hydra/extra/pytest_plugin.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module 'pytest_cov.plugin' from '/opt/conda/lib/python3.8/site-packages/pytest_cov/plugin.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module 'pytest_pythonpath' from '/opt/conda/lib/python3.8/site-packages/pytest_pythonpath.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module 'hypothesis.extra.pytestplugin' from '/opt/conda/lib/python3.8/site-packages/hypothesis/extra/pytestplugin.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <CaptureManager _method='fd' _global_capturing=<MultiCapture out=<FDCapture 1 oldfd=6 _state='suspended' tmpfile=<_io.TextIOWrapper name="<_io.FileIO name=7 mode='rb+' closefd=True>" mode='r+' encoding='utf-8'>> err=<FDCapture 2 oldfd=8 _state='suspended' tmpfile=<_io.TextIOWrapper name="<_io.FileIO name=9 mode='rb+' closefd=True>" mode='r+' encoding='utf-8'>> in_=<FDCapture 0 oldfd=4 _state='started' tmpfile=<_io.TextIOWrapper name='/dev/null' mode='r' encoding='UTF-8'>> _state='suspended' _in_suspended=False> _capture_fixture=None>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <Session fly exitstatus=<ExitCode.OK: 0> testsfailed=0 testscollected=0>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <_pytest.cacheprovider.LFPlugin object at 0x7f9d25ceaaf0>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <_pytest.cacheprovider.NFPlugin object at 0x7f9d25ceac70>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <_pytest.faulthandler.FaultHandlerHooks object at 0x7f9d25cea130>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <_pytest.terminal.TerminalReporter object at 0x7f9d25cea7f0>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <_pytest.logging.LoggingPlugin object at 0x7f9d25c7b820>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <_pytest.fixtures.FixtureManager object at 0x7f9d25ceaac0>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f9d26829370>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_report_header [hook]
+          config: <_pytest.config.Config object at 0x7f9d25d9b250>
+          startdir: /fly/tests/ops
+      find_module called for: email.parser [assertion]
+      find_module called for: email.feedparser [assertion]
+      find_module called for: email.errors [assertion]
+      find_module called for: email._policybase [assertion]
+      find_module called for: email.header [assertion]
+      find_module called for: email.quoprimime [assertion]
+      find_module called for: email.base64mime [assertion]
+      find_module called for: email.charset [assertion]
+      find_module called for: email.encoders [assertion]
+      find_module called for: quopri [assertion]
+      find_module called for: email.utils [assertion]
+      find_module called for: email._parseaddr [assertion]
+      find_module called for: email.message [assertion]
+      find_module called for: uu [assertion]
+      find_module called for: email._encoded_words [assertion]
+      find_module called for: email.iterators [assertion]
+      find_module called for: hypothesis.database [assertion]
+      matched marked file 'hypothesis.database' (from 'hypothesis') [assertion]
+      rewriting PosixPath('/opt/conda/lib/python3.8/site-packages/hypothesis/database.py') [assertion]
+      finish pytest_report_header --> [['rootdir: /fly, configfile: setup.cfg', 'plugins: hydra-core-1.2.0, cov-3.0.0, pythonpath-0.7.4, hypothesis-4.50.8'], ['using: pytest-6.2.5 pylib-1.11.0', 'setuptools registered plugins:', '  hydra-core-1.2.0 at /opt/conda/lib/python3.8/site-packages/hydra/extra/pytest_plugin.py', '  pytest-cov-3.0.0 at /opt/conda/lib/python3.8/site-packages/pytest_cov/plugin.py', '  pytest-pythonpath-0.7.4 at /opt/conda/lib/python3.8/site-packages/pytest_pythonpath.py', '  hypothesis-4.50.8 at /opt/conda/lib/python3.8/site-packages/hypothesis/extra/pytestplugin.py']] [hook]
+    finish pytest_sessionstart --> [] [hook]
+    pytest_collection [hook]
+        session: <Session fly exitstatus=<ExitCode.OK: 0> testsfailed=0 testscollected=0>
+    perform_collect <Session fly exitstatus=<ExitCode.OK: 0> testsfailed=0 testscollected=0> ['test_blockdiag_butterfly_projection.py'] [collection]
+        pytest_collectstart [hook]
+            collector: <Session fly exitstatus=<ExitCode.OK: 0> testsfailed=0 testscollected=0>
+        finish pytest_collectstart --> [] [hook]
+        pytest_make_collect_report [hook]
+            collector: <Session fly exitstatus=<ExitCode.OK: 0> testsfailed=0 testscollected=0>
+        processing argument (local('/fly/tests/ops/test_blockdiag_butterfly_projection.py'), []) [collection]
+            pytest_collect_file [hook]
+                path: /fly/tests/ops/test_blockdiag_butterfly_projection.py
+                parent: <Session fly exitstatus=<ExitCode.OK: 0> testsfailed=0 testscollected=0>
+              pytest_pycollect_makemodule [hook]
+                  path: /fly/tests/ops/test_blockdiag_butterfly_projection.py
+                  parent: <Session fly exitstatus=<ExitCode.OK: 0> testsfailed=0 testscollected=0>
+              finish pytest_pycollect_makemodule --> <Module tests/ops/test_blockdiag_butterfly_projection.py> [hook]
+            finish pytest_collect_file --> [<DoctestModule tests/ops/test_blockdiag_butterfly_projection.py>, <Module tests/ops/test_blockdiag_butterfly_projection.py>] [hook]
+          matchnodes [<DoctestModule tests/ops/test_blockdiag_butterfly_projection.py>, <Module tests/ops/test_blockdiag_butterfly_projection.py>] [] [collection]
+            matchnodes finished ->  2 nodes [collection]
+        finish pytest_make_collect_report --> <CollectReport '' lenresult=2 outcome='passed'> [hook]
+        pytest_collectreport [hook]
+            report: <CollectReport '' lenresult=2 outcome='passed'>
+        finish pytest_collectreport --> [] [hook]
+    genitems <DoctestModule tests/ops/test_blockdiag_butterfly_projection.py> [collection]
+      pytest_collectstart [hook]
+          collector: <DoctestModule tests/ops/test_blockdiag_butterfly_projection.py>
+      finish pytest_collectstart --> [] [hook]
+      pytest_make_collect_report [hook]
+          collector: <DoctestModule tests/ops/test_blockdiag_butterfly_projection.py>
+      find_module called for: doctest [assertion]
+      find_module called for: test_blockdiag_butterfly_projection [assertion]
+      matched test file (was specified on cmdline): '/fly/tests/ops/test_blockdiag_butterfly_projection.py' [assertion]
+      found cached rewritten pyc for /fly/tests/ops/test_blockdiag_butterfly_projection.py [assertion]
+      find_module called for: torch [assertion]
+      find_module called for: ctypes [assertion]
+      find_module called for: _ctypes [assertion]
+      find_module called for: ctypes._endian [assertion]
+      find_module called for: torch._utils [assertion]
+      find_module called for: torch._utils_internal [assertion]
+      find_module called for: torch.torch_version [assertion]
+      find_module called for: torch.version [assertion]
+      find_module called for: torch._six [assertion]
+      find_module called for: torch._C [assertion]
+      find_module called for: torch._tensor [assertion]
+      find_module called for: torch._namedtensor_internals [assertion]
+      find_module called for: torch.overrides [assertion]
+      find_module called for: torch.utils [assertion]
+      find_module called for: torch.utils.throughput_benchmark [assertion]
+      find_module called for: torch.utils._crash_handler [assertion]
+      find_module called for: torch.utils._mode_utils [assertion]
+      find_module called for: torch.utils.hooks [assertion]
+      find_module called for: torch.storage [assertion]
+      find_module called for: torch.types [assertion]
+      find_module called for: numpy [assertion]
+      find_module called for: numpy._globals [assertion]
+      find_module called for: numpy.__config__ [assertion]
+      find_module called for: numpy._distributor_init [assertion]
+      find_module called for: numpy.core [assertion]
+      find_module called for: numpy.version [assertion]
+      find_module called for: numpy._version [assertion]
+      find_module called for: numpy.core.multiarray [assertion]
+      find_module called for: numpy.core.overrides [assertion]
+      find_module called for: numpy.core._multiarray_umath [assertion]
+      find_module called for: numpy.compat [assertion]
+      find_module called for: numpy.compat._inspect [assertion]
+      find_module called for: numpy.compat.py3k [assertion]
+      find_module called for: pickle5 [assertion]
+      find_module called for: numpy.core.umath [assertion]
+      find_module called for: numpy.core.numerictypes [assertion]
+      find_module called for: numpy.core._string_helpers [assertion]
+      find_module called for: numpy.core._type_aliases [assertion]
+      find_module called for: numpy.core._dtype [assertion]
+      find_module called for: numpy.core.numeric [assertion]
+      find_module called for: numpy.core.shape_base [assertion]
+      find_module called for: numpy.core.fromnumeric [assertion]
+      find_module called for: numpy.core._methods [assertion]
+      find_module called for: numpy.core._exceptions [assertion]
+      find_module called for: numpy.core._ufunc_config [assertion]
+      find_module called for: numpy.core.arrayprint [assertion]
+      find_module called for: numpy.core._asarray [assertion]
+      find_module called for: numpy.core.defchararray [assertion]
+      find_module called for: numpy.core.records [assertion]
+      find_module called for: numpy.core.memmap [assertion]
+      find_module called for: numpy.core.function_base [assertion]
+      find_module called for: numpy.core._machar [assertion]
+      find_module called for: numpy.core.getlimits [assertion]
+      find_module called for: numpy.core.einsumfunc [assertion]
+      find_module called for: numpy.core._add_newdocs [assertion]
+      find_module called for: numpy.core._multiarray_tests [assertion]
+      find_module called for: numpy.core._add_newdocs_scalars [assertion]
+      find_module called for: numpy.core._dtype_ctypes [assertion]
+      find_module called for: numpy.core._internal [assertion]
+      find_module called for: numpy._pytesttester [assertion]
+      find_module called for: numpy.lib [assertion]
+      find_module called for: numpy.lib.mixins [assertion]
+      find_module called for: numpy.lib.scimath [assertion]
+      find_module called for: numpy.lib.type_check [assertion]
+      find_module called for: numpy.lib.ufunclike [assertion]
+      find_module called for: numpy.lib.index_tricks [assertion]
+      find_module called for: numpy.matrixlib [assertion]
+      find_module called for: numpy.matrixlib.defmatrix [assertion]
+      find_module called for: numpy.linalg [assertion]
+      find_module called for: numpy.linalg.linalg [assertion]
+      find_module called for: numpy.lib.twodim_base [assertion]
+      find_module called for: numpy.lib.stride_tricks [assertion]
+      find_module called for: numpy.linalg._umath_linalg [assertion]
+      find_module called for: numpy.lib.function_base [assertion]
+      find_module called for: numpy.lib.histograms [assertion]
+      find_module called for: numpy.lib.nanfunctions [assertion]
+      find_module called for: numpy.lib.shape_base [assertion]
+      find_module called for: numpy.lib.polynomial [assertion]
+      find_module called for: numpy.lib.utils [assertion]
+      find_module called for: numpy.lib.arraysetops [assertion]
+      find_module called for: numpy.lib.npyio [assertion]
+      find_module called for: numpy.lib.format [assertion]
+      find_module called for: numpy.lib._datasource [assertion]
+      find_module called for: numpy.lib._iotools [assertion]
+      find_module called for: numpy.lib.arrayterator [assertion]
+      find_module called for: numpy.lib.arraypad [assertion]
+      find_module called for: numpy.lib._version [assertion]
+      find_module called for: numpy.fft [assertion]
+      find_module called for: numpy.fft._pocketfft [assertion]
+      find_module called for: numpy.fft._pocketfft_internal [assertion]
+      find_module called for: numpy.fft.helper [assertion]
+      find_module called for: numpy.polynomial [assertion]
+      find_module called for: numpy.polynomial.polynomial [assertion]
+      find_module called for: numpy.polynomial.polyutils [assertion]
+      find_module called for: numpy.polynomial._polybase [assertion]
+      find_module called for: numpy.polynomial.chebyshev [assertion]
+      find_module called for: numpy.polynomial.legendre [assertion]
+      find_module called for: numpy.polynomial.hermite [assertion]
+      find_module called for: numpy.polynomial.hermite_e [assertion]
+      find_module called for: numpy.polynomial.laguerre [assertion]
+      find_module called for: numpy.random [assertion]
+      find_module called for: numpy.random._pickle [assertion]
+      find_module called for: numpy.random.mtrand [assertion]
+      find_module called for: numpy.random.bit_generator [assertion]
+      find_module called for: numpy.random._common [assertion]
+      find_module called for: backports_abc [assertion]
+      find_module called for: secrets [assertion]
+      find_module called for: hmac [assertion]
+      find_module called for: numpy.random._bounded_integers [assertion]
+      find_module called for: numpy.random._mt19937 [assertion]
+      find_module called for: numpy.random._philox [assertion]
+      find_module called for: numpy.random._pcg64 [assertion]
+      find_module called for: numpy.random._sfc64 [assertion]
+      find_module called for: numpy.random._generator [assertion]
+      find_module called for: numpy.ctypeslib [assertion]
+      find_module called for: numpy.ma [assertion]
+      find_module called for: numpy.ma.core [assertion]
+      find_module called for: numpy.ma.extras [assertion]
+      find_module called for: torch.random [assertion]
+      find_module called for: torch.serialization [assertion]
+      find_module called for: tarfile [assertion]
+      find_module called for: torch._sources [assertion]
+      find_module called for: torch._tensor_str [assertion]
+      find_module called for: torch.amp [assertion]
+      find_module called for: torch.amp.autocast_mode [assertion]
+      find_module called for: torch.cuda [assertion]
+      find_module called for: torch.cuda._utils [assertion]
+      find_module called for: torch.cuda.graphs [assertion]
+      find_module called for: torch.cuda.streams [assertion]
+      find_module called for: torch.cuda.memory [assertion]
+      find_module called for: torch.cuda.random [assertion]
+      find_module called for: torch.cuda.sparse [assertion]
+      find_module called for: torch.cuda.profiler [assertion]
+      find_module called for: torch.cuda.nvtx [assertion]
+      find_module called for: torch.cuda.amp [assertion]
+      find_module called for: torch.cuda.amp.autocast_mode [assertion]
+      find_module called for: torch.cuda.amp.grad_scaler [assertion]
+      find_module called for: torch.cuda.amp.common [assertion]
+      find_module called for: torch.cuda.jiterator [assertion]
+      find_module called for: torch.sparse [assertion]
+      find_module called for: torch.functional [assertion]
+      find_module called for: torch.nn [assertion]
+      find_module called for: torch.nn.modules [assertion]
+      find_module called for: torch.nn.modules.module [assertion]
+      find_module called for: torch.nn.parameter [assertion]
+      find_module called for: torch.nn.modules.linear [assertion]
+      find_module called for: torch.nn.functional [assertion]
+      find_module called for: torch._VF [assertion]
+      find_module called for: torch._torch_docs [assertion]
+      find_module called for: torch._jit_internal [assertion]
+      find_module called for: torch.distributed [assertion]
+      find_module called for: torch.distributed.distributed_c10d [assertion]
+      find_module called for: torch.distributed.constants [assertion]
+      find_module called for: torch.distributed.rendezvous [assertion]
+      find_module called for: torch.distributed.remote_device [assertion]
+      find_module called for: torch.distributed.rpc [assertion]
+      find_module called for: torch.distributed.rpc.api [assertion]
+      find_module called for: torch.futures [assertion]
+      find_module called for: torch.distributed.rpc.internal [assertion]
+      find_module called for: torch.distributed.rpc.constants [assertion]
+      find_module called for: torch.distributed.rpc._utils [assertion]
+      find_module called for: torch.distributed.rpc.backend_registry [assertion]
+      find_module called for: torch.distributed.rpc.functions [assertion]
+      find_module called for: torch.distributed.autograd [assertion]
+      find_module called for: torch.distributed.rpc.options [assertion]
+      find_module called for: torch.distributed.rpc.server_process_global_profiler [assertion]
+      find_module called for: torch.autograd [assertion]
+      find_module called for: torch.autograd.variable [assertion]
+      find_module called for: torch.autograd.function [assertion]
+      find_module called for: torch.autograd.gradcheck [assertion]
+      find_module called for: torch.testing [assertion]
+      find_module called for: torch.testing._comparison [assertion]
+      find_module called for: cmath [assertion]
+      find_module called for: torch.testing._creation [assertion]
+      find_module called for: torch.testing._deprecated [assertion]
+      find_module called for: torch.testing._legacy [assertion]
+      find_module called for: torch._vmap_internals [assertion]
+      find_module called for: torch.utils._pytree [assertion]
+      find_module called for: torch.autograd.grad_mode [assertion]
+      find_module called for: torch.autograd.anomaly_mode [assertion]
+      find_module called for: torch.autograd.functional [assertion]
+      find_module called for: torch.autograd.forward_ad [assertion]
+      find_module called for: torch.autograd.graph [assertion]
+      find_module called for: torch.autograd.profiler [assertion]
+      find_module called for: torch.autograd.profiler_util [assertion]
+      find_module called for: torch.autograd.profiler_legacy [assertion]
+      find_module called for: torch.package [assertion]
+      find_module called for: torch.package.analyze [assertion]
+      find_module called for: torch.package.analyze.find_first_use_of_broken_modules [assertion]
+      find_module called for: torch.package.package_exporter [assertion]
+      find_module called for: pickletools [assertion]
+      find_module called for: torch.package._digraph [assertion]
+      find_module called for: torch.package._importlib [assertion]
+      find_module called for: torch.package._mangling [assertion]
+      find_module called for: torch.package._package_pickler [assertion]
+      find_module called for: torch.package.importer [assertion]
+      find_module called for: torch.package._stdlib [assertion]
+      find_module called for: torch.package.find_file_dependencies [assertion]
+      find_module called for: torch.package.glob_group [assertion]
+      find_module called for: torch.package.analyze.trace_dependencies [assertion]
+      find_module called for: torch.package.analyze.is_from_package [assertion]
+      find_module called for: torch.package.file_structure_representation [assertion]
+      find_module called for: torch.package.package_importer [assertion]
+      find_module called for: torch.package._directory_reader [assertion]
+      find_module called for: torch.package._package_unpickler [assertion]
+      find_module called for: torch.nn._reduction [assertion]
+      find_module called for: torch.nn.grad [assertion]
+      find_module called for: torch.nn.modules.utils [assertion]
+      find_module called for: torch.nn.init [assertion]
+      find_module called for: torch.nn.modules.lazy [assertion]
+      find_module called for: typing_extensions [assertion]
+      find_module called for: torch.nn.modules.conv [assertion]
+      find_module called for: torch.nn.common_types [assertion]
+      find_module called for: torch.nn.modules.activation [assertion]
+      find_module called for: torch.nn.modules.loss [assertion]
+      find_module called for: torch.nn.modules.distance [assertion]
+      find_module called for: torch.nn.modules.container [assertion]
+      find_module called for: torch.nn.modules.pooling [assertion]
+      find_module called for: torch.nn.modules.batchnorm [assertion]
+      find_module called for: torch.nn.modules._functions [assertion]
+      find_module called for: torch.nn.modules.instancenorm [assertion]
+      find_module called for: torch.nn.modules.normalization [assertion]
+      find_module called for: torch.nn.modules.dropout [assertion]
+      find_module called for: torch.nn.modules.padding [assertion]
+      find_module called for: torch.nn.modules.sparse [assertion]
+      find_module called for: torch.nn.modules.rnn [assertion]
+      find_module called for: torch.nn.utils [assertion]
+      find_module called for: torch.nn.utils.rnn [assertion]
+      find_module called for: torch.nn.utils.clip_grad [assertion]
+      find_module called for: torch.nn.utils.weight_norm [assertion]
+      find_module called for: torch.nn.utils.convert_parameters [assertion]
+      find_module called for: torch.nn.utils.spectral_norm [assertion]
+      find_module called for: torch.nn.utils.fusion [assertion]
+      find_module called for: torch.nn.utils.memory_format [assertion]
+      find_module called for: torch.nn.utils.parametrizations [assertion]
+      find_module called for: torch.nn.utils.parametrize [assertion]
+      find_module called for: torch.nn.utils.init [assertion]
+      find_module called for: torch.nn.utils.stateless [assertion]
+      find_module called for: torch.nn.modules.pixelshuffle [assertion]
+      find_module called for: torch.nn.modules.upsampling [assertion]
+      find_module called for: torch.nn.modules.fold [assertion]
+      find_module called for: torch.nn.modules.adaptive [assertion]
+      find_module called for: torch.nn.modules.transformer [assertion]
+      find_module called for: torch.nn.modules.flatten [assertion]
+      find_module called for: torch.nn.modules.channelshuffle [assertion]
+      find_module called for: torch.nn.parallel [assertion]
+      find_module called for: torch.nn.parallel.parallel_apply [assertion]
+      find_module called for: torch.nn.parallel.replicate [assertion]
+      find_module called for: torch.nn.parallel.comm [assertion]
+      find_module called for: torch.cuda.nccl [assertion]
+      find_module called for: torch.nn.parallel.data_parallel [assertion]
+      find_module called for: torch.nn.parallel.scatter_gather [assertion]
+      find_module called for: torch.nn.parallel._functions [assertion]
+      find_module called for: torch.nn.parallel.distributed [assertion]
+      find_module called for: torch.distributed.algorithms [assertion]
+      find_module called for: torch.distributed.algorithms.join [assertion]
+      find_module called for: torch.distributed.utils [assertion]
+      find_module called for: torch.nn.parallel._replicated_tensor_ddp_utils [assertion]
+      find_module called for: torch._lowrank [assertion]
+      find_module called for: torch._linalg_utils [assertion]
+      find_module called for: torch.cpu [assertion]
+      find_module called for: torch.cpu.amp [assertion]
+      find_module called for: torch.cpu.amp.autocast_mode [assertion]
+      find_module called for: torch.fft [assertion]
+      find_module called for: torch.optim [assertion]
+      find_module called for: torch.optim.adadelta [assertion]
+      find_module called for: torch.optim.optimizer [assertion]
+      find_module called for: torch.optim.adagrad [assertion]
+      find_module called for: torch.optim.adam [assertion]
+      find_module called for: torch.optim.adamw [assertion]
+      find_module called for: torch.optim.sparse_adam [assertion]
+      find_module called for: torch.optim._functional [assertion]
+      find_module called for: torch.optim.adamax [assertion]
+      find_module called for: torch.optim.asgd [assertion]
+      find_module called for: torch.optim.nadam [assertion]
+      find_module called for: torch.optim.radam [assertion]
+      find_module called for: torch.optim.rmsprop [assertion]
+      find_module called for: torch.optim.rprop [assertion]
+      find_module called for: torch.optim.sgd [assertion]
+      find_module called for: torch.optim.lbfgs [assertion]
+      find_module called for: torch.optim.lr_scheduler [assertion]
+      find_module called for: torch.optim.swa_utils [assertion]
+      find_module called for: torch.optim._multi_tensor [assertion]
+      find_module called for: torch.multiprocessing [assertion]
+      find_module called for: torch.multiprocessing.reductions [assertion]
+      find_module called for: multiprocessing.resource_sharer [assertion]
+      find_module called for: torch.multiprocessing.spawn [assertion]
+      find_module called for: multiprocessing.connection [assertion]
+      find_module called for: _multiprocessing [assertion]
+      find_module called for: _winapi [assertion]
+      find_module called for: torch.special [assertion]
+      find_module called for: torch.utils.backcompat [assertion]
+      find_module called for: torch.onnx [assertion]
+      find_module called for: torch.jit [assertion]
+      find_module called for: torch.jit._script [assertion]
+      find_module called for: torch.jit._recursive [assertion]
+      find_module called for: torch.jit.frontend [assertion]
+      find_module called for: torch.jit._monkeytype_config [assertion]
+      find_module called for: monkeytype [assertion]
+      find_module called for: torch.jit.annotations [assertion]
+      find_module called for: torch.jit._state [assertion]
+      find_module called for: torch._ops [assertion]
+      find_module called for: astunparse [assertion]
+      find_module called for: torch.jit._builtins [assertion]
+      find_module called for: torch.backends [assertion]
+      find_module called for: torch.backends.cudnn [assertion]
+      find_module called for: torch.jit._check [assertion]
+      find_module called for: torch.jit._fuser [assertion]
+      find_module called for: torch.jit._serialization [assertion]
+      find_module called for: torch._classes [assertion]
+      find_module called for: torch.jit._trace [assertion]
+      find_module called for: torch.jit._async [assertion]
+      find_module called for: torch.jit._decomposition_utils [assertion]
+      find_module called for: torch.jit._freeze [assertion]
+      find_module called for: torch.jit._ir_utils [assertion]
+      find_module called for: torch.linalg [assertion]
+      find_module called for: torch.hub [assertion]
+      find_module called for: urllib.error [assertion]
+      find_module called for: urllib.response [assertion]
+      find_module called for: urllib.request [assertion]
+      find_module called for: http [assertion]
+      find_module called for: http.client [assertion]
+      find_module called for: tqdm [assertion]
+      find_module called for: tqdm._monitor [assertion]
+      find_module called for: tqdm._tqdm_pandas [assertion]
+      find_module called for: tqdm.cli [assertion]
+      find_module called for: tqdm.std [assertion]
+      find_module called for: tqdm.utils [assertion]
+      find_module called for: tqdm.version [assertion]
+      find_module called for: tqdm._dist_ver [assertion]
+      find_module called for: tqdm.gui [assertion]
+      find_module called for: tqdm.auto [assertion]
+      find_module called for: tqdm.autonotebook [assertion]
+      find_module called for: tqdm.asyncio [assertion]
+      find_module called for: torch.distributions [assertion]
+      find_module called for: torch.distributions.bernoulli [assertion]
+      find_module called for: torch.distributions.constraints [assertion]
+      find_module called for: torch.distributions.exp_family [assertion]
+      find_module called for: torch.distributions.distribution [assertion]
+      find_module called for: torch.distributions.utils [assertion]
+      find_module called for: torch.distributions.beta [assertion]
+      find_module called for: torch.distributions.dirichlet [assertion]
+      find_module called for: torch.distributions.binomial [assertion]
+      find_module called for: torch.distributions.categorical [assertion]
+      find_module called for: torch.distributions.cauchy [assertion]
+      find_module called for: torch.distributions.chi2 [assertion]
+      find_module called for: torch.distributions.gamma [assertion]
+      find_module called for: torch.distributions.constraint_registry [assertion]
+      find_module called for: torch.distributions.transforms [assertion]
+      find_module called for: torch.distributions.continuous_bernoulli [assertion]
+      find_module called for: torch.distributions.exponential [assertion]
+      find_module called for: torch.distributions.fishersnedecor [assertion]
+      find_module called for: torch.distributions.geometric [assertion]
+      find_module called for: torch.distributions.gumbel [assertion]
+      find_module called for: torch.distributions.uniform [assertion]
+      find_module called for: torch.distributions.transformed_distribution [assertion]
+      find_module called for: torch.distributions.independent [assertion]
+      find_module called for: torch.distributions.half_cauchy [assertion]
+      find_module called for: torch.distributions.half_normal [assertion]
+      find_module called for: torch.distributions.normal [assertion]
+      find_module called for: torch.distributions.kl [assertion]
+      find_module called for: torch.distributions.laplace [assertion]
+      find_module called for: torch.distributions.lowrank_multivariate_normal [assertion]
+      find_module called for: torch.distributions.multivariate_normal [assertion]
+      find_module called for: torch.distributions.one_hot_categorical [assertion]
+      find_module called for: torch.distributions.pareto [assertion]
+      find_module called for: torch.distributions.poisson [assertion]
+      find_module called for: torch.distributions.kumaraswamy [assertion]
+      find_module called for: torch.distributions.lkj_cholesky [assertion]
+      find_module called for: torch.distributions.log_normal [assertion]
+      find_module called for: torch.distributions.logistic_normal [assertion]
+      find_module called for: torch.distributions.mixture_same_family [assertion]
+      find_module called for: torch.distributions.multinomial [assertion]
+      find_module called for: torch.distributions.negative_binomial [assertion]
+      find_module called for: torch.distributions.relaxed_bernoulli [assertion]
+      find_module called for: torch.distributions.relaxed_categorical [assertion]
+      find_module called for: torch.distributions.studentT [assertion]
+      find_module called for: torch.distributions.von_mises [assertion]
+      find_module called for: torch.distributions.weibull [assertion]
+      find_module called for: torch.distributions.wishart [assertion]
+      find_module called for: torch.backends.cuda [assertion]
+      find_module called for: torch.backends.mps [assertion]
+      find_module called for: torch.backends.mkl [assertion]
+      find_module called for: torch.backends.mkldnn [assertion]
+      find_module called for: torch.backends.openmp [assertion]
+      find_module called for: torch.backends.quantized [assertion]
+      find_module called for: torch.utils.data [assertion]
+      find_module called for: torch.utils.data.sampler [assertion]
+      find_module called for: torch.utils.data.dataset [assertion]
+      find_module called for: torch.utils.data.datapipes [assertion]
+      find_module called for: torch.utils.data.datapipes.iter [assertion]
+      find_module called for: torch.utils.data.datapipes.iter.utils [assertion]
+      find_module called for: torch.utils.data.datapipes.datapipe [assertion]
+      find_module called for: torch.utils.data.datapipes._typing [assertion]
+      find_module called for: dill [assertion]
+      find_module called for: dill.__info__ [assertion]
+      find_module called for: dill._dill [assertion]
+      find_module called for: dill.logger [assertion]
+      find_module called for: _pyio [assertion]
+      find_module called for: dill._shims [assertion]
+      find_module called for: dill.settings [assertion]
+      find_module called for: winreg [assertion]
+      find_module called for: dill.session [assertion]
+      find_module called for: dill.detect [assertion]
+      find_module called for: dill.pointers [assertion]
+      find_module called for: dill.source [assertion]
+      find_module called for: dill.temp [assertion]
+      find_module called for: dill.objtypes [assertion]
+      find_module called for: torch.utils.data.datapipes.iter.callable [assertion]
+      find_module called for: torch.utils.data.datapipes._decorator [assertion]
+      find_module called for: torch.utils.data._utils [assertion]
+      find_module called for: torch.utils.data._utils.worker [assertion]
+      find_module called for: torch.utils.data._utils.signal_handling [assertion]
+      find_module called for: torch.utils.data._utils.pin_memory [assertion]
+      find_module called for: torch.utils.data._utils.collate [assertion]
+      find_module called for: torch.utils.data._utils.fetch [assertion]
+      find_module called for: torch.utils.data.datapipes.utils [assertion]
+      find_module called for: torch.utils.data.datapipes.utils.common [assertion]
+      find_module called for: torch.utils.data._utils.serialization [assertion]
+      find_module called for: torch.utils.data.datapipes.iter.combinatorics [assertion]
+      find_module called for: torch.utils.data.datapipes.iter.combining [assertion]
+      find_module called for: torch.utils.data.datapipes.iter.filelister [assertion]
+      find_module called for: torch.utils.data.datapipes.iter.fileopener [assertion]
+      find_module called for: torch.utils.data.datapipes.iter.grouping [assertion]
+      find_module called for: torch.utils.data.datapipes.iter.routeddecoder [assertion]
+      find_module called for: torch.utils.data.datapipes.utils.decoder [assertion]
+      find_module called for: torch.utils.data.datapipes.iter.selecting [assertion]
+      find_module called for: torch.utils.data.datapipes.dataframe [assertion]
+      find_module called for: torch.utils.data.datapipes.dataframe.dataframes [assertion]
+      find_module called for: torch.utils.data.datapipes.dataframe.structures [assertion]
+      find_module called for: torch.utils.data.datapipes.dataframe.datapipes [assertion]
+      find_module called for: torch.utils.data.datapipes.dataframe.dataframe_wrapper [assertion]
+      find_module called for: torch.utils.data.datapipes.iter.streamreader [assertion]
+      find_module called for: torch.utils.data.datapipes.map [assertion]
+      find_module called for: torch.utils.data.datapipes.map.callable [assertion]
+      find_module called for: torch.utils.data.datapipes.map.combinatorics [assertion]
+      find_module called for: torch.utils.data.datapipes.map.combining [assertion]
+      find_module called for: torch.utils.data.datapipes.map.grouping [assertion]
+      find_module called for: torch.utils.data.datapipes.map.utils [assertion]
+      find_module called for: torch.utils.data.dataloader [assertion]
+      find_module called for: torch.utils.data.graph_settings [assertion]
+      find_module called for: torch.utils.data.graph [assertion]
+      find_module called for: torch.utils.data.distributed [assertion]
+      find_module called for: torch.utils.data.dataloader_experimental [assertion]
+      find_module called for: torch.utils.data.backward_compatibility [assertion]
+      find_module called for: torch.utils.data.communication [assertion]
+      find_module called for: torch.utils.data.communication.eventloop [assertion]
+      find_module called for: torch.utils.data.communication.iter [assertion]
+      find_module called for: torch.utils.data.communication.map [assertion]
+      find_module called for: torch.utils.data.communication.messages [assertion]
+      find_module called for: torch.utils.data.communication.protocol [assertion]
+      find_module called for: torch.utils.data.communication.queue [assertion]
+      find_module called for: torch.__config__ [assertion]
+      find_module called for: torch.__future__ [assertion]
+      find_module called for: torch.profiler [assertion]
+      find_module called for: torch.profiler.profiler [assertion]
+      find_module called for: torch.nn.intrinsic [assertion]
+      find_module called for: torch.nn.intrinsic.modules [assertion]
+      find_module called for: torch.nn.intrinsic.modules.fused [assertion]
+      find_module called for: torch.nn.quantizable [assertion]
+      find_module called for: torch.nn.quantizable.modules [assertion]
+      find_module called for: torch.nn.quantizable.modules.activation [assertion]
+      find_module called for: torch.nn.quantized [assertion]
+      find_module called for: torch.nn.quantized.modules [assertion]
+      find_module called for: torch.nn.quantized.modules.activation [assertion]
+      find_module called for: torch.nn.quantized.functional [assertion]
+      find_module called for: torch.nn.quantized.modules.utils [assertion]
+      find_module called for: torch.nn.quantized.modules.dropout [assertion]
+      find_module called for: torch.nn.quantized.modules.batchnorm [assertion]
+      find_module called for: torch.nn.quantized.modules.normalization [assertion]
+      find_module called for: torch.nn.quantized.modules.conv [assertion]
+      find_module called for: torch.nn.intrinsic.qat [assertion]
+      find_module called for: torch.nn.intrinsic.qat.modules [assertion]
+      find_module called for: torch.nn.intrinsic.qat.modules.linear_relu [assertion]
+      find_module called for: torch.nn.qat [assertion]
+      find_module called for: torch.nn.qat.modules [assertion]
+      find_module called for: torch.nn.qat.modules.linear [assertion]
+      find_module called for: torch.nn.qat.modules.conv [assertion]
+      find_module called for: torch.nn.qat.modules.embedding_ops [assertion]
+      find_module called for: torch.nn.intrinsic.qat.modules.linear_fused [assertion]
+      find_module called for: torch.nn.intrinsic.qat.modules.conv_fused [assertion]
+      find_module called for: torch.nn.quantized.modules.linear [assertion]
+      find_module called for: torch.nn.quantized.modules.embedding_ops [assertion]
+      find_module called for: torch.nn.quantized.modules.functional_modules [assertion]
+      find_module called for: torch.nn.quantizable.modules.rnn [assertion]
+      find_module called for: torch.ao [assertion]
+      find_module called for: torch._tensor_docs [assertion]
+      find_module called for: torch._storage_docs [assertion]
+      find_module called for: torch.quantization [assertion]
+      find_module called for: torch.quantization.quantize [assertion]
+      find_module called for: torch.ao.quantization [assertion]
+      find_module called for: torch.ao.quantization.fake_quantize [assertion]
+      find_module called for: torch.ao.quantization.observer [assertion]
+      find_module called for: torch.ao.quantization.utils [assertion]
+      find_module called for: torch.ao.quantization.quant_type [assertion]
+      find_module called for: torch.ao.quantization.fuse_modules [assertion]
+      find_module called for: torch.ao.quantization.fuser_method_mappings [assertion]
+      find_module called for: torch.ao.quantization.qconfig [assertion]
+      find_module called for: torch.ao.quantization.quantization_mappings [assertion]
+      find_module called for: torch.nn.intrinsic.quantized [assertion]
+      find_module called for: torch.nn.intrinsic.quantized.modules [assertion]
+      find_module called for: torch.nn.intrinsic.quantized.modules.linear_relu [assertion]
+      find_module called for: torch.nn.intrinsic.quantized.modules.conv_relu [assertion]
+      find_module called for: torch.nn.intrinsic.quantized.modules.bn_relu [assertion]
+      find_module called for: torch.nn.intrinsic.quantized.dynamic [assertion]
+      find_module called for: torch.nn.intrinsic.quantized.dynamic.modules [assertion]
+      find_module called for: torch.nn.intrinsic.quantized.dynamic.modules.linear_relu [assertion]
+      find_module called for: torch.nn.quantized.dynamic [assertion]
+      find_module called for: torch.nn.quantized.dynamic.modules [assertion]
+      find_module called for: torch.nn.quantized.dynamic.modules.linear [assertion]
+      find_module called for: torch.nn.quantized.dynamic.modules.rnn [assertion]
+      find_module called for: torch.nn.quantized.dynamic.modules.conv [assertion]
+      find_module called for: torch.nn.quantized._reference [assertion]
+      find_module called for: torch.nn.quantized._reference.modules [assertion]
+      find_module called for: torch.nn.quantized._reference.modules.linear [assertion]
+      find_module called for: torch.nn.quantized._reference.modules.utils [assertion]
+      find_module called for: torch.nn.quantized._reference.modules.conv [assertion]
+      find_module called for: torch.nn.quantized._reference.modules.rnn [assertion]
+      find_module called for: torch.nn.quantized._reference.modules.sparse [assertion]
+      find_module called for: torch.nn.qat.dynamic [assertion]
+      find_module called for: torch.nn.qat.dynamic.modules [assertion]
+      find_module called for: torch.nn.qat.dynamic.modules.linear [assertion]
+      find_module called for: torch.ao.nn [assertion]
+      find_module called for: torch.ao.nn.sparse [assertion]
+      find_module called for: torch.ao.nn.sparse.quantized [assertion]
+      find_module called for: torch.ao.nn.sparse.quantized.dynamic [assertion]
+      find_module called for: torch.ao.nn.sparse.quantized.dynamic.linear [assertion]
+      find_module called for: torch.ao.nn.sparse.quantized.linear [assertion]
+      find_module called for: torch.ao.nn.sparse.quantized.utils [assertion]
+      find_module called for: torch.ao.quantization.stubs [assertion]
+      find_module called for: torch.ao.quantization.quantize [assertion]
+      find_module called for: torch.ao.quantization.quantize_jit [assertion]
+      find_module called for: torch.quantization.observer [assertion]
+      find_module called for: torch.quantization.qconfig [assertion]
+      find_module called for: torch.quantization.fake_quantize [assertion]
+      find_module called for: torch.quantization.fuse_modules [assertion]
+      find_module called for: torch.quantization.fuser_method_mappings [assertion]
+      find_module called for: torch.quantization.stubs [assertion]
+      find_module called for: torch.quantization.quant_type [assertion]
+      find_module called for: torch.quantization.quantize_jit [assertion]
+      find_module called for: torch.quantization.quantization_mappings [assertion]
+      find_module called for: torch.quasirandom [assertion]
+      find_module called for: torch.multiprocessing._atfork [assertion]
+      find_module called for: torch._lobpcg [assertion]
+      find_module called for: torch.utils.dlpack [assertion]
+      find_module called for: torch._masked [assertion]
+      find_module called for: torch._masked._docs [assertion]
+      find_module called for: torch.return_types [assertion]
+      find_module called for: torch.library [assertion]
+      find_module called for: torch._meta_registrations [assertion]
+      find_module called for: torch._prims [assertion]
+      find_module called for: torch._prims.utils [assertion]
+      find_module called for: einops [assertion]
+      find_module called for: einops.einops [assertion]
+      find_module called for: einops._backends [assertion]
+      find_module called for: einops.parsing [assertion]
+      find_module called for: einops.packing [assertion]
+      find_module called for: src [assertion]
+      finish pytest_make_collect_report --> <CollectReport 'tests/ops/test_blockdiag_butterfly_projection.py' lenresult=0 outcome='failed'> [hook]
+      pytest_exception_interact [hook]
+          node: <DoctestModule tests/ops/test_blockdiag_butterfly_projection.py>
+          call: <CallInfo when='collect' excinfo=<ExceptionInfo ModuleNotFoundError("No module named 'src'") tblen=1>>
+          report: <CollectReport 'tests/ops/test_blockdiag_butterfly_projection.py' lenresult=0 outcome='failed'>
+      finish pytest_exception_interact --> [] [hook]
+      pytest_collectreport [hook]
+          report: <CollectReport 'tests/ops/test_blockdiag_butterfly_projection.py' lenresult=0 outcome='failed'>
+      finish pytest_collectreport --> [] [hook]
+    genitems <Module tests/ops/test_blockdiag_butterfly_projection.py> [collection]
+      pytest_collectstart [hook]
+          collector: <Module tests/ops/test_blockdiag_butterfly_projection.py>
+      finish pytest_collectstart --> [] [hook]
+      pytest_make_collect_report [hook]
+          collector: <Module tests/ops/test_blockdiag_butterfly_projection.py>
+      find_module called for: test_blockdiag_butterfly_projection [assertion]
+      matched test file (was specified on cmdline): '/fly/tests/ops/test_blockdiag_butterfly_projection.py' [assertion]
+      found cached rewritten pyc for /fly/tests/ops/test_blockdiag_butterfly_projection.py [assertion]
+      find_module called for: src [assertion]
+      finish pytest_make_collect_report --> <CollectReport 'tests/ops/test_blockdiag_butterfly_projection.py' lenresult=0 outcome='failed'> [hook]
+      pytest_exception_interact [hook]
+          node: <Module tests/ops/test_blockdiag_butterfly_projection.py>
+          call: <CallInfo when='collect' excinfo=<ExceptionInfo CollectError("ImportError while importing test module '/fly/tests/ops/test_blockdiag_butterfly_projection.py'.\nHint: ...yers.blockdiag_butterfly_multiply import blockdiag_butterfly_multiply\nE   ModuleNotFoundError: No module named 'src'") tblen=7>>
+          report: <CollectReport 'tests/ops/test_blockdiag_butterfly_projection.py' lenresult=0 outcome='failed'>
+      finish pytest_exception_interact --> [] [hook]
+      pytest_collectreport [hook]
+          report: <CollectReport 'tests/ops/test_blockdiag_butterfly_projection.py' lenresult=0 outcome='failed'>
+      finish pytest_collectreport --> [] [hook]
+      pytest_collection_modifyitems [hook]
+          session: <Session fly exitstatus=<ExitCode.OK: 0> testsfailed=2 testscollected=0>
+          config: <_pytest.config.Config object at 0x7f9d25d9b250>
+          items: []
+      finish pytest_collection_modifyitems --> [] [hook]
+      pytest_collection_finish [hook]
+          session: <Session fly exitstatus=<ExitCode.OK: 0> testsfailed=2 testscollected=0>
+        pytest_report_collectionfinish [hook]
+            config: <_pytest.config.Config object at 0x7f9d25d9b250>
+            startdir: /fly/tests/ops
+            items: []
+        finish pytest_report_collectionfinish --> [] [hook]
+      finish pytest_collection_finish --> [] [hook]
+    finish pytest_collection --> None [hook]
+    pytest_runtestloop [hook]
+        session: <Session fly exitstatus=<ExitCode.OK: 0> testsfailed=2 testscollected=0>
+    pytest_keyboard_interrupt [hook]
+        excinfo: <ExceptionInfo Interrupted('2 errors during collection') tblen=12>
+    finish pytest_keyboard_interrupt --> [] [hook]
+    pytest_sessionfinish [hook]
+        session: <Session fly exitstatus=<ExitCode.INTERRUPTED: 2> testsfailed=2 testscollected=0>
+        exitstatus: 2
+      pytest_terminal_summary [hook]
+          terminalreporter: <_pytest.terminal.TerminalReporter object at 0x7f9d25cea7f0>
+          exitstatus: 2
+          config: <_pytest.config.Config object at 0x7f9d25d9b250>
+      find_module called for: pygments [assertion]
+      find_module called for: pygments.formatters [assertion]
+      find_module called for: pygments.formatters._mapping [assertion]
+      find_module called for: pygments.plugin [assertion]
+      find_module called for: pygments.util [assertion]
+      find_module called for: pygments.formatters.terminal [assertion]
+      find_module called for: pygments.formatter [assertion]
+      find_module called for: pygments.styles [assertion]
+      find_module called for: pygments.token [assertion]
+      find_module called for: pygments.console [assertion]
+      find_module called for: pygments.lexers [assertion]
+      find_module called for: pygments.lexers._mapping [assertion]
+      find_module called for: pygments.modeline [assertion]
+      find_module called for: pygments.lexers.python [assertion]
+      find_module called for: pygments.lexer [assertion]
+      find_module called for: pygments.filter [assertion]
+      find_module called for: pygments.filters [assertion]
+      find_module called for: pygments.regexopt [assertion]
+      find_module called for: pygments.unistring [assertion]
+      find_module called for: pygments.styles.default [assertion]
+      find_module called for: pygments.style [assertion]
+        pytest_report_teststatus [hook]
+            report: <CollectReport 'tests/ops/test_blockdiag_butterfly_projection.py' lenresult=0 outcome='failed'>
+            config: <_pytest.config.Config object at 0x7f9d25d9b250>
+        finish pytest_report_teststatus --> ('error', 'E', 'ERROR') [hook]
+        pytest_report_teststatus [hook]
+            report: <CollectReport 'tests/ops/test_blockdiag_butterfly_projection.py' lenresult=0 outcome='failed'>
+            config: <_pytest.config.Config object at 0x7f9d25d9b250>
+        finish pytest_report_teststatus --> ('error', 'E', 'ERROR') [hook]
+      finish pytest_terminal_summary --> [] [hook]
+    finish pytest_sessionfinish --> [] [hook]
+    pytest_unconfigure [hook]
+        config: <_pytest.config.Config object at 0x7f9d25d9b250>
+    finish pytest_unconfigure --> [] [hook]

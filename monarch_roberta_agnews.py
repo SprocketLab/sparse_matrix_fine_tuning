@@ -19,12 +19,9 @@ import json
 from train_utils import *
 import argparse
 import time
-# parser = argparse.ArgumentParser()
-# parser.add_argument("--rank", type=int, default=1)
-# parser.add_argument("--nblocks", type=int, default=4)
-# parser.add_argument("--lora", action="store_true")
-# parser.add_argument("--monarch", action="store_true")
-# parser.add_argument("--lora_alpha", type=float, default=2)
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--peft", action="store_true", help="use PEFT (freeze weights, keep copy of new monarch matrices for each task) instead of FT")
 
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -39,7 +36,13 @@ save_dir = "./results/lora_roberta_agnews"
 os.makedirs(save_dir, exist_ok=True)
 
 # set training config
-peft_config = {"lora": False, "monarch": True, "rank": 1, "nblocks": 4, "layers_to_replace": ["query", "value"]}
+peft_config = {"lora": False,
+               "monarch": True,
+               "rank": 1,
+               "nblocks": 4,
+               "layers_to_replace": ["query", "value"],
+               "peft": args.peft,
+               }
 tokenizer = RobertaTokenizerFast.from_pretrained(model_id)
 
 dataset, train_dataset, val_dataset, test_dataset = prep_data(dataset_id, tokenizer)

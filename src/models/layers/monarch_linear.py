@@ -33,23 +33,27 @@ class MonarchLinear(StructuredLinear):
         """
         super().__init__(*args, **kwargs)
         
-        in_blksz = int(math.ceil(self.in_features / nblocks))
-        mid_blksz = in_blksz * rank
-        out_blksz = int(math.ceil(self.out_features / nblocks)) * rank
-        self.in_features_extended = in_blksz * nblocks
-        self.out_features_extended = out_blksz * nblocks
+        self.in_blksz = int(math.ceil(self.in_features / nblocks))
+        self.mid_blksz = self.in_blksz * rank
+        self.out_blksz = int(math.ceil(self.out_features / nblocks)) * rank
+        self.nblocks = nblocks
+        
+        # get actual input/output features without permutation
+         
+        self.in_features_extended = self.in_blksz * nblocks
+        self.out_features_extended = self.out_blksz * nblocks * rank
         self.device = device
-        assert rank <= min(in_blksz, out_blksz), "rank must be smaller than the smaller block size"
+        assert rank <= min(self.in_blksz, self.out_blksz), "rank must be smaller than the smaller block size"
         
         if weights is not None:
             self.set_weights_from_dense_init(weights, rank)
         else:
             if self.in_features_extended < self.out_features_extended:
-                self.blkdiag1 = nn.Parameter(torch.empty(nblocks, mid_blksz, in_blksz))
-                self.blkdiag2 = nn.Parameter(torch.empty(nblocks, out_blksz, mid_blksz)) 
+                self.blkdiag1 = nn.Parameter(torch.empty(nblocks, self.mid_blksz, self.in_blksz)) # TODO: incorrect, self.mid_blksz is actually the SVD output, size = rank,  more blocks -> less precision loss in SVD
+                self.blkdiag2 = nn.Parameter(torch.empty(nblocks, self.out_blksz, self.mid_blksz)) 
             else:
-                self.blkdiag1 = nn.Parameter(torch.empty(nblocks, out_blksz, in_blksz))
-                self.blkdiag2 = nn.Parameter(torch.empty(nblocks, out_blksz, out_blksz))    
+                self.blkdiag1 = nn.Parameter(torch.empty(nblocks, self.out_blksz, self.in_blksz))
+                self.blkdiag2 = nn.Parameter(torch.empty(nblocks, self.out_blksz, self.out_blksz))    
             self.reset_parameters()
         
         self.to(device)
@@ -78,11 +82,12 @@ class MonarchLinear(StructuredLinear):
     def set_weights_from_dense_init(self, w: torch.Tensor, rank = 1):
         assert w.ndim == 2, "w must be a 2D weight matrix"
         is_square = (w.shape[0] == w.shape[1])
+        
         # project to monarch matrix
-        if is_square:
-            blkdiag1, blkdiag2 = blockdiag_butterfly_project(w)
-        else:
-            blkdiag1, blkdiag2 = blockdiag_butterfly_project_einsum_rank(w, rank=rank)
+        # if is_square and rank == 1:
+        #     blkdiag1, blkdiag2 = blockdiag_butterfly_project(w)
+        # else:
+        blkdiag1, blkdiag2 = blockdiag_butterfly_project_einsum_rank(w, self.nblocks, self.nblocks, rank)
         self.blkdiag1 = nn.Parameter(blkdiag1)
         self.blkdiag2 = nn.Parameter(blkdiag2)
 

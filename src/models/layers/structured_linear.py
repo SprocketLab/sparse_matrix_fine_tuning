@@ -9,7 +9,7 @@ from torch.nn import init
 
 class StructuredLinear(nn.Module):
 
-    def __init__(self, in_features, out_features, bias=True, device=None, dtype=None):
+    def __init__(self, in_features, out_features, bias=None, device=None, dtype=None):
         """Subclasses should call reset_parameters
         """
         factory_kwargs = {'device': device, 'dtype': dtype}
@@ -21,8 +21,13 @@ class StructuredLinear(nn.Module):
             self.in_features_extended = in_features
         if not hasattr(self, 'out_features_extended'):
             self.out_features_extended = out_features
-        if bias:
+        
+        # set bias 
+        if bias is None:
             self.bias = nn.Parameter(torch.zeros(out_features, **factory_kwargs))
+        elif isinstance(bias, torch.Tensor):
+            assert bias.shape == (out_features,), f"bias shape {bias.shape} is not (out_features,)"
+            self.bias = nn.Parameter(bias)
         else:
             self.register_parameter('bias', None)
 
