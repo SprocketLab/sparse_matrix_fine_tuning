@@ -1,17 +1,16 @@
+
 {
-    "model_id": "roberta-large",
-    "overwrite_output_dir": true,
-    "num_train_epochs": 8,
+    "model_name_or_path": "roberta-large",
+    "task_name": "mrpc",
+    "do_train": true,
+    "do_eval": true,
+    "max_seq_length": 128,
     "per_device_train_batch_size": 4,
-    "per_device_eval_batch_size": 380,
     "learning_rate": 3e-4,
-    "weight_decay": 0.01,
-    "logging_strategy": "steps",
-    "warmup_ratio": 0.06,
-    "eval_steps": 100,
-    "logging_steps": 100,
-    "evaluation_strategy": "epoch",
-    "save_strategy": "epoch",
-    "load_best_model_at_end": true
+    "num_train_epochs": 8,
+    "output_dir": "/results/monarch_roberta_mrpc/",
+    "fp16": true,
+    "overwrite_output_dir" : true,
+    "do_predict": true
 
 }

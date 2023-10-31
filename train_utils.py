@@ -68,18 +68,27 @@ def prep_data(dataset_id, tokenizer):
     else:
         raise ValueError("dataset not supported")
     
+    # print dataset info
+    num_labels = dataset['train'].features['label'].num_classes
+    class_names = dataset["train"].features["label"].names
+    print(f"number of labels: {num_labels}")
+    print(f"the labels: {class_names}")
+    id2label = {i: label for i, label in enumerate(class_names)}
+    
+    def preprocess(examples):
+        result = tokenizer(examples[input_key], truncation=True)
+        result["label"] = id2label[examples['idx']]
+        return result
+    
+    # map to input ids    
+    dataset = dataset.map(preprocess, batched=True, remove_columns=[input_key])
     train_dataset = dataset['train']
-    test_dataset = dataset["test"].shard(num_shards=2, index=0)
-    val_dataset = dataset["test"].shard(num_shards=2, index=1)
-
-    tokenize = lambda batch : tokenizer(batch[input_key], padding=True, truncation=True, max_length=256, return_tensors="pt")
-    train_dataset = train_dataset.map(tokenize, batched=True, batch_size=len(train_dataset))
-    val_dataset = val_dataset.map(tokenize, batched=True, batch_size=len(val_dataset))
-    test_dataset = test_dataset.map(tokenize, batched=True, batch_size=len(test_dataset))
-
-    train_dataset.set_format("torch", columns=["input_ids", "attention_mask", "label"])
-    val_dataset.set_format("torch", columns=["input_ids", "attention_mask", "label"])
-    test_dataset.set_format("torch", columns=["input_ids", "attention_mask", "label"])
+    if "test" not in dataset.keys():
+        test_dataset = dataset["test"].shard(num_shards=2, index=0)
+        val_dataset = dataset["test"].shard(num_shards=2, index=1)
+    else:
+        test_dataset = dataset["test"]
+        val_dataset = dataset["validation"]
     
     return dataset, train_dataset, val_dataset, test_dataset
     
@@ -93,10 +102,7 @@ def setup_trainer(model_id, dataset_id, save_dir, train_config, peft_config={}, 
     """
     tokenizer = RobertaTokenizerFast.from_pretrained(model_id)
     dataset, train_dataset, val_dataset, test_dataset = prep_data(dataset_id, tokenizer)
-    num_labels = dataset['train'].features['label'].num_classes
-    class_names = dataset["train"].features["label"].names
-    print(f"number of labels: {num_labels}")
-    print(f"the labels: {class_names}")
+
 
     # update labels 
     id2label = {i: label for i, label in enumerate(class_names)}
@@ -106,9 +112,10 @@ def setup_trainer(model_id, dataset_id, save_dir, train_config, peft_config={}, 
     json.dump(peft_config, open(save_dir + "/peft_config.json", "w")) # save peft config for record
 
     # load model and init peft layers
-    roberta_model = RobertaForSequenceClassification.from_pretrained(model_id, config=config, peft_config=peft_config).to(device)
+    roberta_model = RobertaForSequenceClassification.from_pretrained(model_id, config=config).to(device)
     if peft_config['monarch']:
-        roberta_model.init_monarch_layers() # project weights to monarch matrices
+        roberta_model.roberta.set_peft_config(peft_config)
+        roberta_model.roberta.init_monarch_layers() # project weights to monarch matrices
     elif peft_config['lora']:
         loralib.mark_only_lora_as_trainable(roberta_model)
 
@@ -128,12 +135,11 @@ def setup_trainer(model_id, dataset_id, save_dir, train_config, peft_config={}, 
     training_args = TrainingArguments(
         **train_config
     )
-
     trainer = Trainer(
         model=roberta_model,
         args=training_args,
         train_dataset=train_dataset,
-        eval_dataset=val_dataset,
+        eval_dataset=test_dataset,
     )
     return roberta_model, trainer, test_dataset, config
 

@@ -24,19 +24,9 @@ python lora_roberta.py
 ```
 Monarch PEFT: 
 ``` 
-python monarch_roberta.py --dataset ["cola", "ag-news] --peft
+python monarch_roberta.py  --peft
 ```
-Use run_glue.py for other GLUE tasks (or cola)
+Use run_glue.py for GLUE tasks 
 ```
-export TASK_NAME=mrpc
-python run_glue.py \
-  --model_name_or_path roberta-large \
-  --task_name $TASK_NAME \
-  --do_train \
-  --do_eval \
-  --max_seq_length 128 \
-  --per_device_train_batch_size 32 \
-  --learning_rate 2e-5 \
-  --num_train_epochs 3 \
-  --output_dir /tmp/$TASK_NAME/
+python run_glue.py train_configs/cola.json
 ``` 

@@ -135,7 +135,8 @@ RUN pip install tensorboard seqeval psutil sacrebleu rouge-score tensorflow_data
 # ENV NVIDIA_REQUIRE_CUDA=cuda>=10.1
 
 # added libs for PEFT
-RUN pip install scikit-learn tqdm loralib
+RUN pip install scikit-learn tqdm loralib 
+RUN pip install evaluate 
 RUN ls 
 
 

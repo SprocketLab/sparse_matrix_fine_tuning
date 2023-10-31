@@ -202,36 +202,11 @@ class RobertaSelfAttention(nn.Module):
                 f"The hidden size ({config.hidden_size}) is not a multiple of the number of attention "
                 f"heads ({config.num_attention_heads})"
             )
-        self.peft_config = peft_config
+        self.config = config
         self.num_attention_heads = config.num_attention_heads
         self.attention_head_size = int(config.hidden_size / config.num_attention_heads)
         self.all_head_size = self.num_attention_heads * self.attention_head_size
-        if self.peft_config == None or self.peft_config == {}:
-            self.query = nn.Linear(config.hidden_size, self.all_head_size)
-            self.key = nn.Linear(config.hidden_size, self.all_head_size)
-            self.value = nn.Linear(config.hidden_size, self.all_head_size)
-        elif peft_config["lora"]:
-            (rank, alpha, dropout, bias) = (
-                peft_config["lora_r"],
-                peft_config["lora_alpha"],
-                peft_config["lora_dropout"],
-                peft_config["lora_bias"],
-            )
-            self.query = lora.Linear(
-                config.hidden_size, self.all_head_size, rank, alpha, dropout, bias=bias
-            )
-            self.key = nn.Linear(config.hidden_size, self.all_head_size)
-            self.value = lora.Linear(
-                config.hidden_size, self.all_head_size, rank, alpha, dropout, bias=bias
-            )
-        elif peft_config["monarch"]:
-            self.rank = peft_config["rank"]
-            self.nblocks = peft_config["nblocks"]
 
-            # load linear weights before building monarch layers
-            self.query = nn.Linear(config.hidden_size, self.all_head_size)
-            self.key = nn.Linear(config.hidden_size, self.all_head_size)
-            self.value = nn.Linear(config.hidden_size, self.all_head_size)
 
         self.dropout = nn.Dropout(config.attention_probs_dropout_prob)
         self.position_embedding_type = position_embedding_type or getattr(
@@ -256,7 +231,7 @@ class RobertaSelfAttention(nn.Module):
             # Larger factor first (nblocks) -> memory bound. Smaller factor first -> compute bound
             sizes = (sizes[0], sizes[1])
             return sizes
-
+        
         for name in self.peft_config["layers_to_replace"]:
             layer = getattr(self, name)
             weights = list(layer.parameters())[0]
@@ -282,6 +257,36 @@ class RobertaSelfAttention(nn.Module):
             setattr(self, name, new_layer)
             print(f"Using monarch layer of shapes: {new_layer.blkdiag1.shape}, {new_layer.blkdiag2.shape}")
 
+    def set_peft_config(self, peft_config):
+        self.peft_config = peft_config
+        if self.peft_config == None or self.peft_config == {}:
+            self.query = nn.Linear(self.config.hidden_size, self.all_head_size)
+            self.key = nn.Linear(self.config.hidden_size, self.all_head_size)
+            self.value = nn.Linear(self.config.hidden_size, self.all_head_size)
+        elif peft_config["lora"]:
+            (rank, alpha, dropout, bias) = (
+                peft_config["lora_r"],
+                peft_config["lora_alpha"],
+                peft_config["lora_dropout"],
+                peft_config["lora_bias"],
+            )
+            self.query = lora.Linear(
+                self.config.hidden_size, self.all_head_size, rank, alpha, dropout, bias=bias
+            )
+            self.key = nn.Linear(self.config.hidden_size, self.all_head_size)
+            self.value = lora.Linear(
+                self.config.hidden_size, self.all_head_size, rank, alpha, dropout, bias=bias
+            )
+        elif peft_config["monarch"]:
+            self.rank = peft_config["rank"]
+            self.nblocks = peft_config["nblocks"]
+
+            # load linear weights before building monarch layers
+            self.query = nn.Linear(self.config.hidden_size, self.all_head_size)
+            self.key = nn.Linear(self.config.hidden_size, self.all_head_size)
+            self.value = nn.Linear(self.config.hidden_size, self.all_head_size)
+            
+            
     def transpose_for_scores(self, x: torch.Tensor) -> torch.Tensor:
         new_x_shape = x.size()[:-1] + (
             self.num_attention_heads,
@@ -875,7 +880,8 @@ class RobertaModel(RobertaPreTrainedModel):
     def __init__(self, config, add_pooling_layer=True, peft_config=None):
         super().__init__(config)
         self.config = config
-
+        
+        self.perf_config = peft_config
         self.embeddings = RobertaEmbeddings(config)
         self.encoder = RobertaEncoder(config, peft_config)
 
@@ -884,6 +890,28 @@ class RobertaModel(RobertaPreTrainedModel):
         # Initialize weights and apply final processing
         self.post_init()
 
+    # @Wenxuan
+    def init_monarch_layers(self):
+        assert self.peft_config["monarch"], "not using Monarch layers in config"
+        for name, module in self.named_modules():
+            if isinstance(module, RobertaSelfAttention):
+                module.init_monarch_layers()
+                
+            if isinstance(module, MonarchLinear):
+                module.requires_grad_(True)
+            else:
+                module.requires_grad_(False)
+    
+    def set_peft_config(self, peft_config=None):
+        """
+            Set peft config for all attention layers and
+            reinit their submodules based on config
+        """
+        self.peft_config = peft_config
+        for name, module in self.named_modules():
+            if isinstance(module, RobertaSelfAttention):
+                module.set_peft_config(peft_config)
+                
     def get_input_embeddings(self):
         return self.embeddings.word_embeddings
 
@@ -1408,17 +1436,6 @@ class RobertaForSequenceClassification(RobertaPreTrainedModel):
         # Initialize weights and apply final processing
         self.post_init()
 
-    # @Wenxuan
-    def init_monarch_layers(self):
-        assert self.peft_config["monarch"], "not using Monarch layers"
-        for name, module in self.named_modules():
-            if isinstance(module, RobertaSelfAttention):
-                module.init_monarch_layers()
-                
-            if isinstance(module, MonarchLinear):
-                module.requires_grad_(True)
-            else:
-                module.requires_grad_(False)
 
     @add_start_docstrings_to_model_forward(
         ROBERTA_INPUTS_DOCSTRING.format("batch_size, sequence_length")
