@@ -40,6 +40,9 @@ def blockdiag_butterfly_project(M, sizes=None):
     M_permuted_batched = rearrange(M, '(p k) (r s) -> k r p s', k=sizes[1], r=sizes[0])
     U, Vt = low_rank_project(M_permuted_batched, rank=1)
     
+    # NOTE: You should NOT build layers like this, 
+    # because outdim of 1st block (k) is not the same as indim of 2nd block (r)
+    # and will trigger another reshape in the kernel.
     w1_bfly = rearrange(Vt, 'k r 1 s -> r k s') # here k == s, square block-diagonal
     assert w1_bfly.shape[1:] == (sizes[1], sizes[1])
     w2_bfly = rearrange(U, 'k r s 1 -> k s r') 

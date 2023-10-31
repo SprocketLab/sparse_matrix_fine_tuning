@@ -1,2 +1,0 @@
-_target_: src.models.layers.mlp.SimpleMlp
-drop: 0.1

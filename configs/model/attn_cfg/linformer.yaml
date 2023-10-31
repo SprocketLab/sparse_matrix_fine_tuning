@@ -1,2 +1,0 @@
-_target_: src.models.attention.linformer_attention.LinformerAttention
-seq_len: ???

@@ -1,7 +1,0 @@
-# @package _global_
-defaults:
-  - /experiment/imagenet/vit/vit-s.yaml
-  - override /model/vitmlp_cfg: butterflyblockdiag
-
-model:
-  drop_path_rate: 0.0

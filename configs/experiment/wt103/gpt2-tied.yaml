@@ -1,7 +1,0 @@
-# @package _global_
-defaults:
-  - /experiment/wt103/gpt2.yaml
-
-model:
-  config:
-    tie_weights: True

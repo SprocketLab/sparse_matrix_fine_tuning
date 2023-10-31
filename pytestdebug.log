@@ -1,388 +1,388 @@
 versions pytest-6.2.5, py-1.11.0, python-3.8.13.final.0
 cwd=/fly
-args=('--debug', '-s', 'tests/ops/test_blockdiag_butterfly_projection.py')
+args=('-s', '--debug', 'tests/ops/test_blockdiag_butterfly_projection.py')
 
   pytest_cmdline_main [hook]
-      config: <_pytest.config.Config object at 0x7fb0db72e250>
+      config: <_pytest.config.Config object at 0x7f821882d250>
     pytest_plugin_registered [hook]
         plugin: <Session fly exitstatus='<UNSET>' testsfailed=0 testscollected=0>
-        manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+        manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
     finish pytest_plugin_registered --> [] [hook]
     pytest_configure [hook]
-        config: <_pytest.config.Config object at 0x7fb0db72e250>
+        config: <_pytest.config.Config object at 0x7f821882d250>
       pytest_plugin_registered [hook]
-          plugin: <_pytest.cacheprovider.LFPlugin object at 0x7fb0db6051c0>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          plugin: <_pytest.cacheprovider.LFPlugin object at 0x7f82187041c0>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
-          plugin: <_pytest.cacheprovider.NFPlugin object at 0x7fb0db605ac0>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          plugin: <_pytest.cacheprovider.NFPlugin object at 0x7f8218704ac0>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
     find_module called for: faulthandler [assertion]
       pytest_configure [hook]
-          config: <_pytest.config.Config object at 0x7fb0db72e250>
+          config: <_pytest.config.Config object at 0x7f821882d250>
       finish pytest_configure --> [] [hook]
       pytest_plugin_registered [hook]
-          plugin: <_pytest.faulthandler.FaultHandlerHooks object at 0x7fb0db67deb0>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          plugin: <_pytest.faulthandler.FaultHandlerHooks object at 0x7f821877ceb0>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
     find_module called for: pdb [assertion]
     find_module called for: cmd [assertion]
     find_module called for: code [assertion]
     find_module called for: codeop [assertion]
       pytest_plugin_registered [hook]
-          plugin: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          plugin: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
-          plugin: <_pytest.config.Config object at 0x7fb0db72e250>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          plugin: <_pytest.config.Config object at 0x7f821882d250>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.mark' from '/opt/conda/lib/python3.8/site-packages/_pytest/mark/__init__.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.main' from '/opt/conda/lib/python3.8/site-packages/_pytest/main.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.runner' from '/opt/conda/lib/python3.8/site-packages/_pytest/runner.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.fixtures' from '/opt/conda/lib/python3.8/site-packages/_pytest/fixtures.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.helpconfig' from '/opt/conda/lib/python3.8/site-packages/_pytest/helpconfig.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.python' from '/opt/conda/lib/python3.8/site-packages/_pytest/python.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.terminal' from '/opt/conda/lib/python3.8/site-packages/_pytest/terminal.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.debugging' from '/opt/conda/lib/python3.8/site-packages/_pytest/debugging.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.unittest' from '/opt/conda/lib/python3.8/site-packages/_pytest/unittest.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.capture' from '/opt/conda/lib/python3.8/site-packages/_pytest/capture.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.skipping' from '/opt/conda/lib/python3.8/site-packages/_pytest/skipping.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.tmpdir' from '/opt/conda/lib/python3.8/site-packages/_pytest/tmpdir.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.monkeypatch' from '/opt/conda/lib/python3.8/site-packages/_pytest/monkeypatch.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.recwarn' from '/opt/conda/lib/python3.8/site-packages/_pytest/recwarn.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.pastebin' from '/opt/conda/lib/python3.8/site-packages/_pytest/pastebin.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.nose' from '/opt/conda/lib/python3.8/site-packages/_pytest/nose.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.assertion' from '/opt/conda/lib/python3.8/site-packages/_pytest/assertion/__init__.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.junitxml' from '/opt/conda/lib/python3.8/site-packages/_pytest/junitxml.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.doctest' from '/opt/conda/lib/python3.8/site-packages/_pytest/doctest.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.cacheprovider' from '/opt/conda/lib/python3.8/site-packages/_pytest/cacheprovider.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.freeze_support' from '/opt/conda/lib/python3.8/site-packages/_pytest/freeze_support.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.setuponly' from '/opt/conda/lib/python3.8/site-packages/_pytest/setuponly.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.setupplan' from '/opt/conda/lib/python3.8/site-packages/_pytest/setupplan.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.stepwise' from '/opt/conda/lib/python3.8/site-packages/_pytest/stepwise.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.warnings' from '/opt/conda/lib/python3.8/site-packages/_pytest/warnings.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.logging' from '/opt/conda/lib/python3.8/site-packages/_pytest/logging.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.reports' from '/opt/conda/lib/python3.8/site-packages/_pytest/reports.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.unraisableexception' from '/opt/conda/lib/python3.8/site-packages/_pytest/unraisableexception.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.threadexception' from '/opt/conda/lib/python3.8/site-packages/_pytest/threadexception.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.faulthandler' from '/opt/conda/lib/python3.8/site-packages/_pytest/faulthandler.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module 'hydra.extra.pytest_plugin' from '/opt/conda/lib/python3.8/site-packages/hydra/extra/pytest_plugin.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module 'pytest_cov.plugin' from '/opt/conda/lib/python3.8/site-packages/pytest_cov/plugin.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module 'pytest_pythonpath' from '/opt/conda/lib/python3.8/site-packages/pytest_pythonpath.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module 'hypothesis.extra.pytestplugin' from '/opt/conda/lib/python3.8/site-packages/hypothesis/extra/pytestplugin.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <CaptureManager _method='no' _global_capturing=<MultiCapture out=None err=None in_=None _state='suspended' _in_suspended=False> _capture_fixture=None>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <Session fly exitstatus=<ExitCode.OK: 0> testsfailed=0 testscollected=0>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
-          plugin: <_pytest.cacheprovider.LFPlugin object at 0x7fb0db6051c0>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          plugin: <_pytest.cacheprovider.LFPlugin object at 0x7f82187041c0>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
-          plugin: <_pytest.cacheprovider.NFPlugin object at 0x7fb0db605ac0>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          plugin: <_pytest.cacheprovider.NFPlugin object at 0x7f8218704ac0>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
-          plugin: <_pytest.faulthandler.FaultHandlerHooks object at 0x7fb0db67deb0>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          plugin: <_pytest.faulthandler.FaultHandlerHooks object at 0x7f821877ceb0>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
-          plugin: <_pytest.terminal.TerminalReporter object at 0x7fb0db67ddf0>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          plugin: <_pytest.terminal.TerminalReporter object at 0x7f821877cdf0>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
-          plugin: <_pytest.logging.LoggingPlugin object at 0x7fb0db60d4c0>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          plugin: <_pytest.logging.LoggingPlugin object at 0x7f821870c4c0>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
     finish pytest_configure --> [] [hook]
     pytest_sessionstart [hook]
         session: <Session fly exitstatus=<ExitCode.OK: 0> testsfailed=0 testscollected=0>
       pytest_plugin_registered [hook]
-          plugin: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          plugin: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
-          plugin: <_pytest.config.Config object at 0x7fb0db72e250>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          plugin: <_pytest.config.Config object at 0x7f821882d250>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.mark' from '/opt/conda/lib/python3.8/site-packages/_pytest/mark/__init__.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.main' from '/opt/conda/lib/python3.8/site-packages/_pytest/main.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.runner' from '/opt/conda/lib/python3.8/site-packages/_pytest/runner.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.fixtures' from '/opt/conda/lib/python3.8/site-packages/_pytest/fixtures.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.helpconfig' from '/opt/conda/lib/python3.8/site-packages/_pytest/helpconfig.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.python' from '/opt/conda/lib/python3.8/site-packages/_pytest/python.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.terminal' from '/opt/conda/lib/python3.8/site-packages/_pytest/terminal.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.debugging' from '/opt/conda/lib/python3.8/site-packages/_pytest/debugging.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.unittest' from '/opt/conda/lib/python3.8/site-packages/_pytest/unittest.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.capture' from '/opt/conda/lib/python3.8/site-packages/_pytest/capture.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.skipping' from '/opt/conda/lib/python3.8/site-packages/_pytest/skipping.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.tmpdir' from '/opt/conda/lib/python3.8/site-packages/_pytest/tmpdir.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.monkeypatch' from '/opt/conda/lib/python3.8/site-packages/_pytest/monkeypatch.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.recwarn' from '/opt/conda/lib/python3.8/site-packages/_pytest/recwarn.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.pastebin' from '/opt/conda/lib/python3.8/site-packages/_pytest/pastebin.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.nose' from '/opt/conda/lib/python3.8/site-packages/_pytest/nose.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.assertion' from '/opt/conda/lib/python3.8/site-packages/_pytest/assertion/__init__.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.junitxml' from '/opt/conda/lib/python3.8/site-packages/_pytest/junitxml.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.doctest' from '/opt/conda/lib/python3.8/site-packages/_pytest/doctest.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.cacheprovider' from '/opt/conda/lib/python3.8/site-packages/_pytest/cacheprovider.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.freeze_support' from '/opt/conda/lib/python3.8/site-packages/_pytest/freeze_support.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.setuponly' from '/opt/conda/lib/python3.8/site-packages/_pytest/setuponly.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.setupplan' from '/opt/conda/lib/python3.8/site-packages/_pytest/setupplan.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.stepwise' from '/opt/conda/lib/python3.8/site-packages/_pytest/stepwise.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.warnings' from '/opt/conda/lib/python3.8/site-packages/_pytest/warnings.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.logging' from '/opt/conda/lib/python3.8/site-packages/_pytest/logging.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.reports' from '/opt/conda/lib/python3.8/site-packages/_pytest/reports.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.unraisableexception' from '/opt/conda/lib/python3.8/site-packages/_pytest/unraisableexception.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.threadexception' from '/opt/conda/lib/python3.8/site-packages/_pytest/threadexception.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module '_pytest.faulthandler' from '/opt/conda/lib/python3.8/site-packages/_pytest/faulthandler.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module 'hydra.extra.pytest_plugin' from '/opt/conda/lib/python3.8/site-packages/hydra/extra/pytest_plugin.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module 'pytest_cov.plugin' from '/opt/conda/lib/python3.8/site-packages/pytest_cov/plugin.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module 'pytest_pythonpath' from '/opt/conda/lib/python3.8/site-packages/pytest_pythonpath.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <module 'hypothesis.extra.pytestplugin' from '/opt/conda/lib/python3.8/site-packages/hypothesis/extra/pytestplugin.py'>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <CaptureManager _method='no' _global_capturing=<MultiCapture out=None err=None in_=None _state='suspended' _in_suspended=False> _capture_fixture=None>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
           plugin: <Session fly exitstatus=<ExitCode.OK: 0> testsfailed=0 testscollected=0>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
-          plugin: <_pytest.cacheprovider.LFPlugin object at 0x7fb0db6051c0>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          plugin: <_pytest.cacheprovider.LFPlugin object at 0x7f82187041c0>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
-          plugin: <_pytest.cacheprovider.NFPlugin object at 0x7fb0db605ac0>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          plugin: <_pytest.cacheprovider.NFPlugin object at 0x7f8218704ac0>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
-          plugin: <_pytest.faulthandler.FaultHandlerHooks object at 0x7fb0db67deb0>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          plugin: <_pytest.faulthandler.FaultHandlerHooks object at 0x7f821877ceb0>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
-          plugin: <_pytest.terminal.TerminalReporter object at 0x7fb0db67ddf0>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          plugin: <_pytest.terminal.TerminalReporter object at 0x7f821877cdf0>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
-          plugin: <_pytest.logging.LoggingPlugin object at 0x7fb0db60d4c0>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          plugin: <_pytest.logging.LoggingPlugin object at 0x7f821870c4c0>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_plugin_registered [hook]
-          plugin: <_pytest.fixtures.FixtureManager object at 0x7fb0db605f70>
-          manager: <_pytest.config.PytestPluginManager object at 0x7fb0dc1bd340>
+          plugin: <_pytest.fixtures.FixtureManager object at 0x7f8218704f70>
+          manager: <_pytest.config.PytestPluginManager object at 0x7f82192bc340>
       finish pytest_plugin_registered --> [] [hook]
       pytest_report_header [hook]
-          config: <_pytest.config.Config object at 0x7fb0db72e250>
+          config: <_pytest.config.Config object at 0x7f821882d250>
           startdir: /fly
       find_module called for: email.parser [assertion]
       find_module called for: email.feedparser [assertion]
@@ -437,8 +437,7 @@ args=('--debug', '-s', 'tests/ops/test_blockdiag_butterfly_projection.py')
       find_module called for: doctest [assertion]
       find_module called for: test_blockdiag_butterfly_projection [assertion]
       matched test file (was specified on cmdline): '/fly/tests/ops/test_blockdiag_butterfly_projection.py' [assertion]
-      _read_pyc(/fly/tests/ops/test_blockdiag_butterfly_projection.py): out of date [assertion]
-      rewriting PosixPath('/fly/tests/ops/test_blockdiag_butterfly_projection.py') [assertion]
+      found cached rewritten pyc for /fly/tests/ops/test_blockdiag_butterfly_projection.py [assertion]
       find_module called for: torch [assertion]
       find_module called for: ctypes [assertion]
       find_module called for: _ctypes [assertion]
@@ -3619,22 +3618,22 @@ args=('--debug', '-s', 'tests/ops/test_blockdiag_butterfly_projection.py')
         pytest_pycollect_makeitem [hook]
             collector: <Module tests/ops/test_blockdiag_butterfly_projection.py>
             name: rearrange
-            obj: <function rearrange at 0x7fae2d0620d0>
+            obj: <function rearrange at 0x7f7f6a152b80>
         finish pytest_pycollect_makeitem --> None [hook]
         pytest_pycollect_makeitem [hook]
             collector: <Module tests/ops/test_blockdiag_butterfly_projection.py>
             name: blockdiag_butterfly_multiply
-            obj: <built-in method apply of FunctionMeta object at 0x56396c1f8920>
+            obj: <built-in method apply of FunctionMeta object at 0x5584be0dcf30>
         finish pytest_pycollect_makeitem --> None [hook]
         pytest_pycollect_makeitem [hook]
             collector: <Module tests/ops/test_blockdiag_butterfly_projection.py>
             name: blockdiag_butterfly_project
-            obj: <function blockdiag_butterfly_project at 0x7fae2d062e50>
+            obj: <function blockdiag_butterfly_project at 0x7f7f6a159940>
         finish pytest_pycollect_makeitem --> None [hook]
         pytest_pycollect_makeitem [hook]
             collector: <Module tests/ops/test_blockdiag_butterfly_projection.py>
             name: factors
-            obj: <function factors at 0x7fae2d062dc0>
+            obj: <function factors at 0x7f7f6a1598b0>
         finish pytest_pycollect_makeitem --> None [hook]
         pytest_pycollect_makeitem [hook]
             collector: <Module tests/ops/test_blockdiag_butterfly_projection.py>
@@ -3659,279 +3658,52 @@ args=('--debug', '-s', 'tests/ops/test_blockdiag_butterfly_projection.py')
         pytest_pycollect_makeitem [hook]
             collector: <Module tests/ops/test_blockdiag_butterfly_projection.py>
             name: test_trained_weight_approx
-            obj: <function test_trained_weight_approx at 0x7fb0da4a3dc0>
+            obj: <function test_trained_weight_approx at 0x7f82175a2700>
           pytest_generate_tests [hook]
-              metafunc: <_pytest.python.Metafunc object at 0x7fb012224e80>
+              metafunc: <_pytest.python.Metafunc object at 0x7f812f5a6040>
             pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
+                config: <_pytest.config.Config object at 0x7f821882d250>
                 val: results/lora_roberta_agnews/model.pt
                 argname: sdict_path
             finish pytest_make_parametrize_id --> None [hook]
             pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
+                config: <_pytest.config.Config object at 0x7f821882d250>
                 val: 1
                 argname: rank
             finish pytest_make_parametrize_id --> None [hook]
             pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
+                config: <_pytest.config.Config object at 0x7f821882d250>
                 val: 2
                 argname: rank
             finish pytest_make_parametrize_id --> None [hook]
             pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
+                config: <_pytest.config.Config object at 0x7f821882d250>
                 val: 2
                 argname: nblocks
             finish pytest_make_parametrize_id --> None [hook]
             pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
+                config: <_pytest.config.Config object at 0x7f821882d250>
                 val: 3
                 argname: nblocks
             finish pytest_make_parametrize_id --> None [hook]
             pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
+                config: <_pytest.config.Config object at 0x7f821882d250>
                 val: 4
                 argname: nblocks
             finish pytest_make_parametrize_id --> None [hook]
             pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
+                config: <_pytest.config.Config object at 0x7f821882d250>
                 val: cpu
                 argname: device
             finish pytest_make_parametrize_id --> None [hook]
             pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
+                config: <_pytest.config.Config object at 0x7f821882d250>
                 val: cuda
                 argname: device
             finish pytest_make_parametrize_id --> None [hook]
           finish pytest_generate_tests --> [] [hook]
         finish pytest_pycollect_makeitem --> [<Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cpu]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cuda]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cpu]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cuda]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cpu]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cuda]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-2-cpu]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-2-cuda]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-3-cpu]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-3-cuda]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-4-cpu]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-4-cuda]>] [hook]
-        pytest_pycollect_makeitem [hook]
-            collector: <Module tests/ops/test_blockdiag_butterfly_projection.py>
-            name: test_block_diag_butterfly_project_sqrtn
-            obj: <function test_block_diag_butterfly_project_sqrtn at 0x7fb01222c040>
-          pytest_generate_tests [hook]
-              metafunc: <_pytest.python.Metafunc object at 0x7fb012224f70>
-            pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                val: 2
-                argname: log_n
-            finish pytest_make_parametrize_id --> None [hook]
-            pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                val: 4
-                argname: log_n
-            finish pytest_make_parametrize_id --> None [hook]
-            pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                val: 10
-                argname: log_n
-            finish pytest_make_parametrize_id --> None [hook]
-            pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                val: 12
-                argname: log_n
-            finish pytest_make_parametrize_id --> None [hook]
-            pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                val: cpu
-                argname: device
-            finish pytest_make_parametrize_id --> None [hook]
-            pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                val: cuda
-                argname: device
-            finish pytest_make_parametrize_id --> None [hook]
-          finish pytest_generate_tests --> [] [hook]
-        finish pytest_pycollect_makeitem --> [<Function test_block_diag_butterfly_project_sqrtn[2-cpu]>, <Function test_block_diag_butterfly_project_sqrtn[2-cuda]>, <Function test_block_diag_butterfly_project_sqrtn[4-cpu]>, <Function test_block_diag_butterfly_project_sqrtn[4-cuda]>, <Function test_block_diag_butterfly_project_sqrtn[10-cpu]>, <Function test_block_diag_butterfly_project_sqrtn[10-cuda]>, <Function test_block_diag_butterfly_project_sqrtn[12-cpu]>, <Function test_block_diag_butterfly_project_sqrtn[12-cuda]>] [hook]
-        pytest_pycollect_makeitem [hook]
-            collector: <Module tests/ops/test_blockdiag_butterfly_projection.py>
-            name: test_block_diag_butterfly_project_fft_sqrtn
-            obj: <function test_block_diag_butterfly_project_fft_sqrtn at 0x7fb01222c430>
-          pytest_generate_tests [hook]
-              metafunc: <_pytest.python.Metafunc object at 0x7fb0121b9c10>
-            pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                val: 2
-                argname: log_n
-            finish pytest_make_parametrize_id --> None [hook]
-            pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                val: 4
-                argname: log_n
-            finish pytest_make_parametrize_id --> None [hook]
-            pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                val: 10
-                argname: log_n
-            finish pytest_make_parametrize_id --> None [hook]
-            pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                val: cpu
-                argname: device
-            finish pytest_make_parametrize_id --> None [hook]
-            pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                val: cuda
-                argname: device
-            finish pytest_make_parametrize_id --> None [hook]
-            pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                val: fft
-                argname: direction
-            finish pytest_make_parametrize_id --> None [hook]
-            pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                val: ifft
-                argname: direction
-            finish pytest_make_parametrize_id --> None [hook]
-          finish pytest_generate_tests --> [] [hook]
-        finish pytest_pycollect_makeitem --> [<Function test_block_diag_butterfly_project_fft_sqrtn[2-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_sqrtn[2-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_sqrtn[2-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_sqrtn[2-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_sqrtn[4-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_sqrtn[4-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_sqrtn[4-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_sqrtn[4-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_sqrtn[10-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_sqrtn[10-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_sqrtn[10-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_sqrtn[10-cuda-ifft]>] [hook]
-        pytest_pycollect_makeitem [hook]
-            collector: <Module tests/ops/test_blockdiag_butterfly_projection.py>
-            name: test_block_diag_butterfly_project_fft_rectangular
-            obj: <function test_block_diag_butterfly_project_fft_rectangular at 0x7fb01222c4c0>
-          pytest_generate_tests [hook]
-              metafunc: <_pytest.python.Metafunc object at 0x7fb0121c88e0>
-            pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                val: 15
-                argname: n
-            finish pytest_make_parametrize_id --> None [hook]
-            pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                val: 36
-                argname: n
-            finish pytest_make_parametrize_id --> None [hook]
-            pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                val: 196
-                argname: n
-            finish pytest_make_parametrize_id --> None [hook]
-            pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                val: 27
-                argname: n
-            finish pytest_make_parametrize_id --> None [hook]
-            pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                val: 48
-                argname: n
-            finish pytest_make_parametrize_id --> None [hook]
-            pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                val: 42
-                argname: n
-            finish pytest_make_parametrize_id --> None [hook]
-            pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                val: 85
-                argname: n
-            finish pytest_make_parametrize_id --> None [hook]
-            pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                val: 168
-                argname: n
-            finish pytest_make_parametrize_id --> None [hook]
-            pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                val: 512
-                argname: n
-            finish pytest_make_parametrize_id --> None [hook]
-            pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                val: ortho
-                argname: norm
-            finish pytest_make_parametrize_id --> None [hook]
-            pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                val: None
-                argname: norm
-            finish pytest_make_parametrize_id --> None [hook]
-            pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                val: cpu
-                argname: device
-            finish pytest_make_parametrize_id --> None [hook]
-            pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                val: cuda
-                argname: device
-            finish pytest_make_parametrize_id --> None [hook]
-            pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                val: fft
-                argname: direction
-            finish pytest_make_parametrize_id --> None [hook]
-            pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                val: ifft
-                argname: direction
-            finish pytest_make_parametrize_id --> None [hook]
-          finish pytest_generate_tests --> [] [hook]
-        finish pytest_pycollect_makeitem --> [<Function test_block_diag_butterfly_project_fft_rectangular[15-ortho-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[15-ortho-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[15-ortho-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[15-ortho-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[15-None-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[15-None-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[15-None-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[15-None-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[36-ortho-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[36-ortho-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[36-ortho-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[36-ortho-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[36-None-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[36-None-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[36-None-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[36-None-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[196-ortho-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[196-ortho-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[196-ortho-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[196-ortho-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[196-None-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[196-None-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[196-None-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[196-None-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[27-ortho-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[27-ortho-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[27-ortho-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[27-ortho-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[27-None-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[27-None-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[27-None-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[27-None-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[48-ortho-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[48-ortho-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[48-ortho-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[48-ortho-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[48-None-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[48-None-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[48-None-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[48-None-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[42-ortho-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[42-ortho-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[42-ortho-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[42-ortho-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[42-None-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[42-None-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[42-None-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[42-None-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[85-ortho-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[85-ortho-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[85-ortho-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[85-ortho-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[85-None-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[85-None-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[85-None-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[85-None-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[168-ortho-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[168-ortho-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[168-ortho-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[168-ortho-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[168-None-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[168-None-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[168-None-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[168-None-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[512-ortho-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[512-ortho-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[512-ortho-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[512-ortho-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[512-None-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[512-None-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[512-None-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[512-None-cuda-ifft]>] [hook]
-        pytest_pycollect_makeitem [hook]
-            collector: <Module tests/ops/test_blockdiag_butterfly_projection.py>
-            name: test_butterflyfft2
-            obj: <function test_butterflyfft2 at 0x7fb01222c550>
-          pytest_generate_tests [hook]
-              metafunc: <_pytest.python.Metafunc object at 0x7fb0121d2df0>
-            pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                val: 42
-                argname: n1
-            finish pytest_make_parametrize_id --> None [hook]
-            pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                val: 160
-                argname: n1
-            finish pytest_make_parametrize_id --> None [hook]
-            pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                val: 161
-                argname: n1
-            finish pytest_make_parametrize_id --> None [hook]
-            pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                val: 85
-                argname: n2
-            finish pytest_make_parametrize_id --> None [hook]
-            pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                val: 512
-                argname: n2
-            finish pytest_make_parametrize_id --> None [hook]
-            pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                val: ortho
-                argname: norm
-            finish pytest_make_parametrize_id --> None [hook]
-            pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                val: None
-                argname: norm
-            finish pytest_make_parametrize_id --> None [hook]
-            pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                val: cpu
-                argname: device
-            finish pytest_make_parametrize_id --> None [hook]
-            pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                val: cuda
-                argname: device
-            finish pytest_make_parametrize_id --> None [hook]
-            pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                val: fft
-                argname: direction
-            finish pytest_make_parametrize_id --> None [hook]
-            pytest_make_parametrize_id [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                val: ifft
-                argname: direction
-            finish pytest_make_parametrize_id --> None [hook]
-          finish pytest_generate_tests --> [] [hook]
-        finish pytest_pycollect_makeitem --> [<Function test_butterflyfft2[42-85-ortho-cpu-fft]>, <Function test_butterflyfft2[42-85-ortho-cpu-ifft]>, <Function test_butterflyfft2[42-85-ortho-cuda-fft]>, <Function test_butterflyfft2[42-85-ortho-cuda-ifft]>, <Function test_butterflyfft2[42-85-None-cpu-fft]>, <Function test_butterflyfft2[42-85-None-cpu-ifft]>, <Function test_butterflyfft2[42-85-None-cuda-fft]>, <Function test_butterflyfft2[42-85-None-cuda-ifft]>, <Function test_butterflyfft2[42-512-ortho-cpu-fft]>, <Function test_butterflyfft2[42-512-ortho-cpu-ifft]>, <Function test_butterflyfft2[42-512-ortho-cuda-fft]>, <Function test_butterflyfft2[42-512-ortho-cuda-ifft]>, <Function test_butterflyfft2[42-512-None-cpu-fft]>, <Function test_butterflyfft2[42-512-None-cpu-ifft]>, <Function test_butterflyfft2[42-512-None-cuda-fft]>, <Function test_butterflyfft2[42-512-None-cuda-ifft]>, <Function test_butterflyfft2[160-85-ortho-cpu-fft]>, <Function test_butterflyfft2[160-85-ortho-cpu-ifft]>, <Function test_butterflyfft2[160-85-ortho-cuda-fft]>, <Function test_butterflyfft2[160-85-ortho-cuda-ifft]>, <Function test_butterflyfft2[160-85-None-cpu-fft]>, <Function test_butterflyfft2[160-85-None-cpu-ifft]>, <Function test_butterflyfft2[160-85-None-cuda-fft]>, <Function test_butterflyfft2[160-85-None-cuda-ifft]>, <Function test_butterflyfft2[160-512-ortho-cpu-fft]>, <Function test_butterflyfft2[160-512-ortho-cpu-ifft]>, <Function test_butterflyfft2[160-512-ortho-cuda-fft]>, <Function test_butterflyfft2[160-512-ortho-cuda-ifft]>, <Function test_butterflyfft2[160-512-None-cpu-fft]>, <Function test_butterflyfft2[160-512-None-cpu-ifft]>, <Function test_butterflyfft2[160-512-None-cuda-fft]>, <Function test_butterflyfft2[160-512-None-cuda-ifft]>, <Function test_butterflyfft2[161-85-ortho-cpu-fft]>, <Function test_butterflyfft2[161-85-ortho-cpu-ifft]>, <Function test_butterflyfft2[161-85-ortho-cuda-fft]>, <Function test_butterflyfft2[161-85-ortho-cuda-ifft]>, <Function test_butterflyfft2[161-85-None-cpu-fft]>, <Function test_butterflyfft2[161-85-None-cpu-ifft]>, <Function test_butterflyfft2[161-85-None-cuda-fft]>, <Function test_butterflyfft2[161-85-None-cuda-ifft]>, <Function test_butterflyfft2[161-512-ortho-cpu-fft]>, <Function test_butterflyfft2[161-512-ortho-cpu-ifft]>, <Function test_butterflyfft2[161-512-ortho-cuda-fft]>, <Function test_butterflyfft2[161-512-ortho-cuda-ifft]>, <Function test_butterflyfft2[161-512-None-cpu-fft]>, <Function test_butterflyfft2[161-512-None-cpu-ifft]>, <Function test_butterflyfft2[161-512-None-cuda-fft]>, <Function test_butterflyfft2[161-512-None-cuda-ifft]>] [hook]
-      finish pytest_make_collect_report --> <CollectReport 'tests/ops/test_blockdiag_butterfly_projection.py' lenresult=152 outcome='passed'> [hook]
+      finish pytest_make_collect_report --> <CollectReport 'tests/ops/test_blockdiag_butterfly_projection.py' lenresult=12 outcome='passed'> [hook]
     genitems <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cpu]> [collection]
       pytest_itemcollected [hook]
           item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cpu]>
@@ -3980,585 +3752,25 @@ args=('--debug', '-s', 'tests/ops/test_blockdiag_butterfly_projection.py')
       pytest_itemcollected [hook]
           item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-4-cuda]>
       finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_sqrtn[2-cpu]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_sqrtn[2-cpu]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_sqrtn[2-cuda]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_sqrtn[2-cuda]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_sqrtn[4-cpu]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_sqrtn[4-cpu]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_sqrtn[4-cuda]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_sqrtn[4-cuda]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_sqrtn[10-cpu]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_sqrtn[10-cpu]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_sqrtn[10-cuda]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_sqrtn[10-cuda]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_sqrtn[12-cpu]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_sqrtn[12-cpu]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_sqrtn[12-cuda]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_sqrtn[12-cuda]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_sqrtn[2-cpu-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_sqrtn[2-cpu-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_sqrtn[2-cpu-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_sqrtn[2-cpu-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_sqrtn[2-cuda-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_sqrtn[2-cuda-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_sqrtn[2-cuda-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_sqrtn[2-cuda-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_sqrtn[4-cpu-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_sqrtn[4-cpu-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_sqrtn[4-cpu-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_sqrtn[4-cpu-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_sqrtn[4-cuda-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_sqrtn[4-cuda-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_sqrtn[4-cuda-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_sqrtn[4-cuda-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_sqrtn[10-cpu-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_sqrtn[10-cpu-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_sqrtn[10-cpu-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_sqrtn[10-cpu-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_sqrtn[10-cuda-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_sqrtn[10-cuda-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_sqrtn[10-cuda-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_sqrtn[10-cuda-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[15-ortho-cpu-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[15-ortho-cpu-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[15-ortho-cpu-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[15-ortho-cpu-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[15-ortho-cuda-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[15-ortho-cuda-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[15-ortho-cuda-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[15-ortho-cuda-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[15-None-cpu-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[15-None-cpu-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[15-None-cpu-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[15-None-cpu-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[15-None-cuda-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[15-None-cuda-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[15-None-cuda-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[15-None-cuda-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[36-ortho-cpu-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[36-ortho-cpu-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[36-ortho-cpu-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[36-ortho-cpu-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[36-ortho-cuda-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[36-ortho-cuda-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[36-ortho-cuda-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[36-ortho-cuda-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[36-None-cpu-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[36-None-cpu-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[36-None-cpu-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[36-None-cpu-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[36-None-cuda-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[36-None-cuda-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[36-None-cuda-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[36-None-cuda-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[196-ortho-cpu-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[196-ortho-cpu-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[196-ortho-cpu-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[196-ortho-cpu-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[196-ortho-cuda-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[196-ortho-cuda-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[196-ortho-cuda-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[196-ortho-cuda-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[196-None-cpu-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[196-None-cpu-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[196-None-cpu-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[196-None-cpu-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[196-None-cuda-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[196-None-cuda-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[196-None-cuda-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[196-None-cuda-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[27-ortho-cpu-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[27-ortho-cpu-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[27-ortho-cpu-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[27-ortho-cpu-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[27-ortho-cuda-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[27-ortho-cuda-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[27-ortho-cuda-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[27-ortho-cuda-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[27-None-cpu-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[27-None-cpu-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[27-None-cpu-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[27-None-cpu-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[27-None-cuda-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[27-None-cuda-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[27-None-cuda-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[27-None-cuda-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[48-ortho-cpu-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[48-ortho-cpu-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[48-ortho-cpu-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[48-ortho-cpu-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[48-ortho-cuda-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[48-ortho-cuda-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[48-ortho-cuda-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[48-ortho-cuda-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[48-None-cpu-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[48-None-cpu-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[48-None-cpu-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[48-None-cpu-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[48-None-cuda-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[48-None-cuda-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[48-None-cuda-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[48-None-cuda-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[42-ortho-cpu-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[42-ortho-cpu-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[42-ortho-cpu-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[42-ortho-cpu-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[42-ortho-cuda-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[42-ortho-cuda-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[42-ortho-cuda-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[42-ortho-cuda-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[42-None-cpu-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[42-None-cpu-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[42-None-cpu-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[42-None-cpu-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[42-None-cuda-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[42-None-cuda-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[42-None-cuda-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[42-None-cuda-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[85-ortho-cpu-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[85-ortho-cpu-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[85-ortho-cpu-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[85-ortho-cpu-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[85-ortho-cuda-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[85-ortho-cuda-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[85-ortho-cuda-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[85-ortho-cuda-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[85-None-cpu-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[85-None-cpu-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[85-None-cpu-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[85-None-cpu-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[85-None-cuda-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[85-None-cuda-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[85-None-cuda-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[85-None-cuda-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[168-ortho-cpu-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[168-ortho-cpu-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[168-ortho-cpu-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[168-ortho-cpu-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[168-ortho-cuda-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[168-ortho-cuda-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[168-ortho-cuda-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[168-ortho-cuda-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[168-None-cpu-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[168-None-cpu-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[168-None-cpu-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[168-None-cpu-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[168-None-cuda-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[168-None-cuda-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[168-None-cuda-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[168-None-cuda-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[512-ortho-cpu-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[512-ortho-cpu-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[512-ortho-cpu-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[512-ortho-cpu-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[512-ortho-cuda-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[512-ortho-cuda-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[512-ortho-cuda-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[512-ortho-cuda-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[512-None-cpu-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[512-None-cpu-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[512-None-cpu-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[512-None-cpu-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[512-None-cuda-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[512-None-cuda-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_block_diag_butterfly_project_fft_rectangular[512-None-cuda-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_block_diag_butterfly_project_fft_rectangular[512-None-cuda-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[42-85-ortho-cpu-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[42-85-ortho-cpu-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[42-85-ortho-cpu-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[42-85-ortho-cpu-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[42-85-ortho-cuda-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[42-85-ortho-cuda-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[42-85-ortho-cuda-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[42-85-ortho-cuda-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[42-85-None-cpu-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[42-85-None-cpu-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[42-85-None-cpu-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[42-85-None-cpu-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[42-85-None-cuda-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[42-85-None-cuda-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[42-85-None-cuda-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[42-85-None-cuda-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[42-512-ortho-cpu-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[42-512-ortho-cpu-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[42-512-ortho-cpu-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[42-512-ortho-cpu-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[42-512-ortho-cuda-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[42-512-ortho-cuda-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[42-512-ortho-cuda-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[42-512-ortho-cuda-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[42-512-None-cpu-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[42-512-None-cpu-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[42-512-None-cpu-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[42-512-None-cpu-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[42-512-None-cuda-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[42-512-None-cuda-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[42-512-None-cuda-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[42-512-None-cuda-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[160-85-ortho-cpu-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[160-85-ortho-cpu-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[160-85-ortho-cpu-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[160-85-ortho-cpu-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[160-85-ortho-cuda-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[160-85-ortho-cuda-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[160-85-ortho-cuda-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[160-85-ortho-cuda-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[160-85-None-cpu-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[160-85-None-cpu-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[160-85-None-cpu-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[160-85-None-cpu-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[160-85-None-cuda-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[160-85-None-cuda-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[160-85-None-cuda-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[160-85-None-cuda-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[160-512-ortho-cpu-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[160-512-ortho-cpu-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[160-512-ortho-cpu-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[160-512-ortho-cpu-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[160-512-ortho-cuda-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[160-512-ortho-cuda-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[160-512-ortho-cuda-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[160-512-ortho-cuda-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[160-512-None-cpu-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[160-512-None-cpu-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[160-512-None-cpu-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[160-512-None-cpu-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[160-512-None-cuda-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[160-512-None-cuda-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[160-512-None-cuda-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[160-512-None-cuda-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[161-85-ortho-cpu-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[161-85-ortho-cpu-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[161-85-ortho-cpu-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[161-85-ortho-cpu-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[161-85-ortho-cuda-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[161-85-ortho-cuda-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[161-85-ortho-cuda-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[161-85-ortho-cuda-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[161-85-None-cpu-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[161-85-None-cpu-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[161-85-None-cpu-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[161-85-None-cpu-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[161-85-None-cuda-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[161-85-None-cuda-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[161-85-None-cuda-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[161-85-None-cuda-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[161-512-ortho-cpu-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[161-512-ortho-cpu-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[161-512-ortho-cpu-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[161-512-ortho-cpu-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[161-512-ortho-cuda-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[161-512-ortho-cuda-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[161-512-ortho-cuda-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[161-512-ortho-cuda-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[161-512-None-cpu-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[161-512-None-cpu-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[161-512-None-cpu-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[161-512-None-cpu-ifft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[161-512-None-cuda-fft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[161-512-None-cuda-fft]>
-      finish pytest_itemcollected --> [] [hook]
-    genitems <Function test_butterflyfft2[161-512-None-cuda-ifft]> [collection]
-      pytest_itemcollected [hook]
-          item: <Function test_butterflyfft2[161-512-None-cuda-ifft]>
-      finish pytest_itemcollected --> [] [hook]
       pytest_collectreport [hook]
-          report: <CollectReport 'tests/ops/test_blockdiag_butterfly_projection.py' lenresult=152 outcome='passed'>
+          report: <CollectReport 'tests/ops/test_blockdiag_butterfly_projection.py' lenresult=12 outcome='passed'>
       finish pytest_collectreport --> [] [hook]
       pytest_collection_modifyitems [hook]
           session: <Session fly exitstatus=<ExitCode.OK: 0> testsfailed=0 testscollected=0>
-          config: <_pytest.config.Config object at 0x7fb0db72e250>
-          items: [<Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cpu]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cuda]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cpu]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cuda]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cpu]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cuda]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-2-cpu]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-2-cuda]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-3-cpu]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-3-cuda]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-4-cpu]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-4-cuda]>, <Function test_block_diag_butterfly_project_sqrtn[2-cpu]>, <Function test_block_diag_butterfly_project_sqrtn[2-cuda]>, <Function test_block_diag_butterfly_project_sqrtn[4-cpu]>, <Function test_block_diag_butterfly_project_sqrtn[4-cuda]>, <Function test_block_diag_butterfly_project_sqrtn[10-cpu]>, <Function test_block_diag_butterfly_project_sqrtn[10-cuda]>, <Function test_block_diag_butterfly_project_sqrtn[12-cpu]>, <Function test_block_diag_butterfly_project_sqrtn[12-cuda]>, <Function test_block_diag_butterfly_project_fft_sqrtn[2-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_sqrtn[2-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_sqrtn[2-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_sqrtn[2-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_sqrtn[4-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_sqrtn[4-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_sqrtn[4-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_sqrtn[4-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_sqrtn[10-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_sqrtn[10-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_sqrtn[10-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_sqrtn[10-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[15-ortho-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[15-ortho-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[15-ortho-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[15-ortho-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[15-None-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[15-None-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[15-None-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[15-None-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[36-ortho-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[36-ortho-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[36-ortho-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[36-ortho-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[36-None-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[36-None-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[36-None-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[36-None-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[196-ortho-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[196-ortho-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[196-ortho-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[196-ortho-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[196-None-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[196-None-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[196-None-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[196-None-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[27-ortho-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[27-ortho-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[27-ortho-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[27-ortho-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[27-None-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[27-None-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[27-None-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[27-None-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[48-ortho-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[48-ortho-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[48-ortho-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[48-ortho-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[48-None-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[48-None-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[48-None-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[48-None-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[42-ortho-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[42-ortho-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[42-ortho-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[42-ortho-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[42-None-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[42-None-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[42-None-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[42-None-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[85-ortho-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[85-ortho-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[85-ortho-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[85-ortho-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[85-None-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[85-None-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[85-None-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[85-None-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[168-ortho-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[168-ortho-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[168-ortho-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[168-ortho-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[168-None-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[168-None-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[168-None-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[168-None-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[512-ortho-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[512-ortho-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[512-ortho-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[512-ortho-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[512-None-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[512-None-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[512-None-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[512-None-cuda-ifft]>, <Function test_butterflyfft2[42-85-ortho-cpu-fft]>, <Function test_butterflyfft2[42-85-ortho-cpu-ifft]>, <Function test_butterflyfft2[42-85-ortho-cuda-fft]>, <Function test_butterflyfft2[42-85-ortho-cuda-ifft]>, <Function test_butterflyfft2[42-85-None-cpu-fft]>, <Function test_butterflyfft2[42-85-None-cpu-ifft]>, <Function test_butterflyfft2[42-85-None-cuda-fft]>, <Function test_butterflyfft2[42-85-None-cuda-ifft]>, <Function test_butterflyfft2[42-512-ortho-cpu-fft]>, <Function test_butterflyfft2[42-512-ortho-cpu-ifft]>, <Function test_butterflyfft2[42-512-ortho-cuda-fft]>, <Function test_butterflyfft2[42-512-ortho-cuda-ifft]>, <Function test_butterflyfft2[42-512-None-cpu-fft]>, <Function test_butterflyfft2[42-512-None-cpu-ifft]>, <Function test_butterflyfft2[42-512-None-cuda-fft]>, <Function test_butterflyfft2[42-512-None-cuda-ifft]>, <Function test_butterflyfft2[160-85-ortho-cpu-fft]>, <Function test_butterflyfft2[160-85-ortho-cpu-ifft]>, <Function test_butterflyfft2[160-85-ortho-cuda-fft]>, <Function test_butterflyfft2[160-85-ortho-cuda-ifft]>, <Function test_butterflyfft2[160-85-None-cpu-fft]>, <Function test_butterflyfft2[160-85-None-cpu-ifft]>, <Function test_butterflyfft2[160-85-None-cuda-fft]>, <Function test_butterflyfft2[160-85-None-cuda-ifft]>, <Function test_butterflyfft2[160-512-ortho-cpu-fft]>, <Function test_butterflyfft2[160-512-ortho-cpu-ifft]>, <Function test_butterflyfft2[160-512-ortho-cuda-fft]>, <Function test_butterflyfft2[160-512-ortho-cuda-ifft]>, <Function test_butterflyfft2[160-512-None-cpu-fft]>, <Function test_butterflyfft2[160-512-None-cpu-ifft]>, <Function test_butterflyfft2[160-512-None-cuda-fft]>, <Function test_butterflyfft2[160-512-None-cuda-ifft]>, <Function test_butterflyfft2[161-85-ortho-cpu-fft]>, <Function test_butterflyfft2[161-85-ortho-cpu-ifft]>, <Function test_butterflyfft2[161-85-ortho-cuda-fft]>, <Function test_butterflyfft2[161-85-ortho-cuda-ifft]>, <Function test_butterflyfft2[161-85-None-cpu-fft]>, <Function test_butterflyfft2[161-85-None-cpu-ifft]>, <Function test_butterflyfft2[161-85-None-cuda-fft]>, <Function test_butterflyfft2[161-85-None-cuda-ifft]>, <Function test_butterflyfft2[161-512-ortho-cpu-fft]>, <Function test_butterflyfft2[161-512-ortho-cpu-ifft]>, <Function test_butterflyfft2[161-512-ortho-cuda-fft]>, <Function test_butterflyfft2[161-512-ortho-cuda-ifft]>, <Function test_butterflyfft2[161-512-None-cpu-fft]>, <Function test_butterflyfft2[161-512-None-cpu-ifft]>, <Function test_butterflyfft2[161-512-None-cuda-fft]>, <Function test_butterflyfft2[161-512-None-cuda-ifft]>]
+          config: <_pytest.config.Config object at 0x7f821882d250>
+          items: [<Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cpu]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cuda]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cpu]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cuda]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cpu]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cuda]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-2-cpu]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-2-cuda]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-3-cpu]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-3-cuda]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-4-cpu]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-4-cuda]>]
       finish pytest_collection_modifyitems --> [] [hook]
       pytest_collection_finish [hook]
           session: <Session fly exitstatus=<ExitCode.OK: 0> testsfailed=0 testscollected=0>
         pytest_report_collectionfinish [hook]
-            config: <_pytest.config.Config object at 0x7fb0db72e250>
+            config: <_pytest.config.Config object at 0x7f821882d250>
             startdir: /fly
-            items: [<Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cpu]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cuda]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cpu]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cuda]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cpu]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cuda]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-2-cpu]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-2-cuda]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-3-cpu]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-3-cuda]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-4-cpu]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-4-cuda]>, <Function test_block_diag_butterfly_project_sqrtn[2-cpu]>, <Function test_block_diag_butterfly_project_sqrtn[2-cuda]>, <Function test_block_diag_butterfly_project_sqrtn[4-cpu]>, <Function test_block_diag_butterfly_project_sqrtn[4-cuda]>, <Function test_block_diag_butterfly_project_sqrtn[10-cpu]>, <Function test_block_diag_butterfly_project_sqrtn[10-cuda]>, <Function test_block_diag_butterfly_project_sqrtn[12-cpu]>, <Function test_block_diag_butterfly_project_sqrtn[12-cuda]>, <Function test_block_diag_butterfly_project_fft_sqrtn[2-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_sqrtn[2-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_sqrtn[2-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_sqrtn[2-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_sqrtn[4-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_sqrtn[4-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_sqrtn[4-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_sqrtn[4-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_sqrtn[10-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_sqrtn[10-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_sqrtn[10-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_sqrtn[10-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[15-ortho-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[15-ortho-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[15-ortho-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[15-ortho-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[15-None-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[15-None-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[15-None-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[15-None-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[36-ortho-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[36-ortho-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[36-ortho-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[36-ortho-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[36-None-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[36-None-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[36-None-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[36-None-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[196-ortho-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[196-ortho-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[196-ortho-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[196-ortho-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[196-None-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[196-None-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[196-None-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[196-None-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[27-ortho-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[27-ortho-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[27-ortho-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[27-ortho-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[27-None-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[27-None-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[27-None-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[27-None-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[48-ortho-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[48-ortho-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[48-ortho-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[48-ortho-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[48-None-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[48-None-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[48-None-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[48-None-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[42-ortho-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[42-ortho-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[42-ortho-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[42-ortho-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[42-None-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[42-None-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[42-None-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[42-None-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[85-ortho-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[85-ortho-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[85-ortho-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[85-ortho-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[85-None-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[85-None-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[85-None-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[85-None-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[168-ortho-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[168-ortho-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[168-ortho-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[168-ortho-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[168-None-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[168-None-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[168-None-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[168-None-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[512-ortho-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[512-ortho-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[512-ortho-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[512-ortho-cuda-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[512-None-cpu-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[512-None-cpu-ifft]>, <Function test_block_diag_butterfly_project_fft_rectangular[512-None-cuda-fft]>, <Function test_block_diag_butterfly_project_fft_rectangular[512-None-cuda-ifft]>, <Function test_butterflyfft2[42-85-ortho-cpu-fft]>, <Function test_butterflyfft2[42-85-ortho-cpu-ifft]>, <Function test_butterflyfft2[42-85-ortho-cuda-fft]>, <Function test_butterflyfft2[42-85-ortho-cuda-ifft]>, <Function test_butterflyfft2[42-85-None-cpu-fft]>, <Function test_butterflyfft2[42-85-None-cpu-ifft]>, <Function test_butterflyfft2[42-85-None-cuda-fft]>, <Function test_butterflyfft2[42-85-None-cuda-ifft]>, <Function test_butterflyfft2[42-512-ortho-cpu-fft]>, <Function test_butterflyfft2[42-512-ortho-cpu-ifft]>, <Function test_butterflyfft2[42-512-ortho-cuda-fft]>, <Function test_butterflyfft2[42-512-ortho-cuda-ifft]>, <Function test_butterflyfft2[42-512-None-cpu-fft]>, <Function test_butterflyfft2[42-512-None-cpu-ifft]>, <Function test_butterflyfft2[42-512-None-cuda-fft]>, <Function test_butterflyfft2[42-512-None-cuda-ifft]>, <Function test_butterflyfft2[160-85-ortho-cpu-fft]>, <Function test_butterflyfft2[160-85-ortho-cpu-ifft]>, <Function test_butterflyfft2[160-85-ortho-cuda-fft]>, <Function test_butterflyfft2[160-85-ortho-cuda-ifft]>, <Function test_butterflyfft2[160-85-None-cpu-fft]>, <Function test_butterflyfft2[160-85-None-cpu-ifft]>, <Function test_butterflyfft2[160-85-None-cuda-fft]>, <Function test_butterflyfft2[160-85-None-cuda-ifft]>, <Function test_butterflyfft2[160-512-ortho-cpu-fft]>, <Function test_butterflyfft2[160-512-ortho-cpu-ifft]>, <Function test_butterflyfft2[160-512-ortho-cuda-fft]>, <Function test_butterflyfft2[160-512-ortho-cuda-ifft]>, <Function test_butterflyfft2[160-512-None-cpu-fft]>, <Function test_butterflyfft2[160-512-None-cpu-ifft]>, <Function test_butterflyfft2[160-512-None-cuda-fft]>, <Function test_butterflyfft2[160-512-None-cuda-ifft]>, <Function test_butterflyfft2[161-85-ortho-cpu-fft]>, <Function test_butterflyfft2[161-85-ortho-cpu-ifft]>, <Function test_butterflyfft2[161-85-ortho-cuda-fft]>, <Function test_butterflyfft2[161-85-ortho-cuda-ifft]>, <Function test_butterflyfft2[161-85-None-cpu-fft]>, <Function test_butterflyfft2[161-85-None-cpu-ifft]>, <Function test_butterflyfft2[161-85-None-cuda-fft]>, <Function test_butterflyfft2[161-85-None-cuda-ifft]>, <Function test_butterflyfft2[161-512-ortho-cpu-fft]>, <Function test_butterflyfft2[161-512-ortho-cpu-ifft]>, <Function test_butterflyfft2[161-512-ortho-cuda-fft]>, <Function test_butterflyfft2[161-512-ortho-cuda-ifft]>, <Function test_butterflyfft2[161-512-None-cpu-fft]>, <Function test_butterflyfft2[161-512-None-cpu-ifft]>, <Function test_butterflyfft2[161-512-None-cuda-fft]>, <Function test_butterflyfft2[161-512-None-cuda-ifft]>]
+            items: [<Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cpu]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cuda]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cpu]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cuda]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cpu]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cuda]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-2-cpu]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-2-cuda]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-3-cpu]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-3-cuda]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-4-cpu]>, <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-4-cuda]>]
         finish pytest_report_collectionfinish --> [] [hook]
       finish pytest_collection_finish --> [] [hook]
     finish pytest_collection --> None [hook]
     pytest_runtestloop [hook]
-        session: <Session fly exitstatus=<ExitCode.OK: 0> testsfailed=0 testscollected=152>
+        session: <Session fly exitstatus=<ExitCode.OK: 0> testsfailed=0 testscollected=12>
       pytest_runtest_protocol [hook]
           item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cpu]>
           nextitem: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cuda]>
@@ -4593,595 +3805,46 @@ args=('--debug', '-s', 'tests/ops/test_blockdiag_butterfly_projection.py')
             report: <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cpu]' when='setup' outcome='passed'>
           pytest_report_teststatus [hook]
               report: <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cpu]' when='setup' outcome='passed'>
-              config: <_pytest.config.Config object at 0x7fb0db72e250>
+              config: <_pytest.config.Config object at 0x7f821882d250>
           finish pytest_report_teststatus --> ('', '', '') [hook]
         finish pytest_runtest_logreport --> [] [hook]
         pytest_runtest_call [hook]
             item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cpu]>
           pytest_pyfunc_call [hook]
               pyfuncitem: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cpu]>
-          find_module called for: einops._torch_specific [assertion]
-          finish pytest_pyfunc_call --> True [hook]
-        finish pytest_runtest_call --> [] [hook]
-        pytest_runtest_makereport [hook]
-            item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cpu]>
-            call: <CallInfo when='call' result: []>
-        finish pytest_runtest_makereport --> <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cpu]' when='call' outcome='passed'> [hook]
-        pytest_runtest_logreport [hook]
-            report: <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cpu]' when='call' outcome='passed'>
-          pytest_report_teststatus [hook]
-              report: <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cpu]' when='call' outcome='passed'>
-              config: <_pytest.config.Config object at 0x7fb0db72e250>
-          finish pytest_report_teststatus --> ('passed', '.', 'PASSED') [hook]
-        finish pytest_runtest_logreport --> [] [hook]
-        pytest_runtest_teardown [hook]
-            item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cpu]>
-            nextitem: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cuda]>
-          pytest_fixture_post_finalizer [hook]
-              fixturedef: <FixtureDef argname='sdict_path' scope='function' baseid=''>
-              request: <SubRequest 'sdict_path' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cpu]>>
-          finish pytest_fixture_post_finalizer --> [] [hook]
-          pytest_fixture_post_finalizer [hook]
-              fixturedef: <FixtureDef argname='nblocks' scope='function' baseid=''>
-              request: <SubRequest 'nblocks' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cpu]>>
-          finish pytest_fixture_post_finalizer --> [] [hook]
-          pytest_fixture_post_finalizer [hook]
-              fixturedef: <FixtureDef argname='rank' scope='function' baseid=''>
-              request: <SubRequest 'rank' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cpu]>>
-          finish pytest_fixture_post_finalizer --> [] [hook]
-          pytest_fixture_post_finalizer [hook]
-              fixturedef: <FixtureDef argname='device' scope='function' baseid=''>
-              request: <SubRequest 'device' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cpu]>>
-          finish pytest_fixture_post_finalizer --> [] [hook]
-        finish pytest_runtest_teardown --> [] [hook]
-        pytest_runtest_makereport [hook]
-            item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cpu]>
-            call: <CallInfo when='teardown' result: []>
-        finish pytest_runtest_makereport --> <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cpu]' when='teardown' outcome='passed'> [hook]
-        pytest_runtest_logreport [hook]
-            report: <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cpu]' when='teardown' outcome='passed'>
-          pytest_report_teststatus [hook]
-              report: <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cpu]' when='teardown' outcome='passed'>
-              config: <_pytest.config.Config object at 0x7fb0db72e250>
-          finish pytest_report_teststatus --> ('', '', '') [hook]
-        finish pytest_runtest_logreport --> [] [hook]
-        pytest_runtest_logfinish [hook]
-            nodeid: tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cpu]
-            location: ('tests/ops/test_blockdiag_butterfly_projection.py', 14, 'test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cpu]')
-        finish pytest_runtest_logfinish --> [] [hook]
-      finish pytest_runtest_protocol --> True [hook]
-      pytest_runtest_protocol [hook]
-          item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cuda]>
-          nextitem: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cpu]>
-        pytest_runtest_logstart [hook]
-            nodeid: tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cuda]
-            location: ('tests/ops/test_blockdiag_butterfly_projection.py', 14, 'test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cuda]')
-        finish pytest_runtest_logstart --> [] [hook]
-        pytest_runtest_setup [hook]
-            item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cuda]>
-          pytest_fixture_setup [hook]
-              fixturedef: <FixtureDef argname='device' scope='function' baseid=''>
-              request: <SubRequest 'device' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cuda]>>
-          finish pytest_fixture_setup --> cuda [hook]
-          pytest_fixture_setup [hook]
-              fixturedef: <FixtureDef argname='rank' scope='function' baseid=''>
-              request: <SubRequest 'rank' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cuda]>>
-          finish pytest_fixture_setup --> 1 [hook]
-          pytest_fixture_setup [hook]
-              fixturedef: <FixtureDef argname='nblocks' scope='function' baseid=''>
-              request: <SubRequest 'nblocks' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cuda]>>
-          finish pytest_fixture_setup --> 2 [hook]
-          pytest_fixture_setup [hook]
-              fixturedef: <FixtureDef argname='sdict_path' scope='function' baseid=''>
-              request: <SubRequest 'sdict_path' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cuda]>>
-          finish pytest_fixture_setup --> results/lora_roberta_agnews/model.pt [hook]
-        finish pytest_runtest_setup --> [] [hook]
-        pytest_runtest_makereport [hook]
-            item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cuda]>
-            call: <CallInfo when='setup' result: []>
-        finish pytest_runtest_makereport --> <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cuda]' when='setup' outcome='passed'> [hook]
-        pytest_runtest_logreport [hook]
-            report: <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cuda]' when='setup' outcome='passed'>
-          pytest_report_teststatus [hook]
-              report: <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cuda]' when='setup' outcome='passed'>
-              config: <_pytest.config.Config object at 0x7fb0db72e250>
-          finish pytest_report_teststatus --> ('', '', '') [hook]
-        finish pytest_runtest_logreport --> [] [hook]
-        pytest_runtest_call [hook]
-            item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cuda]>
-          pytest_pyfunc_call [hook]
-              pyfuncitem: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cuda]>
-          finish pytest_pyfunc_call --> True [hook]
-        finish pytest_runtest_call --> [] [hook]
-        pytest_runtest_makereport [hook]
-            item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cuda]>
-            call: <CallInfo when='call' result: []>
-        finish pytest_runtest_makereport --> <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cuda]' when='call' outcome='passed'> [hook]
-        pytest_runtest_logreport [hook]
-            report: <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cuda]' when='call' outcome='passed'>
-          pytest_report_teststatus [hook]
-              report: <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cuda]' when='call' outcome='passed'>
-              config: <_pytest.config.Config object at 0x7fb0db72e250>
-          finish pytest_report_teststatus --> ('passed', '.', 'PASSED') [hook]
-        finish pytest_runtest_logreport --> [] [hook]
-        pytest_runtest_teardown [hook]
-            item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cuda]>
-            nextitem: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cpu]>
-          pytest_fixture_post_finalizer [hook]
-              fixturedef: <FixtureDef argname='sdict_path' scope='function' baseid=''>
-              request: <SubRequest 'sdict_path' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cuda]>>
-          finish pytest_fixture_post_finalizer --> [] [hook]
-          pytest_fixture_post_finalizer [hook]
-              fixturedef: <FixtureDef argname='nblocks' scope='function' baseid=''>
-              request: <SubRequest 'nblocks' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cuda]>>
-          finish pytest_fixture_post_finalizer --> [] [hook]
-          pytest_fixture_post_finalizer [hook]
-              fixturedef: <FixtureDef argname='rank' scope='function' baseid=''>
-              request: <SubRequest 'rank' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cuda]>>
-          finish pytest_fixture_post_finalizer --> [] [hook]
-          pytest_fixture_post_finalizer [hook]
-              fixturedef: <FixtureDef argname='device' scope='function' baseid=''>
-              request: <SubRequest 'device' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cuda]>>
-          finish pytest_fixture_post_finalizer --> [] [hook]
-        finish pytest_runtest_teardown --> [] [hook]
-        pytest_runtest_makereport [hook]
-            item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cuda]>
-            call: <CallInfo when='teardown' result: []>
-        finish pytest_runtest_makereport --> <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cuda]' when='teardown' outcome='passed'> [hook]
-        pytest_runtest_logreport [hook]
-            report: <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cuda]' when='teardown' outcome='passed'>
-          pytest_report_teststatus [hook]
-              report: <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cuda]' when='teardown' outcome='passed'>
-              config: <_pytest.config.Config object at 0x7fb0db72e250>
-          finish pytest_report_teststatus --> ('', '', '') [hook]
-        finish pytest_runtest_logreport --> [] [hook]
-        pytest_runtest_logfinish [hook]
-            nodeid: tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cuda]
-            location: ('tests/ops/test_blockdiag_butterfly_projection.py', 14, 'test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cuda]')
-        finish pytest_runtest_logfinish --> [] [hook]
-      finish pytest_runtest_protocol --> True [hook]
-      pytest_runtest_protocol [hook]
-          item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cpu]>
-          nextitem: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cuda]>
-        pytest_runtest_logstart [hook]
-            nodeid: tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cpu]
-            location: ('tests/ops/test_blockdiag_butterfly_projection.py', 14, 'test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cpu]')
-        finish pytest_runtest_logstart --> [] [hook]
-        pytest_runtest_setup [hook]
-            item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cpu]>
-          pytest_fixture_setup [hook]
-              fixturedef: <FixtureDef argname='device' scope='function' baseid=''>
-              request: <SubRequest 'device' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cpu]>>
-          finish pytest_fixture_setup --> cpu [hook]
-          pytest_fixture_setup [hook]
-              fixturedef: <FixtureDef argname='rank' scope='function' baseid=''>
-              request: <SubRequest 'rank' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cpu]>>
-          finish pytest_fixture_setup --> 1 [hook]
-          pytest_fixture_setup [hook]
-              fixturedef: <FixtureDef argname='nblocks' scope='function' baseid=''>
-              request: <SubRequest 'nblocks' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cpu]>>
-          finish pytest_fixture_setup --> 3 [hook]
-          pytest_fixture_setup [hook]
-              fixturedef: <FixtureDef argname='sdict_path' scope='function' baseid=''>
-              request: <SubRequest 'sdict_path' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cpu]>>
-          finish pytest_fixture_setup --> results/lora_roberta_agnews/model.pt [hook]
-        finish pytest_runtest_setup --> [] [hook]
-        pytest_runtest_makereport [hook]
-            item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cpu]>
-            call: <CallInfo when='setup' result: []>
-        finish pytest_runtest_makereport --> <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cpu]' when='setup' outcome='passed'> [hook]
-        pytest_runtest_logreport [hook]
-            report: <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cpu]' when='setup' outcome='passed'>
-          pytest_report_teststatus [hook]
-              report: <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cpu]' when='setup' outcome='passed'>
-              config: <_pytest.config.Config object at 0x7fb0db72e250>
-          finish pytest_report_teststatus --> ('', '', '') [hook]
-        finish pytest_runtest_logreport --> [] [hook]
-        pytest_runtest_call [hook]
-            item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cpu]>
-          pytest_pyfunc_call [hook]
-              pyfuncitem: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cpu]>
-          finish pytest_pyfunc_call --> True [hook]
-        finish pytest_runtest_call --> [] [hook]
-        pytest_runtest_makereport [hook]
-            item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cpu]>
-            call: <CallInfo when='call' result: []>
-        finish pytest_runtest_makereport --> <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cpu]' when='call' outcome='passed'> [hook]
-        pytest_runtest_logreport [hook]
-            report: <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cpu]' when='call' outcome='passed'>
-          pytest_report_teststatus [hook]
-              report: <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cpu]' when='call' outcome='passed'>
-              config: <_pytest.config.Config object at 0x7fb0db72e250>
-          finish pytest_report_teststatus --> ('passed', '.', 'PASSED') [hook]
-        finish pytest_runtest_logreport --> [] [hook]
-        pytest_runtest_teardown [hook]
-            item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cpu]>
-            nextitem: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cuda]>
-          pytest_fixture_post_finalizer [hook]
-              fixturedef: <FixtureDef argname='sdict_path' scope='function' baseid=''>
-              request: <SubRequest 'sdict_path' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cpu]>>
-          finish pytest_fixture_post_finalizer --> [] [hook]
-          pytest_fixture_post_finalizer [hook]
-              fixturedef: <FixtureDef argname='nblocks' scope='function' baseid=''>
-              request: <SubRequest 'nblocks' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cpu]>>
-          finish pytest_fixture_post_finalizer --> [] [hook]
-          pytest_fixture_post_finalizer [hook]
-              fixturedef: <FixtureDef argname='rank' scope='function' baseid=''>
-              request: <SubRequest 'rank' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cpu]>>
-          finish pytest_fixture_post_finalizer --> [] [hook]
-          pytest_fixture_post_finalizer [hook]
-              fixturedef: <FixtureDef argname='device' scope='function' baseid=''>
-              request: <SubRequest 'device' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cpu]>>
-          finish pytest_fixture_post_finalizer --> [] [hook]
-        finish pytest_runtest_teardown --> [] [hook]
-        pytest_runtest_makereport [hook]
-            item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cpu]>
-            call: <CallInfo when='teardown' result: []>
-        finish pytest_runtest_makereport --> <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cpu]' when='teardown' outcome='passed'> [hook]
-        pytest_runtest_logreport [hook]
-            report: <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cpu]' when='teardown' outcome='passed'>
-          pytest_report_teststatus [hook]
-              report: <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cpu]' when='teardown' outcome='passed'>
-              config: <_pytest.config.Config object at 0x7fb0db72e250>
-          finish pytest_report_teststatus --> ('', '', '') [hook]
-        finish pytest_runtest_logreport --> [] [hook]
-        pytest_runtest_logfinish [hook]
-            nodeid: tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cpu]
-            location: ('tests/ops/test_blockdiag_butterfly_projection.py', 14, 'test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cpu]')
-        finish pytest_runtest_logfinish --> [] [hook]
-      finish pytest_runtest_protocol --> True [hook]
-      pytest_runtest_protocol [hook]
-          item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cuda]>
-          nextitem: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cpu]>
-        pytest_runtest_logstart [hook]
-            nodeid: tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cuda]
-            location: ('tests/ops/test_blockdiag_butterfly_projection.py', 14, 'test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cuda]')
-        finish pytest_runtest_logstart --> [] [hook]
-        pytest_runtest_setup [hook]
-            item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cuda]>
-          pytest_fixture_setup [hook]
-              fixturedef: <FixtureDef argname='device' scope='function' baseid=''>
-              request: <SubRequest 'device' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cuda]>>
-          finish pytest_fixture_setup --> cuda [hook]
-          pytest_fixture_setup [hook]
-              fixturedef: <FixtureDef argname='rank' scope='function' baseid=''>
-              request: <SubRequest 'rank' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cuda]>>
-          finish pytest_fixture_setup --> 1 [hook]
-          pytest_fixture_setup [hook]
-              fixturedef: <FixtureDef argname='nblocks' scope='function' baseid=''>
-              request: <SubRequest 'nblocks' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cuda]>>
-          finish pytest_fixture_setup --> 3 [hook]
-          pytest_fixture_setup [hook]
-              fixturedef: <FixtureDef argname='sdict_path' scope='function' baseid=''>
-              request: <SubRequest 'sdict_path' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cuda]>>
-          finish pytest_fixture_setup --> results/lora_roberta_agnews/model.pt [hook]
-        finish pytest_runtest_setup --> [] [hook]
-        pytest_runtest_makereport [hook]
-            item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cuda]>
-            call: <CallInfo when='setup' result: []>
-        finish pytest_runtest_makereport --> <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cuda]' when='setup' outcome='passed'> [hook]
-        pytest_runtest_logreport [hook]
-            report: <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cuda]' when='setup' outcome='passed'>
-          pytest_report_teststatus [hook]
-              report: <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cuda]' when='setup' outcome='passed'>
-              config: <_pytest.config.Config object at 0x7fb0db72e250>
-          finish pytest_report_teststatus --> ('', '', '') [hook]
-        finish pytest_runtest_logreport --> [] [hook]
-        pytest_runtest_call [hook]
-            item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cuda]>
-          pytest_pyfunc_call [hook]
-              pyfuncitem: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cuda]>
-          finish pytest_pyfunc_call --> True [hook]
-        finish pytest_runtest_call --> [] [hook]
-        pytest_runtest_makereport [hook]
-            item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cuda]>
-            call: <CallInfo when='call' result: []>
-        finish pytest_runtest_makereport --> <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cuda]' when='call' outcome='passed'> [hook]
-        pytest_runtest_logreport [hook]
-            report: <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cuda]' when='call' outcome='passed'>
-          pytest_report_teststatus [hook]
-              report: <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cuda]' when='call' outcome='passed'>
-              config: <_pytest.config.Config object at 0x7fb0db72e250>
-          finish pytest_report_teststatus --> ('passed', '.', 'PASSED') [hook]
-        finish pytest_runtest_logreport --> [] [hook]
-        pytest_runtest_teardown [hook]
-            item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cuda]>
-            nextitem: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cpu]>
-          pytest_fixture_post_finalizer [hook]
-              fixturedef: <FixtureDef argname='sdict_path' scope='function' baseid=''>
-              request: <SubRequest 'sdict_path' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cuda]>>
-          finish pytest_fixture_post_finalizer --> [] [hook]
-          pytest_fixture_post_finalizer [hook]
-              fixturedef: <FixtureDef argname='nblocks' scope='function' baseid=''>
-              request: <SubRequest 'nblocks' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cuda]>>
-          finish pytest_fixture_post_finalizer --> [] [hook]
-          pytest_fixture_post_finalizer [hook]
-              fixturedef: <FixtureDef argname='rank' scope='function' baseid=''>
-              request: <SubRequest 'rank' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cuda]>>
-          finish pytest_fixture_post_finalizer --> [] [hook]
-          pytest_fixture_post_finalizer [hook]
-              fixturedef: <FixtureDef argname='device' scope='function' baseid=''>
-              request: <SubRequest 'device' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cuda]>>
-          finish pytest_fixture_post_finalizer --> [] [hook]
-        finish pytest_runtest_teardown --> [] [hook]
-        pytest_runtest_makereport [hook]
-            item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cuda]>
-            call: <CallInfo when='teardown' result: []>
-        finish pytest_runtest_makereport --> <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cuda]' when='teardown' outcome='passed'> [hook]
-        pytest_runtest_logreport [hook]
-            report: <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cuda]' when='teardown' outcome='passed'>
-          pytest_report_teststatus [hook]
-              report: <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cuda]' when='teardown' outcome='passed'>
-              config: <_pytest.config.Config object at 0x7fb0db72e250>
-          finish pytest_report_teststatus --> ('', '', '') [hook]
-        finish pytest_runtest_logreport --> [] [hook]
-        pytest_runtest_logfinish [hook]
-            nodeid: tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cuda]
-            location: ('tests/ops/test_blockdiag_butterfly_projection.py', 14, 'test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-3-cuda]')
-        finish pytest_runtest_logfinish --> [] [hook]
-      finish pytest_runtest_protocol --> True [hook]
-      pytest_runtest_protocol [hook]
-          item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cpu]>
-          nextitem: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cuda]>
-        pytest_runtest_logstart [hook]
-            nodeid: tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cpu]
-            location: ('tests/ops/test_blockdiag_butterfly_projection.py', 14, 'test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cpu]')
-        finish pytest_runtest_logstart --> [] [hook]
-        pytest_runtest_setup [hook]
-            item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cpu]>
-          pytest_fixture_setup [hook]
-              fixturedef: <FixtureDef argname='device' scope='function' baseid=''>
-              request: <SubRequest 'device' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cpu]>>
-          finish pytest_fixture_setup --> cpu [hook]
-          pytest_fixture_setup [hook]
-              fixturedef: <FixtureDef argname='rank' scope='function' baseid=''>
-              request: <SubRequest 'rank' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cpu]>>
-          finish pytest_fixture_setup --> 1 [hook]
-          pytest_fixture_setup [hook]
-              fixturedef: <FixtureDef argname='nblocks' scope='function' baseid=''>
-              request: <SubRequest 'nblocks' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cpu]>>
-          finish pytest_fixture_setup --> 4 [hook]
-          pytest_fixture_setup [hook]
-              fixturedef: <FixtureDef argname='sdict_path' scope='function' baseid=''>
-              request: <SubRequest 'sdict_path' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cpu]>>
-          finish pytest_fixture_setup --> results/lora_roberta_agnews/model.pt [hook]
-        finish pytest_runtest_setup --> [] [hook]
-        pytest_runtest_makereport [hook]
-            item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cpu]>
-            call: <CallInfo when='setup' result: []>
-        finish pytest_runtest_makereport --> <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cpu]' when='setup' outcome='passed'> [hook]
-        pytest_runtest_logreport [hook]
-            report: <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cpu]' when='setup' outcome='passed'>
-          pytest_report_teststatus [hook]
-              report: <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cpu]' when='setup' outcome='passed'>
-              config: <_pytest.config.Config object at 0x7fb0db72e250>
-          finish pytest_report_teststatus --> ('', '', '') [hook]
-        finish pytest_runtest_logreport --> [] [hook]
-        pytest_runtest_call [hook]
-            item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cpu]>
-          pytest_pyfunc_call [hook]
-              pyfuncitem: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cpu]>
-          finish pytest_pyfunc_call --> True [hook]
-        finish pytest_runtest_call --> [] [hook]
-        pytest_runtest_makereport [hook]
-            item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cpu]>
-            call: <CallInfo when='call' result: []>
-        finish pytest_runtest_makereport --> <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cpu]' when='call' outcome='passed'> [hook]
-        pytest_runtest_logreport [hook]
-            report: <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cpu]' when='call' outcome='passed'>
-          pytest_report_teststatus [hook]
-              report: <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cpu]' when='call' outcome='passed'>
-              config: <_pytest.config.Config object at 0x7fb0db72e250>
-          finish pytest_report_teststatus --> ('passed', '.', 'PASSED') [hook]
-        finish pytest_runtest_logreport --> [] [hook]
-        pytest_runtest_teardown [hook]
-            item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cpu]>
-            nextitem: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cuda]>
-          pytest_fixture_post_finalizer [hook]
-              fixturedef: <FixtureDef argname='sdict_path' scope='function' baseid=''>
-              request: <SubRequest 'sdict_path' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cpu]>>
-          finish pytest_fixture_post_finalizer --> [] [hook]
-          pytest_fixture_post_finalizer [hook]
-              fixturedef: <FixtureDef argname='nblocks' scope='function' baseid=''>
-              request: <SubRequest 'nblocks' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cpu]>>
-          finish pytest_fixture_post_finalizer --> [] [hook]
-          pytest_fixture_post_finalizer [hook]
-              fixturedef: <FixtureDef argname='rank' scope='function' baseid=''>
-              request: <SubRequest 'rank' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cpu]>>
-          finish pytest_fixture_post_finalizer --> [] [hook]
-          pytest_fixture_post_finalizer [hook]
-              fixturedef: <FixtureDef argname='device' scope='function' baseid=''>
-              request: <SubRequest 'device' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cpu]>>
-          finish pytest_fixture_post_finalizer --> [] [hook]
-        finish pytest_runtest_teardown --> [] [hook]
-        pytest_runtest_makereport [hook]
-            item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cpu]>
-            call: <CallInfo when='teardown' result: []>
-        finish pytest_runtest_makereport --> <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cpu]' when='teardown' outcome='passed'> [hook]
-        pytest_runtest_logreport [hook]
-            report: <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cpu]' when='teardown' outcome='passed'>
-          pytest_report_teststatus [hook]
-              report: <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cpu]' when='teardown' outcome='passed'>
-              config: <_pytest.config.Config object at 0x7fb0db72e250>
-          finish pytest_report_teststatus --> ('', '', '') [hook]
-        finish pytest_runtest_logreport --> [] [hook]
-        pytest_runtest_logfinish [hook]
-            nodeid: tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cpu]
-            location: ('tests/ops/test_blockdiag_butterfly_projection.py', 14, 'test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cpu]')
-        finish pytest_runtest_logfinish --> [] [hook]
-      finish pytest_runtest_protocol --> True [hook]
-      pytest_runtest_protocol [hook]
-          item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cuda]>
-          nextitem: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-2-cpu]>
-        pytest_runtest_logstart [hook]
-            nodeid: tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cuda]
-            location: ('tests/ops/test_blockdiag_butterfly_projection.py', 14, 'test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cuda]')
-        finish pytest_runtest_logstart --> [] [hook]
-        pytest_runtest_setup [hook]
-            item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cuda]>
-          pytest_fixture_setup [hook]
-              fixturedef: <FixtureDef argname='device' scope='function' baseid=''>
-              request: <SubRequest 'device' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cuda]>>
-          finish pytest_fixture_setup --> cuda [hook]
-          pytest_fixture_setup [hook]
-              fixturedef: <FixtureDef argname='rank' scope='function' baseid=''>
-              request: <SubRequest 'rank' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cuda]>>
-          finish pytest_fixture_setup --> 1 [hook]
-          pytest_fixture_setup [hook]
-              fixturedef: <FixtureDef argname='nblocks' scope='function' baseid=''>
-              request: <SubRequest 'nblocks' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cuda]>>
-          finish pytest_fixture_setup --> 4 [hook]
-          pytest_fixture_setup [hook]
-              fixturedef: <FixtureDef argname='sdict_path' scope='function' baseid=''>
-              request: <SubRequest 'sdict_path' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cuda]>>
-          finish pytest_fixture_setup --> results/lora_roberta_agnews/model.pt [hook]
-        finish pytest_runtest_setup --> [] [hook]
-        pytest_runtest_makereport [hook]
-            item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cuda]>
-            call: <CallInfo when='setup' result: []>
-        finish pytest_runtest_makereport --> <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cuda]' when='setup' outcome='passed'> [hook]
-        pytest_runtest_logreport [hook]
-            report: <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cuda]' when='setup' outcome='passed'>
-          pytest_report_teststatus [hook]
-              report: <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cuda]' when='setup' outcome='passed'>
-              config: <_pytest.config.Config object at 0x7fb0db72e250>
-          finish pytest_report_teststatus --> ('', '', '') [hook]
-        finish pytest_runtest_logreport --> [] [hook]
-        pytest_runtest_call [hook]
-            item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cuda]>
-          pytest_pyfunc_call [hook]
-              pyfuncitem: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cuda]>
-          finish pytest_pyfunc_call --> True [hook]
-        finish pytest_runtest_call --> [] [hook]
-        pytest_runtest_makereport [hook]
-            item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cuda]>
-            call: <CallInfo when='call' result: []>
-        finish pytest_runtest_makereport --> <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cuda]' when='call' outcome='passed'> [hook]
-        pytest_runtest_logreport [hook]
-            report: <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cuda]' when='call' outcome='passed'>
-          pytest_report_teststatus [hook]
-              report: <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cuda]' when='call' outcome='passed'>
-              config: <_pytest.config.Config object at 0x7fb0db72e250>
-          finish pytest_report_teststatus --> ('passed', '.', 'PASSED') [hook]
-        finish pytest_runtest_logreport --> [] [hook]
-        pytest_runtest_teardown [hook]
-            item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cuda]>
-            nextitem: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-2-cpu]>
-          pytest_fixture_post_finalizer [hook]
-              fixturedef: <FixtureDef argname='sdict_path' scope='function' baseid=''>
-              request: <SubRequest 'sdict_path' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cuda]>>
-          finish pytest_fixture_post_finalizer --> [] [hook]
-          pytest_fixture_post_finalizer [hook]
-              fixturedef: <FixtureDef argname='nblocks' scope='function' baseid=''>
-              request: <SubRequest 'nblocks' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cuda]>>
-          finish pytest_fixture_post_finalizer --> [] [hook]
-          pytest_fixture_post_finalizer [hook]
-              fixturedef: <FixtureDef argname='rank' scope='function' baseid=''>
-              request: <SubRequest 'rank' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cuda]>>
-          finish pytest_fixture_post_finalizer --> [] [hook]
-          pytest_fixture_post_finalizer [hook]
-              fixturedef: <FixtureDef argname='device' scope='function' baseid=''>
-              request: <SubRequest 'device' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cuda]>>
-          finish pytest_fixture_post_finalizer --> [] [hook]
-        finish pytest_runtest_teardown --> [] [hook]
-        pytest_runtest_makereport [hook]
-            item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cuda]>
-            call: <CallInfo when='teardown' result: []>
-        finish pytest_runtest_makereport --> <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cuda]' when='teardown' outcome='passed'> [hook]
-        pytest_runtest_logreport [hook]
-            report: <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cuda]' when='teardown' outcome='passed'>
-          pytest_report_teststatus [hook]
-              report: <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cuda]' when='teardown' outcome='passed'>
-              config: <_pytest.config.Config object at 0x7fb0db72e250>
-          finish pytest_report_teststatus --> ('', '', '') [hook]
-        finish pytest_runtest_logreport --> [] [hook]
-        pytest_runtest_logfinish [hook]
-            nodeid: tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cuda]
-            location: ('tests/ops/test_blockdiag_butterfly_projection.py', 14, 'test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-4-cuda]')
-        finish pytest_runtest_logfinish --> [] [hook]
-      finish pytest_runtest_protocol --> True [hook]
-      pytest_runtest_protocol [hook]
-          item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-2-cpu]>
-          nextitem: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-2-cuda]>
-        pytest_runtest_logstart [hook]
-            nodeid: tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-2-cpu]
-            location: ('tests/ops/test_blockdiag_butterfly_projection.py', 14, 'test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-2-cpu]')
-        finish pytest_runtest_logstart --> [] [hook]
-        pytest_runtest_setup [hook]
-            item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-2-cpu]>
-          pytest_fixture_setup [hook]
-              fixturedef: <FixtureDef argname='device' scope='function' baseid=''>
-              request: <SubRequest 'device' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-2-cpu]>>
-          finish pytest_fixture_setup --> cpu [hook]
-          pytest_fixture_setup [hook]
-              fixturedef: <FixtureDef argname='rank' scope='function' baseid=''>
-              request: <SubRequest 'rank' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-2-cpu]>>
-          finish pytest_fixture_setup --> 2 [hook]
-          pytest_fixture_setup [hook]
-              fixturedef: <FixtureDef argname='nblocks' scope='function' baseid=''>
-              request: <SubRequest 'nblocks' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-2-cpu]>>
-          finish pytest_fixture_setup --> 2 [hook]
-          pytest_fixture_setup [hook]
-              fixturedef: <FixtureDef argname='sdict_path' scope='function' baseid=''>
-              request: <SubRequest 'sdict_path' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-2-cpu]>>
-          finish pytest_fixture_setup --> results/lora_roberta_agnews/model.pt [hook]
-        finish pytest_runtest_setup --> [] [hook]
-        pytest_runtest_makereport [hook]
-            item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-2-cpu]>
-            call: <CallInfo when='setup' result: []>
-        finish pytest_runtest_makereport --> <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-2-cpu]' when='setup' outcome='passed'> [hook]
-        pytest_runtest_logreport [hook]
-            report: <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-2-cpu]' when='setup' outcome='passed'>
-          pytest_report_teststatus [hook]
-              report: <TestReport 'tests/ops/test_blockdiag_butterfly_projection.py::test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-2-cpu]' when='setup' outcome='passed'>
-              config: <_pytest.config.Config object at 0x7fb0db72e250>
-          finish pytest_report_teststatus --> ('', '', '') [hook]
-        finish pytest_runtest_logreport --> [] [hook]
-        pytest_runtest_call [hook]
-            item: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-2-cpu]>
-          pytest_pyfunc_call [hook]
-              pyfuncitem: <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-2-cpu]>
           find_module called for: readline [assertion]
             pytest_enter_pdb [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                pdb: <_pytest.debugging.pytestPDB._get_pdb_wrapper_class.<locals>.PytestPdbWrapper object at 0x7fb00a0fd1c0>
-            finish pytest_enter_pdb --> [] [hook]
-            pytest_leave_pdb [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                pdb: <_pytest.debugging.pytestPDB._get_pdb_wrapper_class.<locals>.PytestPdbWrapper object at 0x7fb00a0fd1c0>
-            finish pytest_leave_pdb --> [] [hook]
-            pytest_enter_pdb [hook]
-                config: <_pytest.config.Config object at 0x7fb0db72e250>
-                pdb: <_pytest.debugging.pytestPDB._get_pdb_wrapper_class.<locals>.PytestPdbWrapper object at 0x7fb00a0fd340>
+                config: <_pytest.config.Config object at 0x7f821882d250>
+                pdb: <_pytest.debugging.pytestPDB._get_pdb_wrapper_class.<locals>.PytestPdbWrapper object at 0x7f812723ce80>
             finish pytest_enter_pdb --> [] [hook]
     pytest_keyboard_interrupt [hook]
-        excinfo: <ExceptionInfo Exit('Quitting debugger') tblen=64>
+        excinfo: <ExceptionInfo Exit('Quitting debugger') tblen=63>
     finish pytest_keyboard_interrupt --> [] [hook]
     pytest_sessionfinish [hook]
-        session: <Session fly exitstatus=<ExitCode.INTERRUPTED: 2> testsfailed=0 testscollected=152>
+        session: <Session fly exitstatus=<ExitCode.INTERRUPTED: 2> testsfailed=0 testscollected=12>
         exitstatus: 2
       pytest_fixture_post_finalizer [hook]
           fixturedef: <FixtureDef argname='sdict_path' scope='function' baseid=''>
-          request: <SubRequest 'sdict_path' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-2-cpu]>>
+          request: <SubRequest 'sdict_path' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cpu]>>
       finish pytest_fixture_post_finalizer --> [] [hook]
       pytest_fixture_post_finalizer [hook]
           fixturedef: <FixtureDef argname='nblocks' scope='function' baseid=''>
-          request: <SubRequest 'nblocks' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-2-cpu]>>
+          request: <SubRequest 'nblocks' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cpu]>>
       finish pytest_fixture_post_finalizer --> [] [hook]
       pytest_fixture_post_finalizer [hook]
           fixturedef: <FixtureDef argname='rank' scope='function' baseid=''>
-          request: <SubRequest 'rank' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-2-cpu]>>
+          request: <SubRequest 'rank' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cpu]>>
       finish pytest_fixture_post_finalizer --> [] [hook]
       pytest_fixture_post_finalizer [hook]
           fixturedef: <FixtureDef argname='device' scope='function' baseid=''>
-          request: <SubRequest 'device' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-2-2-cpu]>>
+          request: <SubRequest 'device' for <Function test_trained_weight_approx[results/lora_roberta_agnews/model.pt-1-2-cpu]>>
       finish pytest_fixture_post_finalizer --> [] [hook]
       pytest_terminal_summary [hook]
-          terminalreporter: <_pytest.terminal.TerminalReporter object at 0x7fb0db67ddf0>
+          terminalreporter: <_pytest.terminal.TerminalReporter object at 0x7f821877cdf0>
           exitstatus: 2
-          config: <_pytest.config.Config object at 0x7fb0db72e250>
+          config: <_pytest.config.Config object at 0x7f821882d250>
       finish pytest_terminal_summary --> [] [hook]
     finish pytest_sessionfinish --> [] [hook]
     pytest_unconfigure [hook]
-        config: <_pytest.config.Config object at 0x7fb0db72e250>
+        config: <_pytest.config.Config object at 0x7f821882d250>
     finish pytest_unconfigure --> [] [hook]

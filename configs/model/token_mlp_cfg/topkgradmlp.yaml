@@ -1,2 +1,0 @@
-_target_: src.models.layers.mlp.TopkGradMlp
-topk_ratio: 0.2

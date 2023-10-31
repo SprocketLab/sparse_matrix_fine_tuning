@@ -1,4 +1,0 @@
-_target_: src.models.layers.mlp.ButterflyFactorBanditNewMlp
-drop: 0.1
-base_size: 2
-butterfly: True

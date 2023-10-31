@@ -1,7 +1,0 @@
-# @package _global_
-model:
-  config:
-    hidden_size: 1024
-    intermediate_size: ${eval:${.hidden_size} * 4}
-    num_attention_heads: 16
-    num_hidden_layers: 24

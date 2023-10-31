@@ -1,7 +1,0 @@
-# @package _global_
-defaults:
-  - /experiment/owt/gpt2.yaml
-
-model:
-  config:
-    tie_weights: True

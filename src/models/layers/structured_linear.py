@@ -17,10 +17,10 @@ class StructuredLinear(nn.Module):
         self.in_features = in_features
         self.out_features = out_features
         # Subclasses may override {in,out}_features_extended
-        if not hasattr(self, 'in_features_extended'):
-            self.in_features_extended = in_features
-        if not hasattr(self, 'out_features_extended'):
-            self.out_features_extended = out_features
+        if not hasattr(self, 'in_features'):
+            self.in_features = in_features
+        if not hasattr(self, 'out_features'):
+            self.out_features = out_features
         
         # set bias 
         if bias is None:
@@ -55,13 +55,13 @@ class StructuredLinear(nn.Module):
 
     def preprocess(self, x):
         in_features = x.shape[-1]
-        if in_features < self.in_features_extended:
-            x = F.pad(x, (0, self.in_features_extended - in_features))
+        if in_features < self.in_features:
+            x = F.pad(x, (0, self.in_features - in_features))
         return x
 
     def postprocess(self, output):
-        out_features_extended = output.shape[-1]
-        if out_features_extended > self.out_features:
+        out_features = output.shape[-1]
+        if out_features > self.out_features:
             output = output[..., :self.out_features]
         return output
 
