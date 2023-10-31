@@ -16,6 +16,7 @@
 """ Finetuning the library models for sequence classification on GLUE."""
 # You can also adapt this script on your own text classification task. Pointers for this are left as comments.
 import json
+import time
 import logging
 import os
 import random
@@ -215,6 +216,8 @@ def main():
     else:
         model_args, data_args, training_args = parser.parse_args_into_dataclasses()
     peft_config = json.load(open("train_configs/peft_monarch.json", "r")) # use 4 blocks for peft (less params than sqrt(n) in FT)
+    training_args.output_dir = os.path.join(training_args.output_dir, data_args.task_name)
+    os.makedirs(training_args.output_dir, exist_ok=True)
     
     # Sending telemetry. Tracking the example usage helps us better allocate resources to maintain them. The
     # information sent is the one passed as arguments along with your Python/PyTorch versions.
@@ -554,7 +557,7 @@ def main():
             tasks.append("mnli-mm")
             eval_datasets.append(raw_datasets["validation_mismatched"])
             combined = {}
-
+        
         for eval_dataset, task in zip(eval_datasets, tasks):
             metrics = trainer.evaluate(eval_dataset=eval_dataset)
 
@@ -580,7 +583,8 @@ def main():
         if data_args.task_name == "mnli":
             tasks.append("mnli-mm")
             predict_datasets.append(raw_datasets["test_mismatched"])
-
+        
+        t1 = time.time()
         for predict_dataset, task in zip(predict_datasets, tasks):
             # Removing the `label` columns because it contains -1 and Trainer won't like that.
             predict_dataset = predict_dataset.remove_columns("label")
@@ -598,7 +602,8 @@ def main():
                         else:
                             item = label_list[item]
                             writer.write(f"{index}\t{item}\n")
-
+        print("Inferece time on test set: ", time.time() - t1)
+        
     kwargs = {"finetuned_from": model_args.model_name_or_path, "tasks": "text-classification"}
     if data_args.task_name is not None:
         kwargs["language"] = "en"
