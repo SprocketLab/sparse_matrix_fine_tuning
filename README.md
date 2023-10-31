@@ -27,6 +27,7 @@ Monarch PEFT:
 python monarch_roberta.py  --peft
 ```
 Use run_glue.py for GLUE tasks 
+(Uses hyperparams from LoRA paper but reduces epochs slightly)
 ```
 python run_glue.py train_configs/cola.json
 ``` 
