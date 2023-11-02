@@ -10,5 +10,6 @@
     "output_dir": "results/monarch_roberta_glue/",
     "fp16": true,
     "overwrite_output_dir" : true,
-    "do_predict": true
+    "do_predict": true,
+    "resume_from_checkpoint": true
 }

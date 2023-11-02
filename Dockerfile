@@ -137,7 +137,7 @@ RUN pip install tensorboard seqeval psutil sacrebleu rouge-score tensorflow_data
 # added libs for PEFT
 RUN pip install scikit-learn tqdm loralib 
 RUN pip install evaluate 
-RUN ls 
+RUN  chmod +x backend/docker/entrypoints/entrypoint.sh
 
 
 #RUN rm /opt/conda/lib/python3.8/site-packages/transformers/models/roberta/modeling_roberta.py; ln /fly/modeling_roberta.py /opt/conda/lib/python3.8/site-packages/transformers/models/roberta

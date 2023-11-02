@@ -516,6 +516,7 @@ def main():
         data_collator = None
 
     # Initialize our Trainer
+    training_args.save_total_limit = 2 # avoid flooding the disk
     trainer = Trainer(
         model=model,
         args=training_args,
