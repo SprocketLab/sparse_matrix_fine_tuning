@@ -517,6 +517,10 @@ def main():
 
     # Initialize our Trainer
     training_args.save_total_limit = 2 # avoid flooding the disk
+    has_ckpt =  any([file.startswith("checkpoint") for file in os.listdir(training_args.output_dir)])
+    training_args.resume_from_checkpoint &= has_ckpt
+    training_args.run_name = "glue_" + data_args.task_name # wandb run name
+    # training_args.fsdp = "full_shard"
     trainer = Trainer(
         model=model,
         args=training_args,
@@ -571,7 +575,6 @@ def main():
                 metrics = {k + "_mm": v for k, v in metrics.items()}
             if task is not None and "mnli" in task:
                 combined.update(metrics)
-
             trainer.log_metrics("eval", metrics)
             trainer.save_metrics("eval", combined if task is not None and "mnli" in task else metrics)
 
@@ -592,7 +595,7 @@ def main():
             predictions = trainer.predict(predict_dataset, metric_key_prefix="predict").predictions
             predictions = np.squeeze(predictions) if is_regression else np.argmax(predictions, axis=1)
 
-            output_predict_file = os.path.join(training_args.output_dir, f"predict_results_{task}.txt")
+            output_predict_file = os.path.join(training_args.output_dir, f"predict_results_{task}.tsv")
             if trainer.is_world_process_zero():
                 with open(output_predict_file, "w") as writer:
                     logger.info(f"***** Predict results {task} *****")
