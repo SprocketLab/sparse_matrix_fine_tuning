@@ -1,0 +1,41 @@
+{
+    "cola": [
+        "0",
+        "1"
+    ],
+    "wnli": [
+        "0",
+        "1"
+    ],
+    "rte": [
+        "entailment",
+        "not_entailment"
+    ],
+    "mrpc": [
+        "0",
+        "1"
+    ],
+    "qnli": [
+        "entailment",
+        "not_entailment"
+    ],
+    "mnli-m": [
+        "entailment",
+        "neutral",
+        "contradiction"
+        
+    ],
+    "mnli-mm": [
+        "entailment",
+        "neutral",
+        "contradiction"
+    ],
+    "qqp": [
+        "0",
+        "1"
+    ],
+    "sst-2": [
+        "0",
+        "1"
+    ]
+}
