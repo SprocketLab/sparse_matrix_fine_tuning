@@ -3,4 +3,5 @@ wandb/**
 __pycache__/**
 glue_data/**
 .vscode/**
+*.tar
 ```
