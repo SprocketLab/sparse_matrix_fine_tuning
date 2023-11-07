@@ -12,6 +12,6 @@
     "fp16": true,
     "overwrite_output_dir" : true,
     "do_predict": true,
-    "resume_from_checkpoint": true,
-    "logging_steps": 50
+    "logging_steps": 50,
+    "warmup_ratio": 0.06
 }

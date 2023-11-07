@@ -65,10 +65,10 @@ class MonarchLinear(StructuredLinear):
         
         # Init weights
         self.blkdiag1 = nn.Parameter(
-                torch.empty(nblocks, self.mid_blksz, self.in_blksz) # (nblocks, r * nblocks, i)
+                torch.zeros(nblocks, self.mid_blksz, self.in_blksz) # (nblocks, r * nblocks, i)
         )  
         self.blkdiag2 = nn.Parameter(
-                torch.empty(nblocks, self.out_blksz, self.mid_blksz) # (nblocks, l, nblocks * r)
+                torch.zeros(nblocks, self.out_blksz, self.mid_blksz) # (nblocks, l, nblocks * r)
         )
         self.reset_parameters()
         
@@ -82,7 +82,12 @@ class MonarchLinear(StructuredLinear):
 
     def reset_parameters(self) -> None:
         # Mimic init.kaiming_uniform: https://github.com/pytorch/pytorch/blob/24087d07ca7ffa244575d259711dd7c99245a67a/torch/nn/init.py#L360
-        for blkdiag in [self.blkdiag1, self.blkdiag2]:
+        if self.peft:
+            monarch_factors = [self.blkdiag1] # set the second factor to 0
+        else:
+            monarch_factors = [self.blkdiag1, self.blkdiag2]
+            
+        for blkdiag in monarch_factors:
             fan_in = blkdiag.shape[-1]
             gain = init.calculate_gain(nonlinearity="leaky_relu", param=math.sqrt(5))
             std = gain / math.sqrt(fan_in)

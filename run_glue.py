@@ -518,9 +518,11 @@ def main():
     # Initialize our Trainer
     training_args.save_total_limit = 2 # avoid flooding the disk
     has_ckpt =  any([file.startswith("checkpoint") for file in os.listdir(training_args.output_dir)])
-    training_args.resume_from_checkpoint &= has_ckpt
+    if training_args.resume_from_checkpoint is not None:
+        training_args.resume_from_checkpoint &= has_ckpt
     training_args.run_name = "glue_" + data_args.task_name # wandb run name
     # training_args.fsdp = "full_shard"
+    breakpoint()
     trainer = Trainer(
         model=model,
         args=training_args,

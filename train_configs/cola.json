@@ -4,12 +4,13 @@
     "do_train": true,
     "do_eval": true,
     "max_seq_length": 128,
-    "per_device_train_batch_size": 4,
+    "per_device_train_batch_size": 256,
     "learning_rate": 2e-4,
     "num_train_epochs": 16,
     "output_dir": "results/monarch_roberta_glue/",
     "fp16": true,
     "overwrite_output_dir" : true,
     "do_predict": true,
-    "resume_from_checkpoint": true
+    "logging_steps": 50,
+    "warmup_ratio": 0.06
 }
