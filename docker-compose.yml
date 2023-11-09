@@ -10,12 +10,9 @@ services:
     volumes:
       - .:/fly
     working_dir: /fly
-    # Jupyter does NOT work without sudo
-    # command: python -m jupyterlab --ip=0.0.0.0 --port=5050 --no-browser --allow-root --NotebookApp.token='local' "--NotebookApp.password='local'"
-    #command: bash; rm /opt/conda/lib/python3.8/site-packages/transformers/models/roberta/modeling_roberta.py; ln /fly/modeling_roberta.py /opt/conda/lib/python3.8/site-packages/transformers/models/roberta
-    command: bash -c "rm /opt/conda/lib/python3.8/site-packages/transformers/models/roberta/modeling_roberta.py &&
-        ln -s /fly/src/models/modeling_roberta.py /opt/conda/lib/python3.8/site-packages/transformers/models/roberta/ &&
-        export WANDB_API_KEY=16d21dc747a6f33247f1e9c96895d4ffa5ea0b27 && exec bash"
+    command: bash -c " export WANDB_API_KEY=16d21dc747a6f33247f1e9c96895d4ffa5ea0b27 && exec bash"
+        # ln -s /fly/src/models/modeling_roberta.py /opt/conda/lib/python3.8/site-packages/transformers/models/roberta/ && rm /opt/conda/lib/python3.8/site-packages/transformers/models/roberta/modeling_roberta.py
+        # "
 
     stdin_open: true
     tty: true 

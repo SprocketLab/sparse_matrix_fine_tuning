@@ -899,6 +899,13 @@ class RobertaModel(RobertaPreTrainedModel):
             else:
                 module.requires_grad_(False)
     
+    def train(self, mode: bool = True):
+        
+        if mode and hasattr(self, "peft_config") and self.peft_config["monarch"]:
+            self.init_monarch_layers()
+        else:
+            super().train(mode)
+            
     def set_peft_config(self, peft_config=None):
         """
             Set peft config for all attention layers and
