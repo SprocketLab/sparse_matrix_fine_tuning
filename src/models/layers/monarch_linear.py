@@ -21,6 +21,8 @@ from src.ops.blockdiag_butterfly_einsum import (
 
 logger = get_logger()
 
+def factor_balance(mid_blksz, out_blksz):
+    total = mid_blksz * out_blksz
 
 # @Wenxuan
 class MonarchLinear(StructuredLinear):
@@ -83,7 +85,7 @@ class MonarchLinear(StructuredLinear):
     def reset_parameters(self) -> None:
         # Mimic init.kaiming_uniform: https://github.com/pytorch/pytorch/blob/24087d07ca7ffa244575d259711dd7c99245a67a/torch/nn/init.py#L360
         if self.peft:
-            monarch_factors = [self.blkdiag1] # set the second factor to 0
+            monarch_factors = [self.blkdiag1] # set the second factor to 0 to init at the pretrained point
         else:
             monarch_factors = [self.blkdiag1, self.blkdiag2]
             
@@ -131,7 +133,6 @@ class MonarchLinear(StructuredLinear):
             )
             self.blkdiag1 = nn.Parameter(blkdiag1)
             self.blkdiag2 = nn.Parameter(blkdiag2)
-
 
     def train(self, mode: bool = True):
         """

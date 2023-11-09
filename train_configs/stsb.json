@@ -1,17 +1,17 @@
-
 {
     "model_name_or_path": "roberta-large",
-    "task_name": "stsb",
+    "task_name": "sst2",
     "do_train": true,
     "do_eval": true,
     "max_seq_length": 128,
-    "per_device_train_batch_size": 4,
-    "learning_rate": 2e-4,
+    "per_device_train_batch_size": 10,
+    "learning_rate": 0.0004,
     "num_train_epochs": 8,
     "output_dir": "results/monarch_roberta_glue/",
     "fp16": true,
-    "overwrite_output_dir" : true,
+    "overwrite_output_dir": true,
     "do_predict": true,
     "logging_steps": 50,
-    "warmup_ratio": 0.06
+    "warmup_ratio": 0.06,
+    "weight_decay": 0.1
 }

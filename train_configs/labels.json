@@ -23,7 +23,6 @@
         "entailment",
         "neutral",
         "contradiction"
-        
     ],
     "mnli-mm": [
         "entailment",
@@ -37,5 +36,6 @@
     "sst-2": [
         "0",
         "1"
-    ]
+    ],
+    "weight_decay": 0.1
 }

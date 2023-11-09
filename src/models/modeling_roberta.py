@@ -221,9 +221,16 @@ class RobertaSelfAttention(nn.Module):
                 2 * config.max_position_embeddings - 1, self.attention_head_size
             )
         self.is_decoder = config.is_decoder
-
+        
+        # load linear weights before building monarch layers
+        self.query = nn.Linear(self.config.hidden_size, self.all_head_size)
+        self.key = nn.Linear(self.config.hidden_size, self.all_head_size)
+        self.value = nn.Linear(self.config.hidden_size, self.all_head_size)
+        
     # @Wenxuan
     def init_monarch_layers(self, print_shape=False):
+        if not self.peft_config["monarch"]:
+            return 
         
         def factor(n):
             # find factors closest to sqrt(n)
@@ -259,11 +266,8 @@ class RobertaSelfAttention(nn.Module):
 
     def set_peft_config(self, peft_config):
         self.peft_config = peft_config
-        if self.peft_config == None or self.peft_config == {}:
-            self.query = nn.Linear(self.config.hidden_size, self.all_head_size)
-            self.key = nn.Linear(self.config.hidden_size, self.all_head_size)
-            self.value = nn.Linear(self.config.hidden_size, self.all_head_size)
-        elif peft_config["lora"]:
+        
+        if peft_config["lora"]:
             (rank, alpha, dropout, bias) = (
                 peft_config["lora_r"],
                 peft_config["lora_alpha"],
@@ -280,11 +284,6 @@ class RobertaSelfAttention(nn.Module):
         elif peft_config["monarch"]:
             self.rank = peft_config["rank"]
             self.nblocks = peft_config["nblocks"]
-
-            # load linear weights before building monarch layers
-            self.query = nn.Linear(self.config.hidden_size, self.all_head_size)
-            self.key = nn.Linear(self.config.hidden_size, self.all_head_size)
-            self.value = nn.Linear(self.config.hidden_size, self.all_head_size)
             
             
     def transpose_for_scores(self, x: torch.Tensor) -> torch.Tensor:
@@ -451,7 +450,6 @@ class RobertaAttention(nn.Module):
             self.self.attention_head_size,
             self.pruned_heads,
         )
-
         # Prune linear layers
         self.self.query = prune_linear_layer(self.self.query, index)
         self.self.key = prune_linear_layer(self.self.key, index)
@@ -892,7 +890,6 @@ class RobertaModel(RobertaPreTrainedModel):
 
     # @Wenxuan
     def init_monarch_layers(self):
-        assert self.peft_config["monarch"], "not using Monarch layers in config"
         for name, module in self.named_modules():
             if isinstance(module, RobertaSelfAttention):
                 module.init_monarch_layers()

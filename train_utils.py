@@ -13,6 +13,8 @@ import json
 import time
 from tqdm import tqdm
 from sklearn.metrics import accuracy_score
+from ast import literal_eval
+from typing import Dict, List, Tuple
 
 def param_stats(model, training=False, print_trainable=False):
     param_count = 0
@@ -53,7 +55,8 @@ def select_gpu():
             max_gpu = device
             
     torch.cuda.set_device(max_gpu)
-    print("Selected GPU: %d" % max_gpu)
+    print("Selected GPU: %d" % max_gpu, "with max memory %.2f GB" % (max_mem / 1024 ** 3))
+    
     
 def prep_data(dataset_id, tokenizer):
     """
@@ -145,3 +148,34 @@ def run_trainer(trainer, test_dataset, precision="fp16", device="cuda"):
         
         finetuned_roberta_predictions = finetuned_roberta_outputs[1]
         print("fine-tuned roberta accuracy: ", round(accuracy_score(test_dataset["label"], finetuned_roberta_predictions), 3))
+
+
+def override_config(old_configs: List[Dict], new_args: List[str]):
+    """Scan through the old configs and update them with new args if they exist
+    """
+    for arg in new_args:
+        assert arg.startswith('--'), "wrong format, extra argument must be --key=value"
+        key, val = arg.split('=')
+        key = key[2:]
+        
+        try:
+            # attempt to eval it it (e.g. if bool, number, or etc)
+            attempt = literal_eval(val)
+        except (SyntaxError, ValueError):
+            # if that goes wrong, just use the string
+            attempt = val
+        
+        exists = False
+        for config in old_configs:
+            config = config.__dict__
+            if key in config.keys():
+                assert type(attempt) == type(config[key]), \
+                    f"wrong type for {key}, expected {type(config[key])}, got {type(attempt)}"
+                # cross fingers
+                print(f"Overriding: {key} = {attempt}")
+                config[key] = val
+                exists = True
+                
+        if not exists:
+            raise ValueError(f"Unknown config key: {key}")
+        

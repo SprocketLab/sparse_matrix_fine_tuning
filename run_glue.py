@@ -15,6 +15,7 @@
 # limitations under the License.
 """ Finetuning the library models for sequence classification on GLUE."""
 # You can also adapt this script on your own text classification task. Pointers for this are left as comments.
+
 import json
 import time
 import logging
@@ -23,7 +24,6 @@ import random
 import sys
 from dataclasses import dataclass, field
 from typing import Optional
-
 import datasets
 import numpy as np
 from datasets import load_dataset, load_metric
@@ -45,7 +45,7 @@ from transformers import (
 from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version, send_example_telemetry
 from transformers.utils.versions import require_version
-
+from train_utils import *
 
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
 check_min_version("4.21.0.dev0")
@@ -209,10 +209,11 @@ def main():
     # We now keep distinct sets of args, for a cleaner separation of concerns.
 
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
-    if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
+    if sys.argv[1].endswith(".json"):
         # If we pass only one argument to the script and it's the path to a json file,
         # let's parse it to get our arguments.
         model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
+        override_config([model_args, data_args, training_args], sys.argv[2:])
     else:
         model_args, data_args, training_args = parser.parse_args_into_dataclasses()
     peft_config = json.load(open("train_configs/peft_monarch.json", "r")) # use 4 blocks for peft (less params than sqrt(n) in FT)
@@ -379,8 +380,8 @@ def main():
         ignore_mismatched_sizes=model_args.ignore_mismatched_sizes,
     )
 
-    model.roberta.set_peft_config(peft_config)
-    model.roberta.init_monarch_layers() # project weights to monarch matrices
+    # model.roberta.set_peft_config(peft_config)
+    # model.roberta.init_monarch_layers() # project weights to monarch matrices
     
     # Preprocessing the raw_datasets
     if data_args.task_name is not None:
@@ -521,8 +522,8 @@ def main():
     if training_args.resume_from_checkpoint is not None:
         training_args.resume_from_checkpoint &= has_ckpt
     training_args.run_name = "glue_" + data_args.task_name # wandb run name
+
     # training_args.fsdp = "full_shard"
-    breakpoint()
     trainer = Trainer(
         model=model,
         args=training_args,

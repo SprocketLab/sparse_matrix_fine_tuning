@@ -1,4 +1,3 @@
-
 {
     "model_name_or_path": "roberta-large",
     "task_name": "qqp",
@@ -6,12 +5,13 @@
     "do_eval": true,
     "max_seq_length": 128,
     "per_device_train_batch_size": 4,
-    "learning_rate": 3e-4,
+    "learning_rate": 0.0003,
     "num_train_epochs": 16,
     "output_dir": "results/monarch_roberta_glue/",
     "fp16": true,
-    "overwrite_output_dir" : true,
+    "overwrite_output_dir": true,
     "do_predict": true,
     "logging_steps": 50,
-    "warmup_ratio": 0.06
+    "warmup_ratio": 0.06,
+    "weight_decay": 0.1
 }

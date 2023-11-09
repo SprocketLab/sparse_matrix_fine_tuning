@@ -1,9 +1,14 @@
 {
-"lora": false,
-"monarch": true,
-"rank": 1,
-"nblocks": 4,
-"layers_to_replace": ["query", "value"],
-"use_peft": true,
-"precision": "fp16"
+    "lora": false,
+    "monarch": false,
+    "rank": 1,
+    "nblocks": 4,
+    "layers_to_replace": [
+        "query",
+        "value",
+        "key"
+    ],
+    "use_peft": false,
+    "precision": "fp16",
+    "weight_decay": 0.1
 }
