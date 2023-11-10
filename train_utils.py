@@ -1,6 +1,5 @@
 import torch
 from datasets import load_dataset
-from src.models.layers.monarch_linear import MonarchLinear
 from transformers import (
     RobertaTokenizerFast,
     RobertaForSequenceClassification, # added peft layers and hard linked to the project folder 
@@ -40,7 +39,7 @@ def param_stats(model, training=False, print_trainable=False):
         assert param_trainable != 0, "There's a bug in your code, your're training nothing!"
 
 
-def select_gpu():
+def select_gpu(exclude=[]):
     """
     Select the gpu with maximum free memory
     """
@@ -50,12 +49,13 @@ def select_gpu():
     for device in range(num_gpus):
         torch.cuda.set_device(device)
         free_mem = torch.cuda.mem_get_info()[0]
-        if free_mem > max_mem:
+        if free_mem > max_mem and device not in exclude:
             max_mem = free_mem  
             max_gpu = device
             
     torch.cuda.set_device(max_gpu)
     print("Selected GPU: %d" % max_gpu, "with max memory %.2f GB" % (max_mem / 1024 ** 3))
+    return max_gpu
     
     
 def prep_data(dataset_id, tokenizer):
@@ -109,7 +109,7 @@ def setup_trainer(model_id, dataset_id, save_dir, train_config, peft_config={}, 
     json.dump(peft_config, open(save_dir + "/peft_config.json", "w")) # save peft config for record
 
     # load model and init peft layers
-    roberta_model = RobertaForSequenceClassification.from_pretrained(model_id, config=config, peft_config=peft_config).to(device)
+    roberta_model = RobertaForSequenceClassification.from_pretrained(model_id, config=config).to(device)
     if peft_config['monarch']:
         roberta_model.roberta.set_peft_config(peft_config) 
         roberta_model.roberta.init_monarch_layers() # project weights to monarch matrices

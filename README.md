@@ -26,10 +26,10 @@ Monarch PEFT:
 ``` 
 python monarch_roberta.py  --peft
 ```
-Use run_glue.py for GLUE tasks 
+For GLUE tasks (switched to Monarch mixer repo scripts, but haven't added peft config)
 (Uses hyperparams from LoRA paper but reduces epochs slightly)
-Training hyperparams are in train_configs/[task].json
-Tune block size, LoRA/Monarch config in train_configs/peft_config.json.
+Training hyperparams are in task_configs/[task].json
+Tune block size, LoRA/Monarch config in task_configs/peft_config.json.
 ```
-python run_glue.py train_configs/cola.json
+python m2_scripts/glue.py task_configs/roberta-large-finetune-glue.yaml
 ``` 

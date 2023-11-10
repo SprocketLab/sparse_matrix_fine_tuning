@@ -50,7 +50,7 @@ RUN pip install pytest matplotlib jupyter ipython ipdb gpustat scikit-learn spac
 # hydra
 RUN pip install hydra-core==1.2.0 hydra-colorlog==1.2.0 hydra-optuna-sweeper==1.2.0 python-dotenv rich
 # Core packages
-RUN pip install transformers==4.26.0 datasets==2.12.0 pytorch-lightning==1.6.5 triton==2.0.0.dev20221030 wandb==0.12.21 timm==0.6.5 torchmetrics==0.9.2
+RUN pip install datasets==2.12.0 pytorch-lightning==1.6.5 wandb==0.12.21 timm==0.6.5 torchmetrics==0.9.2
 
 # For MLPerf
 RUN pip install git+https://github.com/mlcommons/logging.git@2.0.0-rc4
@@ -83,6 +83,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
    tmux \
    zip \
    unzip \
-   zsh stow subversion fasd \
-   && rm -rf /var/lib/apt/lists/*
+   zsh stow subversion fasd \ 
+   && rm -rf /var/lib/apt/lists/*  || true
    # openmpi-bin \
+
+# m2 dependencies
+RUN pip install "einops==0.5.0" "mosaicml[nlp,wandb]>=0.14.0,<0.15" "mosaicml-streaming==0.4.1" "omegaconf==2.2.3" "transformers==4.28.1" "opt_einsum" "triton==2.0.0.dev20221103"
+

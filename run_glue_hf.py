@@ -16,13 +16,14 @@
 """ Finetuning the library models for sequence classification on GLUE."""
 # You can also adapt this script on your own text classification task. Pointers for this are left as comments.
 
+import json
+import time
 import logging
 import os
 import random
 import sys
 from dataclasses import dataclass, field
 from typing import Optional
-
 import datasets
 import numpy as np
 from datasets import load_dataset, load_metric
@@ -44,7 +45,7 @@ from transformers import (
 from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version, send_example_telemetry
 from transformers.utils.versions import require_version
-
+from train_utils import *
 
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
 check_min_version("4.21.0.dev0")
@@ -208,13 +209,17 @@ def main():
     # We now keep distinct sets of args, for a cleaner separation of concerns.
 
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
-    if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
+    if sys.argv[1].endswith(".json"):
         # If we pass only one argument to the script and it's the path to a json file,
         # let's parse it to get our arguments.
         model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
+        override_config([model_args, data_args, training_args], sys.argv[2:])
     else:
         model_args, data_args, training_args = parser.parse_args_into_dataclasses()
-
+    peft_config = json.load(open("task_configs/peft_monarch.json", "r")) # use 4 blocks for peft (less params than sqrt(n) in FT)
+    training_args.output_dir = os.path.join(training_args.output_dir, data_args.task_name)
+    os.makedirs(training_args.output_dir, exist_ok=True)
+    
     # Sending telemetry. Tracking the example usage helps us better allocate resources to maintain them. The
     # information sent is the one passed as arguments along with your Python/PyTorch versions.
     send_example_telemetry("run_glue", model_args, data_args)
@@ -374,7 +379,8 @@ def main():
         use_auth_token=True if model_args.use_auth_token else None,
         ignore_mismatched_sizes=model_args.ignore_mismatched_sizes,
     )
-
+    model.roberta.set_peft_config(peft_config)
+    
     # Preprocessing the raw_datasets
     if data_args.task_name is not None:
         sentence1_key, sentence2_key = task_to_keys[data_args.task_name]
@@ -483,7 +489,7 @@ def main():
         metric = load_metric("glue", data_args.task_name)
     else:
         metric = load_metric("accuracy")
-
+    breakpoint()
     # You can define your custom compute_metrics function. It takes an `EvalPrediction` object (a namedtuple with a
     # predictions and label_ids field) and has to return a dictionary string to float.
     def compute_metrics(p: EvalPrediction):
@@ -509,6 +515,13 @@ def main():
         data_collator = None
 
     # Initialize our Trainer
+    training_args.save_total_limit = 2 # avoid flooding the disk
+    has_ckpt =  any([file.startswith("checkpoint") for file in os.listdir(training_args.output_dir)])
+    if training_args.resume_from_checkpoint is not None:
+        training_args.resume_from_checkpoint &= has_ckpt
+    training_args.run_name = "glue_" + data_args.task_name # wandb run name
+
+    # training_args.fsdp = "full_shard"
     trainer = Trainer(
         model=model,
         args=training_args,
@@ -550,7 +563,7 @@ def main():
             tasks.append("mnli-mm")
             eval_datasets.append(raw_datasets["validation_mismatched"])
             combined = {}
-
+        
         for eval_dataset, task in zip(eval_datasets, tasks):
             metrics = trainer.evaluate(eval_dataset=eval_dataset)
 
@@ -563,7 +576,6 @@ def main():
                 metrics = {k + "_mm": v for k, v in metrics.items()}
             if task is not None and "mnli" in task:
                 combined.update(metrics)
-
             trainer.log_metrics("eval", metrics)
             trainer.save_metrics("eval", combined if task is not None and "mnli" in task else metrics)
 
@@ -576,14 +588,15 @@ def main():
         if data_args.task_name == "mnli":
             tasks.append("mnli-mm")
             predict_datasets.append(raw_datasets["test_mismatched"])
-
+        
+        t1 = time.time()
         for predict_dataset, task in zip(predict_datasets, tasks):
             # Removing the `label` columns because it contains -1 and Trainer won't like that.
             predict_dataset = predict_dataset.remove_columns("label")
             predictions = trainer.predict(predict_dataset, metric_key_prefix="predict").predictions
             predictions = np.squeeze(predictions) if is_regression else np.argmax(predictions, axis=1)
 
-            output_predict_file = os.path.join(training_args.output_dir, f"predict_results_{task}.txt")
+            output_predict_file = os.path.join(training_args.output_dir, f"predict_results_{task}.tsv")
             if trainer.is_world_process_zero():
                 with open(output_predict_file, "w") as writer:
                     logger.info(f"***** Predict results {task} *****")
@@ -594,7 +607,8 @@ def main():
                         else:
                             item = label_list[item]
                             writer.write(f"{index}\t{item}\n")
-
+        print("Inferece time on test set: ", time.time() - t1)
+        
     kwargs = {"finetuned_from": model_args.model_name_or_path, "tasks": "text-classification"}
     if data_args.task_name is not None:
         kwargs["language"] = "en"

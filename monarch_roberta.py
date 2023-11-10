@@ -32,7 +32,7 @@ if device == "cpu":
 
 # ### Load dataset, model, and tokenizer
 dataset_id = args.dataset
-train_config = json.load(open(f"train_configs/{dataset_id}.json", "r")) # load predefined hyperparams
+train_config = json.load(open(f"task_configs/{dataset_id}.json", "r")) # load predefined hyperparams
 if dataset_id != "ag_news":
     print(f"Training on {dataset_id} in GLUE")
 
