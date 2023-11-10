@@ -380,7 +380,7 @@ def main():
         ignore_mismatched_sizes=model_args.ignore_mismatched_sizes,
     )
 
-    # model.roberta.set_peft_config(peft_config)
+    model.roberta.set_peft_config(peft_config)
     
     # Preprocessing the raw_datasets
     if data_args.task_name is not None:
