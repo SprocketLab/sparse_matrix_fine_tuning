@@ -2,7 +2,7 @@
 # Please resolve any `null` fields before launching!
 
 # Whether to run the various GLUE jobs serially or in parallel (use parallel=True to take advantage of multiple GPUs)
-parallel: true
+parallel: false
 
 # Basic run configuration, additional details will be added to this name for each GLUE task, and each random seed
 base_run_name: monarch-mixer-finetune-glue-786dim-80m-parameters
@@ -44,7 +44,7 @@ model:
 
 
 # Loading
-starting_checkpoint_load_path: /fly/results/     # Fill this in with the checkpoint from the end of pretraining
+starting_checkpoint_load_path:  /fly/results  # Fill this in with the checkpoint from the end of pretraining
 local_pretrain_checkpoint_folder: ./local-bert-checkpoints/
 
 # When starting from mnli

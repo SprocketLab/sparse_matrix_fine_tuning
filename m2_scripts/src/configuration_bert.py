@@ -48,7 +48,7 @@ class BertConfig(BertConfig):
         super().__init__(
             attention_probs_dropout_prob=attention_probs_dropout_prob, **kwargs)
         self.alibi_starting_size = alibi_starting_size
-
+        breakpoint()
         # mlp
         self.use_glu_mlp = use_glu_mlp
         self.use_monarch_mlp = use_monarch_mlp

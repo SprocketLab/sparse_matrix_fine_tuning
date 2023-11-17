@@ -41,8 +41,8 @@ from transformers import (
     AutoModelForSequenceClassification,
     AutoTokenizer,
 )
-# last level
-sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+# 2 levels up
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 from train_utils import *
 
 TASK_NAME_TO_CLASS = {

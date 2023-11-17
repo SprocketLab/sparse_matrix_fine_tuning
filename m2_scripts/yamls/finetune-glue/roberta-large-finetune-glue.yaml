@@ -45,7 +45,7 @@ model:
 
 
 # Loading
-starting_checkpoint_load_path: /fly/results     # Fill this in with the checkpoint from the end of pretraining
+starting_checkpoint_load_path: None    # Fill this in with the checkpoint from the end of pretraining
 local_pretrain_checkpoint_folder: /fly/results 
 
 # When starting from mnli

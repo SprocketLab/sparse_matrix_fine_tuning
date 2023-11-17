@@ -5,8 +5,8 @@ import torch.nn as nn
 
 from einops import rearrange
 
-from src.models.layers.blockdiag_butterfly_multiply import blockdiag_butterfly_multiply
-# from src.ops.low_rank import low_rank_project
+from fly_src.models.layers.blockdiag_butterfly_multiply import blockdiag_butterfly_multiply
+# from fly_src.ops.low_rank import low_rank_project
 
 
 # Copied here so it's more self-contained

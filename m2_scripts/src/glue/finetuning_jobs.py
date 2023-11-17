@@ -28,7 +28,7 @@ from composer.trainer.trainer import Trainer
 from composer.utils import dist, reproducibility
 from data import create_glue_dataset
 from torch.utils.data import DataLoader
-
+import pandas as pd
 
 def _build_dataloader(dataset, **kwargs):
     import transformers
@@ -179,7 +179,13 @@ class FineTuneJob:
             'metrics': collected_metrics,
             'job_name': self.job_name
         }
-
+        # @Wenxuan
+        # TODO: add test prediction code
+        
+        # save logs locally
+        log = pd.DataFrame(trainer.state.log_history)
+        log.to_csv(f'{self.save_folder}/log.csv')
+        
         return output
 
 
@@ -239,7 +245,7 @@ class GlueClassificationJob(FineTuneJob):
                        train_dataloader=self.train_dataloader,
                        eval_dataloader=self.evaluators,
                        eval_interval=self.eval_interval,
-                       load_path=None,
+                       load_path=self.load_path,
                        save_folder=self.save_folder,
                        max_duration=self.max_duration,
                        seed=self.seed,

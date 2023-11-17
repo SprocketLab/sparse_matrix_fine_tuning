@@ -2,10 +2,10 @@
 # Please resolve any `null` fields before launching!
 
 # Whether to run the various GLUE jobs serially or in parallel (use parallel=True to take advantage of multiple GPUs)
-parallel: true
+parallel: false
 
 # Basic run configuration, additional details will be added to this name for each GLUE task, and each random seed
-base_run_name: roberta-glue
+base_run_name: roberta-glue-m2-hyp-params
 default_seed: 19
 precision: amp_bf16 
 max_seq_len: 128
@@ -45,7 +45,7 @@ model:
 
 
 # Loading
-starting_checkpoint_load_path: None    # Fill this in with the checkpoint from the end of pretraining
+starting_checkpoint_load_path: /fly/results   # Fill this in with the checkpoint from the end of pretraining
 local_pretrain_checkpoint_folder: /fly/results 
 
 # When starting from mnli
@@ -58,9 +58,9 @@ save_finetune_checkpoint_prefix: /fly/results  # (local)
 save_finetune_checkpoint_folder: ${save_finetune_checkpoint_prefix}/${base_run_name}
 
 # (Optional) W&B logging
-loggers:
-  wandb:
-    project:     monarch
+# loggers:
+#   wandb:
+#     project:     monarch
     # entity:      roberta-large
 
 # Callbacks
@@ -83,59 +83,54 @@ tasks:
       # RTE, MRPC and STS-B from the MNLI checkpoint
       save_num_checkpoints_to_keep: 1
       max_sequence_length: 128
-      wd: 0.01
-      lr: 3e-4
+      lr: 5.0e-05
+      wd: 5.0e-06
   rte:
-    seeds: [19, 8364, 717, 10536, 90166]
+    seeds: [19]
     trainer_kwargs:
       save_num_checkpoints_to_keep: 0
       max_sequence_length: 128
-      optim_name: adamw
-      max_duration: 6ep
-      wd: 0.01
-      lr: 4e-4
+      lr: 1.0e-5
+      wd: 1.0e-6
   qqp:
     trainer_kwargs:
       save_num_checkpoints_to_keep: 0
       max_sequence_length: 128
-      optim_name: adamw
-      wd: 0.01
-      lr: 3e-4
-      max_duration: 10ep
+      lr: 3.0e-5
+      wd: 3.0e-6
   qnli:
     trainer_kwargs:
       save_num_checkpoints_to_keep: 0
       max_sequence_length: 128
-      wd: 0.01
-      lr: 2e-4
-      pool_all: True # average pooling
+      lr: 5.0e-5
+      wd: 1.0e-6
+      pool_all: True
   sst2:
-    seeds: [19, 8364, 717]
+    seeds: [19]
     trainer_kwargs:
       save_num_checkpoints_to_keep: 0
       max_sequence_length: 128
-      wd: 0.01
-      lr: 4e-4
+      lr: 3.0e-5
+      wd: 3.0e-6
   stsb:
-    seeds: [19, 8364, 717, 10536, 90166]
+    seeds: [19]
     trainer_kwargs:
       save_num_checkpoints_to_keep: 0
       max_sequence_length: 128
-      optim_name: adamw
-      wd: 0.01
-      lr: 2e-4
+      lr: 8.0e-5
+      wd: 3.0e-6
   mrpc:
-    seeds: [19, 8364, 717, 10536, 90166]
+    seeds: [19]
     trainer_kwargs:
       save_num_checkpoints_to_keep: 0
       max_sequence_length: 128
-      optim_name: adamw
-      wd: 0.01
-      lr: 3e-4
+      lr: 8.0e-5
+      wd: 8.0e-5
   cola:
-    seeds: [19, 8364, 717, 10536]
+    seeds: [19]
     trainer_kwargs:
       save_num_checkpoints_to_keep: 0
       max_sequence_length: 128
-      wd: 0.01
-      lr: 2e-4
+      lr: 8.0e-5
+      wd: 5.0e-6
+      optim_name: AdamW

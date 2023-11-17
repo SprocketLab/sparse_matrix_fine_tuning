@@ -10,7 +10,7 @@ sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 try:
     import torch
     # yapf: disable
-    from src.bert_layers import (BertEmbeddings, BertEncoder, BertForMaskedLM,
+    from m2_src.bert_layers import (BertEmbeddings, BertEncoder, BertForMaskedLM,
                                  BertForSequenceClassification,
                                  BertGatedLinearUnitMLP, BertLayer,
                                  BertLMPredictionHead, BertModel,
@@ -18,16 +18,16 @@ try:
                                  BertPredictionHeadTransform, BertSelfOutput,
                                  BertUnpadAttention, BertUnpadSelfAttention)
     # yapf: enable
-    from src.bert_padding import (IndexFirstAxis, IndexPutFirstAxis,
+    from m2_src.bert_padding import (IndexFirstAxis, IndexPutFirstAxis,
                                   index_first_axis, index_put_first_axis,
                                   pad_input, unpad_input, unpad_input_only)
     if torch.cuda.is_available():
-        from src.flash_attn_triton import \
+        from m2_src.flash_attn_triton import \
             flash_attn_func as flash_attn_func_bert # type: ignore
-        from src.flash_attn_triton import \
+        from m2_src.flash_attn_triton import \
             flash_attn_qkvpacked_func as flash_attn_qkvpacked_func_bert # type: ignore
-    from src.hf_bert import create_hf_bert_classification, create_hf_bert_mlm
-    from src.mosaic_bert import (create_mosaic_bert_classification,
+    from m2_src.hf_bert import create_hf_bert_classification, create_hf_bert_mlm
+    from m2_src.mosaic_bert import (create_mosaic_bert_classification,
                                  create_mosaic_bert_mlm)
 except ImportError as e:
     try:

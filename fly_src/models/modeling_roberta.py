@@ -22,8 +22,8 @@ import torch.utils.checkpoint
 from torch import nn
 from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss
 
-from ...activations import ACT2FN, gelu
-from ...modeling_outputs import (
+from transformers.activations import ACT2FN, gelu
+from transformers.modeling_outputs import (
     BaseModelOutputWithPastAndCrossAttentions,
     BaseModelOutputWithPoolingAndCrossAttentions,
     CausalLMOutputWithCrossAttentions,
@@ -33,26 +33,26 @@ from ...modeling_outputs import (
     SequenceClassifierOutput,
     TokenClassifierOutput,
 )
-from ...modeling_utils import PreTrainedModel
-from ...pytorch_utils import (
+from transformers.modeling_utils import PreTrainedModel
+from transformers.pytorch_utils import (
     apply_chunking_to_forward,
     find_pruneable_heads_and_indices,
     prune_linear_layer,
 )
-from ...utils import (
+from transformers.utils import (
     add_code_sample_docstrings,
     add_start_docstrings,
     add_start_docstrings_to_model_forward,
     logging,
     replace_return_docstrings,
 )
-from .configuration_roberta import RobertaConfig
+from transformers.models.roberta.configuration_roberta import RobertaConfig
 
 # peft imports
 import sys, os
 
-sys.path.insert(0, "/fly")  # docker cwd
-from src.models.layers.monarch_linear import MonarchLinear
+sys.path.insert(0, "/fly")  # docker working dir
+from fly_src.models.layers.monarch_linear import MonarchLinear
 import loralib as lora
 
 
@@ -884,7 +884,7 @@ class RobertaModel(RobertaPreTrainedModel):
         self.encoder = RobertaEncoder(config, peft_config)
 
         self.pooler = RobertaPooler(config) if add_pooling_layer else None
-
+        breakpoint()
         # Initialize weights and apply final processing
         self.post_init()
 

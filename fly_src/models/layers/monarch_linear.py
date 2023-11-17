@@ -6,15 +6,15 @@ from torch.nn import init
 
 from einops import rearrange
 import torch.nn.functional as F
-from src.models.layers.structured_linear import StructuredLinear
-from src.models.layers.blockdiag_butterfly_multiply import blockdiag_butterfly_multiply
-from src.utils.utils import get_logger
+from fly_src.models.layers.structured_linear import StructuredLinear
+from fly_src.models.layers.blockdiag_butterfly_multiply import blockdiag_butterfly_multiply
+from fly_src.utils.utils import get_logger
 
 # NOTE converting weights to monarch matrices
-from src.ops.blockdiag_butterfly_projection import (
+from fly_src.ops.blockdiag_butterfly_projection import (
     blockdiag_butterfly_project,
 )  # square weights, rank 1
-from src.ops.blockdiag_butterfly_einsum import (
+from fly_src.ops.blockdiag_butterfly_einsum import (
     blockdiag_butterfly_project_einsum_rank,  # for rectangular, custom rank
     blockdiag_butterfly_project_einsum_simple,  # for rectangular, rank 1
 )
