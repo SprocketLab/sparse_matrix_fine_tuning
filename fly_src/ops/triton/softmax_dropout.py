@@ -11,15 +11,15 @@ from einops import rearrange, repeat
 import triton
 import triton.language as tl
 
-from src.ops.triton.k_softmax import _softmax, _softmax_backward
-from src.ops.triton.k_softmax_dropout import _softmax_dropout_backward
-from src.ops.triton.softmax import softmax
+from fly_src.ops.triton.k_softmax import _softmax, _softmax_backward
+from fly_src.ops.triton.k_softmax_dropout import _softmax_dropout_backward
+from fly_src.ops.triton.softmax import softmax
 
 FAST_MHA_AVAILABLE = True
 try:
     from fast_multihead_attn import additive_mask_softmax_dropout_backward
 except ImportError:
-    from src.utils.utils import get_logger
+    from fly_src.utils.utils import get_logger
     logger = get_logger()
     logger.info('fast_multihead_attn from apex is not installed.')
     FAST_MHA_AVAILABLE = False

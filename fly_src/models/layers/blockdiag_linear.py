@@ -5,8 +5,8 @@ import torch.nn as nn
 
 from einops import rearrange
 
-from src.models.layers.structured_linear import StructuredLinear
-from src.ops.blockdiag_multiply import blockdiag_multiply
+from fly_src.models.layers.structured_linear import StructuredLinear
+from fly_src.ops.blockdiag_multiply import blockdiag_multiply
 
 
 class BlockdiagLinear(StructuredLinear):

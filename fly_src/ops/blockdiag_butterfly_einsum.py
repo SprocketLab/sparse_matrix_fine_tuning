@@ -2,7 +2,7 @@ import torch
 
 from einops import rearrange
 
-from src.ops.low_rank import low_rank_project
+from fly_src.ops.low_rank import low_rank_project
 
 
 def blockdiag_butterfly_multiply_einsum_simple(x, w1_bfly, w2_bfly):

@@ -2,7 +2,7 @@
 # github:DeepVoltaire/AutoAugment
 
 import numpy as np
-from src.utils.transforms import *
+from fly_src.utils.transforms import *
 
 
 class ImageNetPolicy(object):
