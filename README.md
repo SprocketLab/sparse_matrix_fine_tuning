@@ -33,7 +33,7 @@ Tune block size, LoRA/Monarch config in task_configs/peft_config.json.
 ```
 python m2_scripts/glue.py task_configs/roberta-large-finetune-glue.yaml
 ``` 
-Or try run_glue_hf.py from huggingface (but this doesn't converge somehow)
+Or try run_glue_hf.py from huggingface
 ```
 pyton run_glue_hf.py task_configs/cola.json
 ```

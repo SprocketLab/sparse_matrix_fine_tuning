@@ -5,7 +5,7 @@ if [ "$#" -ne 1 ]; then
 fi
 
 # Set the CUDA_VISIBLE_DEVICES environment variable
-CUDA_VISIBLE_DEVICES="$1" python run_glue.py task_configs/cola.json --do_train=False
+CUDA_VISIBLE_DEVICES="$1" python run_glue.py task_configs/cola.json --do_train=False 
 CUDA_VISIBLE_DEVICES="$1" python run_glue.py task_configs/mrpc.json --do_train=False
 CUDA_VISIBLE_DEVICES="$1" python run_glue.py task_configs/qnli.json --do_train=False
 CUDA_VISIBLE_DEVICES="$1" python run_glue.py task_configs/rte.json  --do_train=False

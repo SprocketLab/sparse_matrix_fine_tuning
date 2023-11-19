@@ -156,6 +156,7 @@ def run_trainer(trainer, test_dataset, precision="fp16", device="cuda"):
 def override_config(old_configs: List[Dict], new_args: List[str]):
     """Scan through the old configs and update them with new args if they exist
     """
+    extra_args = {}
     for arg in new_args:
         assert arg.startswith('--'), "wrong format, extra argument must be --key=value"
         key, val = arg.split('=')
@@ -180,5 +181,6 @@ def override_config(old_configs: List[Dict], new_args: List[str]):
                 exists = True
                 
         if not exists:
-            raise ValueError(f"Unknown config key: {key}")
+            extra_args[key] = attempt
+        return extra_args
         

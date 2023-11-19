@@ -4,14 +4,15 @@
     "do_train": true,
     "do_eval": true,
     "max_seq_length": 128,
-    "per_device_train_batch_size": 4,
-    "learning_rate": 0.0003,
-    "num_train_epochs": 16,
+    "per_device_train_batch_size": 16,
+    "learning_rate": 3e-05,
+    "num_train_epochs": 10,
     "output_dir": "results/monarch_roberta_glue/",
     "fp16": true,
     "overwrite_output_dir": true,
     "do_predict": true,
     "logging_steps": 50,
     "warmup_ratio": 0.06,
-    "weight_decay": 0.1
+    "weight_decay": 0.1,
+    "lr_scheduler_type": "cosine"
 }

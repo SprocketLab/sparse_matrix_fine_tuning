@@ -202,8 +202,10 @@ def _setup_gpu_queue(num_gpus: int, manager: SyncManager):
     num_gpus].
     """
     gpu_queue = manager.Queue(num_gpus)
+    gpu_list = []
     for gpu_id in range(num_gpus):
-        # gpu_id = select_gpu(exclude=[int(gpu_queue.get())])
+        gpu_id = select_gpu(exclude=[gpu_list])
+        gpu_list.append(gpu_id)
         gpu_queue.put(gpu_id)
     return gpu_queue
 

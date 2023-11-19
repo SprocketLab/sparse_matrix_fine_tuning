@@ -55,6 +55,30 @@ sys.path.insert(0, "/fly")  # docker working dir
 from fly_src.models.layers.monarch_linear import MonarchLinear
 import loralib as lora
 
+def param_stats(model, training=False, print_trainable=False):
+    param_count = 0
+    param_trainable = 0
+    model_size = 0
+    
+    for name, param in model.named_parameters():
+        param_count += torch.numel(param) 
+        model_size += torch.numel(param) * param.element_size()
+        if param.requires_grad:
+            param_trainable += torch.numel(param) 
+            if print_trainable:
+                print("trainable:", name)            
+                
+    print("Total GPU memory: %.2f GB" % (torch.cuda.mem_get_info()[1] / 1024 ** 3))
+    print("Avail GPU memory %.2f GB" % (torch.cuda.mem_get_info()[0] / 1024 ** 3))
+    print(
+        f"Total parameters: {param_count / 1024 ** 2:.2f}M,\n \
+        trainable parameters: {param_trainable / 1024 ** 2:.2f}M ({100 * param_trainable / param_count:.2f}%)\n \
+        model size: {model_size / 1024 ** 2:.2f}MB"
+    )
+    if training:
+        assert param_trainable != 0, "There's a bug in your code, your're training nothing!"
+
+
 
 logger = logging.get_logger(__name__)
 
@@ -884,7 +908,7 @@ class RobertaModel(RobertaPreTrainedModel):
         self.encoder = RobertaEncoder(config, peft_config)
 
         self.pooler = RobertaPooler(config) if add_pooling_layer else None
-        breakpoint()
+        self.param_printed = False
         # Initialize weights and apply final processing
         self.post_init()
 
@@ -899,12 +923,16 @@ class RobertaModel(RobertaPreTrainedModel):
             else:
                 module.requires_grad_(False)
     
+    
     def train(self, mode: bool = True):
-        
         if mode and hasattr(self, "peft_config") and self.peft_config["monarch"]:
             self.init_monarch_layers()
         else:
             super().train(mode)
+        if not self.param_printed:
+            param_stats(self, training=True)
+            self.param_printed = True
+            
             
     def set_peft_config(self, peft_config=None):
         """

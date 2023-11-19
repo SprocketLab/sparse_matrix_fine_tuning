@@ -27,7 +27,7 @@ from transformers import (
     default_data_collator,
     set_seed,
 )
-from src.models.modeling_roberta import RobertaForSequenceClassification
+from fly_src.models.modeling_roberta import RobertaForSequenceClassification
 from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version, send_example_telemetry
 from transformers.utils.versions import require_version
@@ -190,7 +190,7 @@ class ModelArguments:
 
 
 def main():
-    # See all possible arguments in src/transformers/training_args.py
+    # See all possible arguments in fly_src/transformers/training_args.py
     # or by passing the --help flag to this script.
     # We now keep distinct sets of args, for a cleaner separation of concerns.
 
@@ -199,7 +199,8 @@ def main():
         # If we pass only one argument to the script and it's the path to a json file,
         # let's parse it to get our arguments.
         model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
-        override_config([model_args, data_args, training_args], sys.argv[2:])
+        extra_args = override_config([model_args, data_args, training_args], sys.argv[2:])
+        peft = getattr(extra_args, "peft", True)
     else:
         model_args, data_args, training_args = parser.parse_args_into_dataclasses()
     peft_config = json.load(open("task_configs/peft_monarch.json", "r")) # use 4 blocks for peft (less params than sqrt(n) in FT)
@@ -356,8 +357,7 @@ def main():
         revision=model_args.model_revision,
         use_auth_token=True if model_args.use_auth_token else None,
     )
-    breakpoint()
-    model = AutoModelForSequenceClassification.from_pretrained(
+    model = RobertaForSequenceClassification.from_pretrained(
         model_args.model_name_or_path,
         from_tf=bool(".ckpt" in model_args.model_name_or_path),
         config=config,
@@ -366,7 +366,9 @@ def main():
         use_auth_token=True if model_args.use_auth_token else None,
         ignore_mismatched_sizes=model_args.ignore_mismatched_sizes,
     )
-    model.roberta.set_peft_config(peft_config)
+    
+    if peft:
+        model.roberta.set_peft_config(peft_config)
     
     # Preprocessing the raw_datasets
     if data_args.task_name is not None:
@@ -476,7 +478,6 @@ def main():
         metric = load_metric("glue", data_args.task_name)
     else:
         metric = load_metric("accuracy")
-    breakpoint()
     # You can define your custom compute_metrics function. It takes an `EvalPrediction` object (a namedtuple with a
     # predictions and label_ids field) and has to return a dictionary string to float.
     def compute_metrics(p: EvalPrediction):
@@ -501,13 +502,14 @@ def main():
     else:
         data_collator = None
 
+    # @Wenxuan
     # Initialize our Trainer
     training_args.save_total_limit = 2 # avoid flooding the disk
     has_ckpt =  any([file.startswith("checkpoint") for file in os.listdir(training_args.output_dir)])
     if training_args.resume_from_checkpoint is not None:
         training_args.resume_from_checkpoint &= has_ckpt
     training_args.run_name = "glue_" + data_args.task_name # wandb run name
-
+    os.environ["WANDB_PROJECT"] = "monarch_hf" + "_peft" if peft else ""
     # training_args.fsdp = "full_shard"
     trainer = Trainer(
         model=model,
