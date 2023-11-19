@@ -266,7 +266,10 @@ class RobertaSelfAttention(nn.Module):
         for name in self.peft_config["layers_to_replace"]:
             layer = getattr(self, name)
             weights = list(layer.parameters())[0]
-            m, n = weights.shape
+            try:
+                m, n = weights.shape
+            except:
+                breakpoint()
             if self.peft_config["use_peft"]:
                 nblocks = self.nblocks
             else:
@@ -925,13 +928,13 @@ class RobertaModel(RobertaPreTrainedModel):
     
     
     def train(self, mode: bool = True):
-        if mode and hasattr(self, "peft_config") and self.peft_config["monarch"]:
+        if mode and hasattr(self, "peft_config") and self.peft_config["monarch"] and self.param_printed:
+            self.param_printed = True
             self.init_monarch_layers()
+            param_stats(self, training=True)
         else:
             super().train(mode)
-        if not self.param_printed:
-            param_stats(self, training=True)
-            self.param_printed = True
+
             
             
     def set_peft_config(self, peft_config=None):
