@@ -508,8 +508,12 @@ def main():
     has_ckpt =  any([file.startswith("checkpoint") for file in os.listdir(training_args.output_dir)])
     if training_args.resume_from_checkpoint is not None:
         training_args.resume_from_checkpoint &= has_ckpt
+        
+    # wandb config 
     training_args.run_name = "glue_" + data_args.task_name # wandb run name
     os.environ["WANDB_PROJECT"] = "monarch_hf" + "_peft" if peft else ""
+    # group runs within the same hour
+    os.environ["WANDB_RUN_GROUP"] = time.strftime("%m-%d-%H", time.localtime())
     # training_args.fsdp = "full_shard"
     trainer = Trainer(
         model=model,

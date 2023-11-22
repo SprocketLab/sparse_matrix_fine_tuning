@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 import torch
 from datasets import load_dataset
 import logging
