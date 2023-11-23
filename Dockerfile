@@ -89,4 +89,4 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # m2 dependencies
 RUN pip install "einops==0.5.0" "mosaicml[nlp,wandb]>=0.14.0,<0.15" "mosaicml-streaming==0.4.1" "omegaconf==2.2.3" "transformers==4.28.1" "opt_einsum" "triton==2.0.0.dev20221103"
-
+RUN pip install ray

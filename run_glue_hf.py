@@ -33,6 +33,10 @@ from transformers.utils import check_min_version, send_example_telemetry
 from transformers.utils.versions import require_version
 from train_utils import *
 
+from ray import train, tune
+from ray.tune.schedulers import ASHAScheduler
+import ray.train.huggingface.transformers as ray_hf
+
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
 check_min_version("4.21.0.dev0")
 
@@ -189,21 +193,34 @@ class ModelArguments:
     )
 
 
-def main():
+def main(config: dict = None):
     # See all possible arguments in fly_src/transformers/training_args.py
     # or by passing the --help flag to this script.
     # We now keep distinct sets of args, for a cleaner separation of concerns.
-
+    
+    peft_config = json.load(open("task_configs/peft_monarch.json", "r"))  # load monarch config
+    
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
+    use_monarch = True
+    
+    # Example CLA usage: python run_glue_hf.py task_configs/cola.json 
     if sys.argv[1].endswith(".json"):
-        # If we pass only one argument to the script and it's the path to a json file,
-        # let's parse it to get our arguments.
         model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
         extra_args = override_config([model_args, data_args, training_args], sys.argv[2:])
-        peft = getattr(extra_args, "peft", True)
+        use_monarch = getattr(extra_args, "monarch", True) # if false will just do FT without monarch
+        
+    elif config is not None:
+        model_args, data_args, training_args = parser.parse_dict(config, allow_extra_keys=True)
+        
+        # allowing overriding peft config when passing in config with Ray Tune
+        peft_config['nblocks'] = config.pop("nblocks", peft_config['nblocks'])
+        peft_config['rank'] = config.pop("rank", peft_config['rank'])
+        
     else:
+        # parse command line args
         model_args, data_args, training_args = parser.parse_args_into_dataclasses()
-    peft_config = json.load(open("task_configs/peft_monarch.json", "r")) # use 4 blocks for peft (less params than sqrt(n) in FT)
+    
+
     training_args.output_dir = os.path.join(training_args.output_dir, data_args.task_name)
     os.makedirs(training_args.output_dir, exist_ok=True)
     
@@ -367,7 +384,7 @@ def main():
         ignore_mismatched_sizes=model_args.ignore_mismatched_sizes,
     )
     
-    if peft:
+    if use_monarch:
         model.roberta.set_peft_config(peft_config)
     
     # Preprocessing the raw_datasets
@@ -511,7 +528,7 @@ def main():
         
     # wandb config 
     training_args.run_name = "glue_" + data_args.task_name # wandb run name
-    os.environ["WANDB_PROJECT"] = "monarch_hf" + "_peft" if peft else ""
+    os.environ["WANDB_PROJECT"] = "monarch_hf" + "_peft" if use_monarch else ""
     # group runs within the same hour
     os.environ["WANDB_RUN_GROUP"] = time.strftime("%m-%d-%H", time.localtime())
     # training_args.fsdp = "full_shard"
@@ -602,23 +619,24 @@ def main():
                             writer.write(f"{index}\t{item}\n")
         print("Inferece time on test set: ", time.time() - t1)
         
-    kwargs = {"finetuned_from": model_args.model_name_or_path, "tasks": "text-classification"}
-    if data_args.task_name is not None:
-        kwargs["language"] = "en"
-        kwargs["dataset_tags"] = "glue"
-        kwargs["dataset_args"] = data_args.task_name
-        kwargs["dataset"] = f"GLUE {data_args.task_name.upper()}"
+    # kwargs = {"finetuned_from": model_args.model_name_or_path, "tasks": "text-classification"}
+    # if data_args.task_name is not None:
+    #     kwargs["language"] = "en"
+    #     kwargs["dataset_tags"] = "glue"
+    #     kwargs["dataset_args"] = data_args.task_name
+    #     kwargs["dataset"] = f"GLUE {data_args.task_name.upper()}"
 
-    if training_args.push_to_hub:
-        trainer.push_to_hub(**kwargs)
-    else:
-        trainer.create_model_card(**kwargs)
+    # if training_args.push_to_hub:
+    #     trainer.push_to_hub(**kwargs)
+    # else:
+    #     trainer.create_model_card(**kwargs)
 
-
-def _mp_fn(index):
-    # For xla_spawn (TPUs)
-    main()
 
 
 if __name__ == "__main__":
-    main()
+    
+    if sys.argv[1] == "--tune":
+        # tuner = tune.Tuner
+        pass
+    else:
+        main()

@@ -49,7 +49,7 @@ id2label = {i: label for i, label in enumerate(class_names)}
 config = AutoConfig.from_pretrained(model_id)
 config.update({"id2label": id2label})
 config.update(peft_config)
-json.dump(peft_config, open(save_dir + "/peft_config.json", "w"))
+json.dump(peft_config, open(save_dir + "/peft_lora.json", "w"))
 
 # load model and init lora
 roberta_model = RobertaForSequenceClassification.from_pretrained(model_id, config=config, peft_config=peft_config).to(device)

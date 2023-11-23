@@ -253,7 +253,7 @@ class RobertaSelfAttention(nn.Module):
         
     # @Wenxuan
     def init_monarch_layers(self, print_shape=False):
-        if not self.peft_config["monarch"]:
+        if not self.peft_config.pop("monarch", False):
             return 
         
         def factor(n):
@@ -266,13 +266,13 @@ class RobertaSelfAttention(nn.Module):
         for name in self.peft_config["layers_to_replace"]:
             layer = getattr(self, name)
             weights = list(layer.parameters())[0]
-            try:
-                m, n = weights.shape
-            except:
-                breakpoint()
+            m, n = weights.shape
+
             if self.peft_config["use_peft"]:
+                # freeze dense, init and train monarch, and then merge during inference
                 nblocks = self.nblocks
             else:
+                # project dense to monarch and keep monarch only
                 nblocks = factor(layer.in_features)[0]  # increase to sqrt(n) blocks when used alone -> more params
 
             bias = layer.bias != None
@@ -928,7 +928,7 @@ class RobertaModel(RobertaPreTrainedModel):
     
     
     def train(self, mode: bool = True):
-        if mode and hasattr(self, "peft_config") and self.peft_config["monarch"] and self.param_printed:
+        if mode and hasattr(self, "peft_config") and self.peft_config["monarch"] and not self.param_printed:
             self.param_printed = True
             self.init_monarch_layers()
             param_stats(self, training=True)

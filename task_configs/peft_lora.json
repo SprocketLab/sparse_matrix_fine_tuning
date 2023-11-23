@@ -1,13 +1,11 @@
 {
-    "monarch": true,
-    "rank": 1,
-    "nblocks": 4,
+    "lora": true,
+    "rank": 4,
     "layers_to_replace": [
         "query",
         "value",
         "key"
     ],
-    "use_peft": true, 
     "precision": "fp16",
     "weight_decay": 0.1
 }
