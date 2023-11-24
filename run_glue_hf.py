@@ -36,6 +36,7 @@ from train_utils import *
 from ray import train, tune
 from ray.tune.schedulers import ASHAScheduler
 import ray.train.huggingface.transformers as ray_hf
+from ray.tune import CLIReporter
 
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
 check_min_version("4.21.0.dev0")
@@ -213,9 +214,9 @@ def main(config: dict = None):
         model_args, data_args, training_args = parser.parse_dict(config, allow_extra_keys=True)
         
         # allowing overriding peft config when passing in config with Ray Tune
-        peft_config['nblocks'] = config.pop("nblocks", peft_config['nblocks'])
-        peft_config['rank'] = config.pop("rank", peft_config['rank'])
-        
+        for k, v in config.items():
+            if k in peft_config:
+                peft_config[k] = v
     else:
         # parse command line args
         model_args, data_args, training_args = parser.parse_args_into_dataclasses()
@@ -374,18 +375,20 @@ def main(config: dict = None):
         revision=model_args.model_revision,
         use_auth_token=True if model_args.use_auth_token else None,
     )
-    model = RobertaForSequenceClassification.from_pretrained(
-        model_args.model_name_or_path,
-        from_tf=bool(".ckpt" in model_args.model_name_or_path),
-        config=config,
-        cache_dir=model_args.cache_dir,
-        revision=model_args.model_revision,
-        use_auth_token=True if model_args.use_auth_token else None,
-        ignore_mismatched_sizes=model_args.ignore_mismatched_sizes,
-    )
-    
-    if use_monarch:
-        model.roberta.set_peft_config(peft_config)
+    def model_init():
+        model = RobertaForSequenceClassification.from_pretrained(
+            model_args.model_name_or_path,
+            from_tf=bool(".ckpt" in model_args.model_name_or_path),
+            config=config,
+            cache_dir=model_args.cache_dir,
+            revision=model_args.model_revision,
+            use_auth_token=True if model_args.use_auth_token else None,
+            ignore_mismatched_sizes=model_args.ignore_mismatched_sizes,
+        )
+        
+        if use_monarch:
+            model.roberta.set_peft_config(peft_config)
+        return model
     
     # Preprocessing the raw_datasets
     if data_args.task_name is not None:
@@ -411,12 +414,12 @@ def main(config: dict = None):
     # Some models have set the order of the labels to use, so let's make sure we do use it.
     label_to_id = None
     if (
-        model.config.label2id != PretrainedConfig(num_labels=num_labels).label2id
+        config.label2id != PretrainedConfig(num_labels=num_labels).label2id
         and data_args.task_name is not None
         and not is_regression
     ):
         # Some have all caps in their config, some don't.
-        label_name_to_id = {k.lower(): v for k, v in model.config.label2id.items()}
+        label_name_to_id = {k.lower(): v for k, v in config.label2id.items()}
         if list(sorted(label_name_to_id.keys())) == list(sorted(label_list)):
             label_to_id = {i: int(label_name_to_id[label_list[i]]) for i in range(num_labels)}
         else:
@@ -429,11 +432,11 @@ def main(config: dict = None):
         label_to_id = {v: i for i, v in enumerate(label_list)}
 
     if label_to_id is not None:
-        model.config.label2id = label_to_id
-        model.config.id2label = {id: label for label, id in config.label2id.items()}
+        config.label2id = label_to_id
+        config.id2label = {id: label for label, id in config.label2id.items()}
     elif data_args.task_name is not None and not is_regression:
-        model.config.label2id = {l: i for i, l in enumerate(label_list)}
-        model.config.id2label = {id: label for label, id in config.label2id.items()}
+        config.label2id = {l: i for i, l in enumerate(label_list)}
+        config.id2label = {id: label for label, id in config.label2id.items()}
 
     if data_args.max_seq_length > tokenizer.model_max_length:
         logger.warning(
@@ -533,7 +536,7 @@ def main(config: dict = None):
     os.environ["WANDB_RUN_GROUP"] = time.strftime("%m-%d-%H", time.localtime())
     # training_args.fsdp = "full_shard"
     trainer = Trainer(
-        model=model,
+        model_init=model_init,
         args=training_args,
         train_dataset=train_dataset if training_args.do_train else None,
         eval_dataset=eval_dataset if training_args.do_eval else None,
@@ -542,25 +545,65 @@ def main(config: dict = None):
         data_collator=data_collator,
     )
 
-    # Training
-    if training_args.do_train:
-        checkpoint = None
-        if training_args.resume_from_checkpoint is not None:
-            checkpoint = training_args.resume_from_checkpoint
-        elif last_checkpoint is not None:
-            checkpoint = last_checkpoint
-        train_result = trainer.train(resume_from_checkpoint=checkpoint)
-        metrics = train_result.metrics
-        max_train_samples = (
-            data_args.max_train_samples if data_args.max_train_samples is not None else len(train_dataset)
-        )
-        metrics["train_samples"] = min(max_train_samples, len(train_dataset))
+    # Ray Tune
+    param_space = {
+        # "rank": tune.choice([1, 2, 3]), 
+        # "nblocks": tune.choice([2, 4, 8]),
+        "learning_rate": tune.qrandn(3e-5, 6e-6, 1e-6),
+        "per_device_train_batch_size": tune.choice([8, 16, 32]),
+        "weight_decay": tune.choice([0.01, 0.1]),
+    }
+    scheduler = ASHAScheduler(
+        max_t=25,
+        metric = "train_loss",
+        mode = "min",
+    )
+    
+    reporter = CLIReporter(
+        parameter_columns=["learning_rate", "per_device_train_batch_size", "weight_decay"],
+        metric_columns=["train_loss", "eval_loss", "eval_accuracy", "training_iteration"],
+        max_progress_rows=10,
+        max_report_frequency=10,
+    )   
+    import warnings
+    warnings.filterwarnings("ignore", category=DeprecationWarning, message=".*checkpoint_dir.*")
+    trainer.hyperparameter_search(
+        hp_space=lambda _: param_space,
+        backend="ray",
+        n_trials=25,
+        scheduler=scheduler,
+        keep_checkpoints_num=1,
+        checkpoint_score_attr="training_iteration",
+        progress_reporter=reporter,
+        resources_per_trial={"cpu": 1, "gpu": 1},
+        local_dir="ray_results",
+    )
+    
+    # load best result 
+    best_trial = trainer._tune_best_trial
+    best_ckpt = os.path.join(best_trial.checkpoint.value, "checkpoint-{}".format(best_trial.last_result["training_iteration"]))
+    trainer.model = trainer.model.from_pretrained(best_ckpt)
+    trainer.model.save_pretrained(training_args.output_dir)
+    
+    # # Training
+    # if training_args.do_train:
+    #     checkpoint = None
+    #     if training_args.resume_from_checkpoint is not None:
+    #         checkpoint = training_args.resume_from_checkpoint
+    #     elif last_checkpoint is not None:
+    #         checkpoint = last_checkpoint
+    #     train_result = trainer.train(resume_from_checkpoint=checkpoint)
+    #     metrics = train_result.metrics
+    #     max_train_samples = (
+    #         data_args.max_train_samples if data_args.max_train_samples is not None else len(train_dataset)
+    #     )
+    #     metrics["train_samples"] = min(max_train_samples, len(train_dataset))
 
-        trainer.save_model()  # Saves the tokenizer too for easy upload
+    #     trainer.save_model()  # Saves the tokenizer too for easy upload
 
-        trainer.log_metrics("train", metrics)
-        trainer.save_metrics("train", metrics)
-        trainer.save_state()
+    #     trainer.log_metrics("train", metrics)
+    #     trainer.save_metrics("train", metrics)
+    #     trainer.save_state()
 
     # Evaluation
     if training_args.do_eval:
@@ -634,9 +677,4 @@ def main(config: dict = None):
 
 
 if __name__ == "__main__":
-    
-    if sys.argv[1] == "--tune":
-        # tuner = tune.Tuner
-        pass
-    else:
-        main()
+    main()

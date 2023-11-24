@@ -1,5 +1,6 @@
 {
     "lora": true,
+    "monarch": false,
     "rank": 4,
     "layers_to_replace": [
         "query",

@@ -14,5 +14,7 @@
     "logging_steps": 50,
     "warmup_ratio": 0.06,
     "weight_decay": 0.1,
-    "lr_scheduler_type": "cosine"
+    "lr_scheduler_type": "cosine",
+    "evaluation_strategy": "steps",
+    "eval_steps": 500
 }

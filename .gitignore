@@ -5,4 +5,5 @@ __pycache__/**
 glue_data/**
 .vscode/**
 *.tar
+ray_results/**
 ```

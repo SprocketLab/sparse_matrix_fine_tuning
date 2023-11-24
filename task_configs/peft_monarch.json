@@ -1,4 +1,5 @@
 {
+    "lora": false,
     "monarch": true,
     "rank": 1,
     "nblocks": 4,
