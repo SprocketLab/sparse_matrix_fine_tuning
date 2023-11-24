@@ -588,10 +588,10 @@ def main(config: dict = None):
         best_run = trainer.hyperparameter_search(
             hp_space=lambda _: param_space,
             backend="ray",
-            n_trials=50, # under the hood it calls ray.tune.run(num_samples=n_trials, ...)
+            n_trials=40, # under the hood it calls ray.tune.run(num_samples=n_trials, ...)
             # num_samples=50,
             scheduler=scheduler,
-            keep_checkpoints_num=1,
+            keep_checkpoints_num=0,
             checkpoint_score_attr="training_iteration",
             progress_reporter=reporter,
             resources_per_trial={"cpu": 1, "gpu": 1},
