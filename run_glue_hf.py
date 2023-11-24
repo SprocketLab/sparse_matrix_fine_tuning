@@ -208,6 +208,10 @@ def main(config: dict = None):
     if sys.argv[1].endswith(".json"):
         model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
         extra_args = override_config([model_args, data_args, training_args], sys.argv[2:])
+        
+        if extra_args is not None:
+            for k, v in extra_args.items():
+                globals()[k] = v
         use_monarch = getattr(extra_args, "monarch", True) # if false will just do FT without monarch
         
     elif config is not None:
@@ -375,9 +379,12 @@ def main(config: dict = None):
         revision=model_args.model_revision,
         use_auth_token=True if model_args.use_auth_token else None,
     )
-    def model_init():
+    
+    
+    # helper to init and set hyperparams for Ray Tune search
+    def model_init(hyperparams):
         model = RobertaForSequenceClassification.from_pretrained(
-            model_args.model_name_or_path,
+            pretrained_model_name_or_path=model_args.model_name_or_path,
             from_tf=bool(".ckpt" in model_args.model_name_or_path),
             config=config,
             cache_dir=model_args.cache_dir,
@@ -386,9 +393,17 @@ def main(config: dict = None):
             ignore_mismatched_sizes=model_args.ignore_mismatched_sizes,
         )
         
+        # Hyperparameter search
+        if hyperparams is not None:
+            for k in peft_config.keys():
+                if k in hyperparams.keys():
+                    print("Overriding {} with {}".format(k, peft_config[k]))
+                    peft_config[k] = hyperparams[k]
+                    
         if use_monarch:
             model.roberta.set_peft_config(peft_config)
         return model
+    
     
     # Preprocessing the raw_datasets
     if data_args.task_name is not None:
@@ -498,6 +513,7 @@ def main(config: dict = None):
         metric = load_metric("glue", data_args.task_name)
     else:
         metric = load_metric("accuracy")
+        
     # You can define your custom compute_metrics function. It takes an `EvalPrediction` object (a namedtuple with a
     # predictions and label_ids field) and has to return a dictionary string to float.
     def compute_metrics(p: EvalPrediction):
@@ -544,66 +560,72 @@ def main(config: dict = None):
         tokenizer=tokenizer,
         data_collator=data_collator,
     )
-
-    # Ray Tune
-    param_space = {
-        # "rank": tune.choice([1, 2, 3]), 
-        # "nblocks": tune.choice([2, 4, 8]),
-        "learning_rate": tune.qrandn(3e-5, 6e-6, 1e-6),
-        "per_device_train_batch_size": tune.choice([8, 16, 32]),
-        "weight_decay": tune.choice([0.01, 0.1]),
-    }
-    scheduler = ASHAScheduler(
-        max_t=25,
-        metric = "train_loss",
-        mode = "min",
-    )
     
-    reporter = CLIReporter(
-        parameter_columns=["learning_rate", "per_device_train_batch_size", "weight_decay"],
-        metric_columns=["train_loss", "eval_loss", "eval_accuracy", "training_iteration"],
-        max_progress_rows=10,
-        max_report_frequency=10,
-    )   
-    import warnings
-    warnings.filterwarnings("ignore", category=DeprecationWarning, message=".*checkpoint_dir.*")
-    trainer.hyperparameter_search(
-        hp_space=lambda _: param_space,
-        backend="ray",
-        n_trials=25,
-        scheduler=scheduler,
-        keep_checkpoints_num=1,
-        checkpoint_score_attr="training_iteration",
-        progress_reporter=reporter,
-        resources_per_trial={"cpu": 1, "gpu": 1},
-        local_dir="ray_results",
-    )
+    if globals().get("do_tune", False):
+        # Ray Tune
+        param_space = {
+            # "rank": tune.choice([1, 2, 3]),  # TODO: tuning rank causes dim mismatch when merging
+            "nblocks": tune.choice([2, 4, 8]),
+            "learning_rate": tune.quniform(1e-4, 2e-6, 1e-6),
+            "per_device_train_batch_size": tune.choice([8, 16, 32]),
+            "weight_decay": tune.choice([0.01, 0.1]),
+        }
+        scheduler = ASHAScheduler(
+            max_t=50,
+            metric = "eval_loss",
+            mode = "min",
+            grace_period=10,
+        )
+        
+        reporter = CLIReporter(
+            parameter_columns=["learning_rate", "per_device_train_batch_size", "weight_decay"],
+            metric_columns=["train_loss", "eval_loss", "eval_accuracy", "training_iteration"],
+            max_progress_rows=10,
+            max_report_frequency=10,
+        )   
+        import warnings
+        warnings.filterwarnings("ignore", category=DeprecationWarning, message=".*checkpoint_dir.*")
+        trainer.hyperparameter_search(
+            hp_space=lambda _: param_space,
+            backend="ray",
+            n_trials=50, # under the hood it calls ray.tune.run(num_samples=n_trials, ...)
+            # num_samples=50,
+            scheduler=scheduler,
+            keep_checkpoints_num=1,
+            checkpoint_score_attr="training_iteration",
+            progress_reporter=reporter,
+            resources_per_trial={"cpu": 1, "gpu": 1},
+            local_dir="ray_results",
+            name=os.environ["WANDB_RUN_GROUP"],
+            max_failures=100, # tolerate OOM
+        )
+        
+        # load best result 
+        best_trial = trainer._tune_best_trial
+        best_ckpt = os.path.join(best_trial.checkpoint.value, "checkpoint-{}".format(best_trial.last_result["training_iteration"]))
+        trainer.model = trainer.model.from_pretrained(best_ckpt)
+        trainer.model.save_pretrained(training_args.output_dir)
     
-    # load best result 
-    best_trial = trainer._tune_best_trial
-    best_ckpt = os.path.join(best_trial.checkpoint.value, "checkpoint-{}".format(best_trial.last_result["training_iteration"]))
-    trainer.model = trainer.model.from_pretrained(best_ckpt)
-    trainer.model.save_pretrained(training_args.output_dir)
-    
-    # # Training
-    # if training_args.do_train:
-    #     checkpoint = None
-    #     if training_args.resume_from_checkpoint is not None:
-    #         checkpoint = training_args.resume_from_checkpoint
-    #     elif last_checkpoint is not None:
-    #         checkpoint = last_checkpoint
-    #     train_result = trainer.train(resume_from_checkpoint=checkpoint)
-    #     metrics = train_result.metrics
-    #     max_train_samples = (
-    #         data_args.max_train_samples if data_args.max_train_samples is not None else len(train_dataset)
-    #     )
-    #     metrics["train_samples"] = min(max_train_samples, len(train_dataset))
+    else:
+        # # Training
+        if training_args.do_train:
+            checkpoint = None
+            if training_args.resume_from_checkpoint is not None:
+                checkpoint = training_args.resume_from_checkpoint
+            elif last_checkpoint is not None:
+                checkpoint = last_checkpoint
+            train_result = trainer.train(resume_from_checkpoint=checkpoint)
+            metrics = train_result.metrics
+            max_train_samples = (
+                data_args.max_train_samples if data_args.max_train_samples is not None else len(train_dataset)
+            )
+            metrics["train_samples"] = min(max_train_samples, len(train_dataset))
 
-    #     trainer.save_model()  # Saves the tokenizer too for easy upload
+            trainer.save_model()  # Saves the tokenizer too for easy upload
 
-    #     trainer.log_metrics("train", metrics)
-    #     trainer.save_metrics("train", metrics)
-    #     trainer.save_state()
+            trainer.log_metrics("train", metrics)
+            trainer.save_metrics("train", metrics)
+            trainer.save_state()
 
     # Evaluation
     if training_args.do_eval:

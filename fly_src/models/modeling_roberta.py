@@ -14,7 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """PyTorch RoBERTa model."""
-import math
+import math 
+import json
 from typing import List, Optional, Tuple, Union
 from packaging import version
 import torch
@@ -253,7 +254,7 @@ class RobertaSelfAttention(nn.Module):
         
     # @Wenxuan
     def init_monarch_layers(self, print_shape=False):
-        if not self.peft_config.pop("monarch", False):
+        if not self.peft_config.get("monarch", False):
             return 
         
         def factor(n):
@@ -911,7 +912,7 @@ class RobertaModel(RobertaPreTrainedModel):
         self.encoder = RobertaEncoder(config, peft_config)
 
         self.pooler = RobertaPooler(config) if add_pooling_layer else None
-        self.param_printed = False
+        self.param_set = False
         # Initialize weights and apply final processing
         self.post_init()
 
@@ -928,14 +929,14 @@ class RobertaModel(RobertaPreTrainedModel):
     
     
     def train(self, mode: bool = True):
-        if mode and hasattr(self, "peft_config") and self.peft_config["monarch"] and not self.param_printed:
-            self.param_printed = True
+        # TODO: why peft_config disappears??
+        if mode and hasattr(self, "peft_config") and self.peft_config["monarch"] and not self.param_set:
+            self.param_set = True
             self.init_monarch_layers()
             param_stats(self, training=True)
         else:
             super().train(mode)
 
-            
             
     def set_peft_config(self, peft_config=None):
         """
@@ -943,6 +944,10 @@ class RobertaModel(RobertaPreTrainedModel):
             reinit their submodules based on config
         """
         self.peft_config = peft_config
+        print("PEFT config set. Will reinit layers when entering training mode.")
+        self.param_set = False
+        
+        # set config and init submodules for all attention layers
         for name, module in self.named_modules():
             if isinstance(module, RobertaSelfAttention):
                 module.set_peft_config(peft_config)
