@@ -545,7 +545,7 @@ def main(config: dict = None):
     if training_args.resume_from_checkpoint is not None:
         training_args.resume_from_checkpoint &= has_ckpt
         
-    # wandb config 
+    # Wandb config 
     training_args.run_name = "glue_" + data_args.task_name # wandb run name
     os.environ["WANDB_PROJECT"] = "monarch_hf" + "_peft" if use_monarch else ""
     # group runs within the same hour
@@ -585,7 +585,7 @@ def main(config: dict = None):
         )   
         import warnings
         warnings.filterwarnings("ignore", category=DeprecationWarning, message=".*checkpoint_dir.*")
-        trainer.hyperparameter_search(
+        best_run = trainer.hyperparameter_search(
             hp_space=lambda _: param_space,
             backend="ray",
             n_trials=50, # under the hood it calls ray.tune.run(num_samples=n_trials, ...)
@@ -600,32 +600,37 @@ def main(config: dict = None):
             max_failures=100, # tolerate OOM
         )
         
-        # load best result 
-        best_trial = trainer._tune_best_trial
-        best_ckpt = os.path.join(best_trial.checkpoint.value, "checkpoint-{}".format(best_trial.last_result["training_iteration"]))
-        trainer.model = trainer.model.from_pretrained(best_ckpt)
-        trainer.model.save_pretrained(training_args.output_dir)
+        # Use best hyperparams for full training 
+        print("Best hyperparameters: ", best_run.hyperparameters)
+        trainer = Trainer(
+            model=model_init(best_run.hyperparameters),
+            args=training_args,
+            train_dataset=train_dataset if training_args.do_train else None,
+            eval_dataset=eval_dataset if training_args.do_eval else None,
+            compute_metrics=compute_metrics,
+            tokenizer=tokenizer,
+            data_collator=data_collator,
+        )
     
-    else:
-        # # Training
-        if training_args.do_train:
-            checkpoint = None
-            if training_args.resume_from_checkpoint is not None:
-                checkpoint = training_args.resume_from_checkpoint
-            elif last_checkpoint is not None:
-                checkpoint = last_checkpoint
-            train_result = trainer.train(resume_from_checkpoint=checkpoint)
-            metrics = train_result.metrics
-            max_train_samples = (
-                data_args.max_train_samples if data_args.max_train_samples is not None else len(train_dataset)
-            )
-            metrics["train_samples"] = min(max_train_samples, len(train_dataset))
+    # # Training
+    if training_args.do_train:
+        checkpoint = None
+        if training_args.resume_from_checkpoint is not None:
+            checkpoint = training_args.resume_from_checkpoint
+        elif last_checkpoint is not None:
+            checkpoint = last_checkpoint
+        train_result = trainer.train(resume_from_checkpoint=checkpoint)
+        metrics = train_result.metrics
+        max_train_samples = (
+            data_args.max_train_samples if data_args.max_train_samples is not None else len(train_dataset)
+        )
+        metrics["train_samples"] = min(max_train_samples, len(train_dataset))
 
-            trainer.save_model()  # Saves the tokenizer too for easy upload
+        trainer.save_model()  # Saves the tokenizer too for easy upload
 
-            trainer.log_metrics("train", metrics)
-            trainer.save_metrics("train", metrics)
-            trainer.save_state()
+        trainer.log_metrics("train", metrics)
+        trainer.save_metrics("train", metrics)
+        trainer.save_state()
 
     # Evaluation
     if training_args.do_eval:
