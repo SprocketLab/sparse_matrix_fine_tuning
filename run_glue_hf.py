@@ -202,17 +202,23 @@ def main(config: dict = None):
     peft_config = json.load(open("task_configs/peft_monarch.json", "r"))  # load monarch config
     
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
-    use_monarch = True
     
     # Example CLA usage: python run_glue_hf.py task_configs/cola.json 
     if sys.argv[1].endswith(".json"):
         model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
         extra_args = override_config([model_args, data_args, training_args], sys.argv[2:])
         
+        # Use additional args as global variables
+        # @Wenxuan
         if extra_args is not None:
             for k, v in extra_args.items():
                 globals()[k] = v
         use_monarch = getattr(extra_args, "monarch", True) # if false will just do FT without monarch
+        do_tune = globals().get("do_tune", False)
+        use_wandb = globals().get("use_wandb", True)
+        if not use_wandb:
+            print("Disabling wandb")
+            os.environ["WANDB_MODE"] = "disabled"
         
     elif config is not None:
         model_args, data_args, training_args = parser.parse_dict(config, allow_extra_keys=True)
@@ -547,9 +553,9 @@ def main(config: dict = None):
         
     # Wandb config 
     training_args.run_name = "glue_" + data_args.task_name # wandb run name
-    os.environ["WANDB_PROJECT"] = "monarch_hf" + "_peft" if use_monarch else ""
+    os.environ["WANDB_PROJECT"] = "monarch_hf" + "_peft" if use_monarch else "" 
     # group runs within the same hour
-    os.environ["WANDB_RUN_GROUP"] = time.strftime("%m-%d-%H", time.localtime())
+    os.environ["WANDB_RUN_GROUP"] = get_run_group(data_args.task_name)
     # training_args.fsdp = "full_shard"
     trainer = Trainer(
         model_init=model_init,
@@ -561,20 +567,21 @@ def main(config: dict = None):
         data_collator=data_collator,
     )
     
-    if globals().get("do_tune", False):
+    if do_tune:
         # Ray Tune
         param_space = {
             # "rank": tune.choice([1, 2, 3]),  # TODO: tuning rank causes dim mismatch when merging
-            "nblocks": tune.choice([2, 4, 8]),
-            "learning_rate": tune.quniform(1e-4, 2e-6, 1e-6),
+            "nblocks": tune.choice([2, 3, 4, 8]),
+            "learning_rate": tune.quniform(2e-4, 2e-6, 1e-6),
             "per_device_train_batch_size": tune.choice([8, 16, 32]),
             "weight_decay": tune.choice([0.01, 0.1]),
+            "lr_scheduler_type": tune.choice(["cosine", "cosine_with_restarts"]),
         }
         scheduler = ASHAScheduler(
-            max_t=50,
+            max_t=10,
             metric = "eval_loss",
             mode = "min",
-            grace_period=10,
+            grace_period=5,
         )
         
         reporter = CLIReporter(
@@ -602,6 +609,7 @@ def main(config: dict = None):
         
         # Use best hyperparams for full training 
         print("Best hyperparameters: ", best_run.hyperparameters)
+        json.dump(best_run.hyperparameters, open(os.path.joint(training_args.output_dir, "best_hyperparams.json"), "w"))
         trainer = Trainer(
             model=model_init(best_run.hyperparameters),
             args=training_args,

@@ -80,7 +80,6 @@ def param_stats(model, training=False, print_trainable=False):
         assert param_trainable != 0, "There's a bug in your code, your're training nothing!"
 
 
-
 logger = logging.get_logger(__name__)
 
 _CHECKPOINT_FOR_DOC = "roberta-base"
@@ -290,7 +289,8 @@ class RobertaSelfAttention(nn.Module):
                 new_layer.bias = layer.bias
             new_layer.requires_grad_(True)  # must go after setting bias, otherwise requires_grad will be set to False
             setattr(self, name, new_layer)
-            print(f"Using monarch layer of shapes: {new_layer.blkdiag1.shape}, {new_layer.blkdiag2.shape}")
+        
+        print(f"Using monarch layer of shapes: {new_layer.blkdiag1.shape}, {new_layer.blkdiag2.shape}")
 
     def set_peft_config(self, peft_config):
         self.peft_config = peft_config
@@ -930,12 +930,13 @@ class RobertaModel(RobertaPreTrainedModel):
     
     def train(self, mode: bool = True):
         # TODO: why peft_config disappears??
+        super().train(mode)
+        
         if mode and hasattr(self, "peft_config") and self.peft_config["monarch"] and not self.param_set:
             self.param_set = True
             self.init_monarch_layers()
             param_stats(self, training=True)
-        else:
-            super().train(mode)
+        
 
             
     def set_peft_config(self, peft_config=None):

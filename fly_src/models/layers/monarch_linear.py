@@ -24,6 +24,7 @@ logger = get_logger()
 def factor_balance(mid_blksz, out_blksz):
     total = mid_blksz * out_blksz
 
+
 # @Wenxuan
 class MonarchLinear(StructuredLinear):
     """
@@ -60,6 +61,9 @@ class MonarchLinear(StructuredLinear):
 
         self.device = device
         self.peft = peft
+        if self.peft and rank > 1:
+            raise NotImplementedError("Adapters with rank > 1 can't be merged with dense weights due to dim mismatch")
+        
         self.merged = False
         assert rank <= min(
             self.in_blksz, self.out_blksz
@@ -78,7 +82,6 @@ class MonarchLinear(StructuredLinear):
             self.set_weights_from_dense_init(weights, rank)
 
         self.to(device)
-            
         logger.info(f"Linear class {self.__class__}: saving={self.saving}")
 
 
@@ -133,43 +136,56 @@ class MonarchLinear(StructuredLinear):
             )
             self.blkdiag1 = nn.Parameter(blkdiag1)
             self.blkdiag2 = nn.Parameter(blkdiag2)
-
+        
     def train(self, mode: bool = True):
         """
         Override for freezing and merging weights
         """
-        
+        super().train(mode)
         if mode:
-            if self.peft:
+            if self.peft and self.merged:
                 # # split out monarch for separate training
-                # self.dense.data -= blockdiag_butterfly_multiply(
-                #     torch.eye(self.in_features), self.blkdiag1, self.blkdiag2
-                # )
-                # self.merged = False
-                self.dense.requires_grad_(False) # freeze dense
+                self.dense.data -= blockdiag_butterfly_multiply(
+                    torch.eye(self.in_features, device=self.device), self.blkdiag1, self.blkdiag2
+                )
+                self.merged = False
+                self.dense.requires_grad_(False) # freeze dense, train monarch adapter
         else:
             if self.peft and not self.merged:
                 # Merge the weights and mark it
                 self.dense.data += blockdiag_butterfly_multiply(
                     torch.eye(self.in_features, device=self.device), self.blkdiag1, self.blkdiag2
                 )
-                self.blkdiag1 = self.blkdiag2 = None # save storage
+                # self.blkdiag1 = self.blkdiag2 = None # save storage
                 self.merged = True
 
 
     def forward(self, x):
         if self.peft:
             if self.merged:
+                # inference
                 return F.linear(x, self.dense, self.bias)
             else:
+                # training
                 return self.monarch_forward(x) + F.linear(x, self.dense, self.bias)
         else:
             return self.monarch_forward(x)
 
 
+    # Override magic methods
     def __repr__(self):
-        weight_shape = nblocks={self.blkdiag1.shape[0]} if self.blkdiag1 is not None else self.dense.shape
+        weight_shape = nblocks = {self.blkdiag1.shape[0]} if self.blkdiag1 is not None else self.dense.shape
         return (
-            f"{self.__class__.__name__}({self.in_features}, {self.out_features}, "
-            f"{weight_shape}, requires_grad={list(self.parameters())[0].requires_grad})"
+            f"{self.__class__.__name__}(in_features={self.in_features}, out_features={self.out_features}, "
+            f"weight_shape={weight_shape}, requires_grad={list(self.parameters())[0].requires_grad})"
         )
+    
+    # TODO: make it actually merge when saving 
+    # def __getstate__(self):
+    #     """
+    #     Override to remove the dense weights from state dict
+    #     """
+    #     state = super().__getstate__()
+    #     if self.peft:
+    #         state["dense"] = None
+    #     return state
