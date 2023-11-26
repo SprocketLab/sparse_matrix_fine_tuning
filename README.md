@@ -32,5 +32,5 @@ Tune block size, rank, etc. in task_configs/peft_monarch.json.
 Or try run_glue_hf.py (Default args provided below)
 ```
 export WANDB_API_KEY="YOUR_KEY"
-pyton run_glue_hf.py task_configs/cola.json --do_tune=False --use_wandb=True 
+pyton run_glue.py task_configs/cola.json --do_tune=False --use_wandb=True 
 ```

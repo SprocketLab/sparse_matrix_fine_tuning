@@ -551,7 +551,7 @@ def main(config: dict = None):
     # @Wenxuan
     # Initialize our Trainer
     training_args.save_total_limit = 1 # avoid flooding the disk
-    has_ckpt =  any([file.startswith("checkpoint") for file in os.listdir(training_args.output_dir)])
+    has_ckpt = any([file.startswith("checkpoint") for file in os.listdir(training_args.output_dir)])
     if training_args.resume_from_checkpoint is not None:
         training_args.resume_from_checkpoint &= has_ckpt
         
