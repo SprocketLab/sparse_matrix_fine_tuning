@@ -16,5 +16,5 @@
     "weight_decay": 0.1,
     "lr_scheduler_type": "cosine",
     "evaluation_strategy": "steps",
-    "eval_steps": 100
+    "eval_steps": 150
 }

@@ -550,7 +550,7 @@ def main(config: dict = None):
 
     # @Wenxuan
     # Initialize our Trainer
-    training_args.save_total_limit = 2 # avoid flooding the disk
+    training_args.save_total_limit = 1 # avoid flooding the disk
     has_ckpt =  any([file.startswith("checkpoint") for file in os.listdir(training_args.output_dir)])
     if training_args.resume_from_checkpoint is not None:
         training_args.resume_from_checkpoint &= has_ckpt
@@ -574,15 +574,15 @@ def main(config: dict = None):
     if do_tune:
         # Ray Tune
         param_space = {
-            # "rank": tune.choice([1, 2, 3]),  # TODO: tuning rank causes dim mismatch when merging
-            "nblocks": tune.choice([1, 2, 4, 8]),
+            # "rank": tune.choice([1, 2, 3]),  # Tuning rank causes dim mismatch when merging
+            "nblocks": tune.choice([2, 4, 8]), # Smaller nblocks saves params (due to rank 1 SVD) but are slower due to memory bound. M2-BERT uses 4 blocks for MLP, but in other cases it seems mostly sqrt(n)
             "learning_rate": tune.quniform(2e-4, 2e-6, 1e-6),
             "per_device_train_batch_size": tune.choice([8, 16, 32]),
-            "weight_decay": tune.choice([0.01, 0.1]),
+            "weight_decay": tune.choice([0.01, 0.1, 1e-5, 5e-6]),
             "lr_scheduler_type": tune.choice(["cosine", "cosine_with_restarts"]),
         }
         scheduler = ASHAScheduler(
-            max_t=10,
+            max_t=15, # max_t * eval_every(eval_steps in configs) = max training steps
             metric = "eval_loss",
             mode = "min",
             grace_period=5,
@@ -598,13 +598,13 @@ def main(config: dict = None):
         best_run = trainer.hyperparameter_search(
             hp_space=lambda _: param_space,
             backend="ray",
-            n_trials=40, # under the hood it calls ray.tune.run(num_samples=n_trials, ...)
+            n_trials=50, # under the hood it calls ray.tune.run(num_samples=n_trials, ...)
             # num_samples=50,
             scheduler=scheduler,
             keep_checkpoints_num=0,
             checkpoint_score_attr="training_iteration",
             progress_reporter=reporter,
-            resources_per_trial={"cpu": 1, "gpu": 1},
+            resources_per_trial={"cpu": 2, "gpu": 1},
             local_dir="ray_results",
             name=os.environ["WANDB_RUN_GROUP"],
             max_failures=100, # tolerate OOM
@@ -612,7 +612,7 @@ def main(config: dict = None):
     
         # Use best hyperparams for full training 
         print("Best hyperparameters: ", best_run.hyperparameters)
-        json.dump(best_run.hyperparameters, open(os.path.joint(training_args.output_dir, "best_hyperparams.json"), "w"))
+        json.dump(best_run.hyperparameters, open(os.path.join(training_args.output_dir, "best_hyperparams.json"), "w"))
         trainer = Trainer(
             model=model_init(best_run.hyperparameters),
             args=training_args,
