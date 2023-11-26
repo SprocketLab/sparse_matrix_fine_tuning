@@ -89,4 +89,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # m2 dependencies
 RUN pip install "einops==0.5.0" "mosaicml[nlp,wandb]>=0.14.0,<0.15" "mosaicml-streaming==0.4.1" "omegaconf==2.2.3" "transformers==4.28.1" "opt_einsum" "triton==2.0.0.dev20221103"
-RUN pip install ray==2.6 pydantic==2.5
+RUN pip install ray==2.6
+# Some how this fixes the pydantic__version__ bug...
+RUN python -m pip install -U pydantic spacy==3.4.4

@@ -1,6 +1,10 @@
 
 # @Wenxuan: Doesn't converge for some obscure reason..
 """ Finetuning the library models for sequence classification on GLUE."""
+def warn(*args, **kwargs):
+    pass
+import warnings
+warnings.warn = warn
 
 import json
 import transformers
@@ -555,7 +559,7 @@ def main(config: dict = None):
     training_args.run_name = "glue_" + data_args.task_name # wandb run name
     os.environ["WANDB_PROJECT"] = "monarch_hf" + "_peft" if use_monarch else "" 
     # group runs within the same hour
-    os.environ["WANDB_RUN_GROUP"] = get_run_group(data_args.task_name)
+    os.environ["WANDB_RUN_GROUP"] = get_run_group(data_args.task_name, do_tune)
     # training_args.fsdp = "full_shard"
     trainer = Trainer(
         model_init=model_init,
@@ -571,7 +575,7 @@ def main(config: dict = None):
         # Ray Tune
         param_space = {
             # "rank": tune.choice([1, 2, 3]),  # TODO: tuning rank causes dim mismatch when merging
-            "nblocks": tune.choice([2, 3, 4, 8]),
+            "nblocks": tune.choice([1, 2, 4, 8]),
             "learning_rate": tune.quniform(2e-4, 2e-6, 1e-6),
             "per_device_train_batch_size": tune.choice([8, 16, 32]),
             "weight_decay": tune.choice([0.01, 0.1]),
@@ -590,8 +594,7 @@ def main(config: dict = None):
             max_progress_rows=10,
             max_report_frequency=10,
         )   
-        import warnings
-        warnings.filterwarnings("ignore", category=DeprecationWarning, message=".*checkpoint_dir.*")
+
         best_run = trainer.hyperparameter_search(
             hp_space=lambda _: param_space,
             backend="ray",
@@ -606,7 +609,7 @@ def main(config: dict = None):
             name=os.environ["WANDB_RUN_GROUP"],
             max_failures=100, # tolerate OOM
         )
-        
+    
         # Use best hyperparams for full training 
         print("Best hyperparameters: ", best_run.hyperparameters)
         json.dump(best_run.hyperparameters, open(os.path.joint(training_args.output_dir, "best_hyperparams.json"), "w"))

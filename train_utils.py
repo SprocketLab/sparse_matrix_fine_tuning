@@ -184,11 +184,11 @@ def override_config(old_configs: List[Dict], new_args: List[str]):
             extra_args[key] = attempt
         return extra_args
         
-def get_run_group(task_name: str):
+def get_run_group(task_name: str, do_tune: bool=False):
     """
     Get wandb run group
     """
-    group = "tune" if globals().get("do_tune", False) else "" # if hyperapram tuning, add tune to group name
+    group = "tune" if do_tune else "" # if hyperapram tuning, add tune to group name
     group += "_" + task_name   
-    group +=  globals().get("group", time.strftime("%m-%d-%H", time.localtime()))
+    group += "_" + globals().get("group", time.strftime("%m-%d-%H", time.localtime()))
     return group
