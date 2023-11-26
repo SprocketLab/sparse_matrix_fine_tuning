@@ -2,15 +2,15 @@
 
 # Naive way to implement multiprocess training...
 # Should use python mp spawn for gpu selection, job queueing, etc.
-python run_glue_hf.py /fly/task_configs/cola.json --do_tune=True
-python run_glue_hf.py /fly/task_configs/mrpc.json --do_tune=True
-python run_glue_hf.py /fly/task_configs/qnli.json --do_tune=True
-python run_glue_hf.py /fly/task_configs/rte.json  --do_tune=True
-python run_glue_hf.py /fly/task_configs/sst-2.json --do_tune=True
-python run_glue_hf.py /fly/task_configs/stsb.json --do_tune=True
-python run_glue_hf.py /fly/task_configs/qqp.json  --do_tune=True
-python run_glue_hf.py /fly/task_configs/mnli.json --do_tune=True
-python run_glue_hf.py /fly/task_configs/wnli.json --do_tune=True
+python run_glue.py /fly/task_configs/cola.json --do_tune=True
+python run_glue.py /fly/task_configs/mrpc.json --do_tune=True
+python run_glue.py /fly/task_configs/qnli.json --do_tune=True
+python run_glue.py /fly/task_configs/rte.json  --do_tune=True
+python run_glue.py /fly/task_configs/sst-2.json --do_tune=True
+python run_glue.py /fly/task_configs/stsb.json --do_tune=True
+python run_glue.py /fly/task_configs/qqp.json  --do_tune=True
+python run_glue.py /fly/task_configs/mnli.json --do_tune=True
+python run_glue.py /fly/task_configs/wnli.json --do_tune=True
 
 # $out_path = "results/monarch_roberta_glue"
 # # find all .tsv files in results/monarch_roberta_glue and zip them

@@ -11,6 +11,7 @@ import transformers
 import time
 import logging
 import os
+import wandb
 import random
 import sys
 from dataclasses import dataclass, field
@@ -207,22 +208,16 @@ def main(config: dict = None):
     
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
     
+    # @Wenxuan
     # Example CLA usage: python run_glue_hf.py task_configs/cola.json 
     if sys.argv[1].endswith(".json"):
         model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
         extra_args = override_config([model_args, data_args, training_args], sys.argv[2:])
         
-        # Use additional args as global variables
-        # @Wenxuan
+        # Add additional args to global variables
         if extra_args is not None:
             for k, v in extra_args.items():
                 globals()[k] = v
-        use_monarch = getattr(extra_args, "monarch", True) # if false will just do FT without monarch
-        do_tune = globals().get("do_tune", False)
-        use_wandb = globals().get("use_wandb", True)
-        if not use_wandb:
-            print("Disabling wandb")
-            os.environ["WANDB_MODE"] = "disabled"
         
     elif config is not None:
         model_args, data_args, training_args = parser.parse_dict(config, allow_extra_keys=True)
@@ -235,7 +230,17 @@ def main(config: dict = None):
         # parse command line args
         model_args, data_args, training_args = parser.parse_args_into_dataclasses()
     
-
+    # NOTE: Extra command line args
+    # @Wenxuan
+    use_monarch = globals().get("monarch", False)
+    do_tune = globals().get("do_tune", False)
+    use_wandb = globals().get("use_wandb", True)
+    group = globals().get("group", None) # For grouping runs in wandb
+    
+    if not use_wandb:
+        print("Disabling wandb")
+        os.environ["WANDB_MODE"] = "disabled"
+            
     training_args.output_dir = os.path.join(training_args.output_dir, data_args.task_name)
     os.makedirs(training_args.output_dir, exist_ok=True)
     
@@ -409,7 +414,7 @@ def main(config: dict = None):
                 if k in hyperparams.keys():
                     print("Overriding {} with {}".format(k, peft_config[k]))
                     peft_config[k] = hyperparams[k]
-                    
+        
         if use_monarch:
             model.roberta.set_peft_config(peft_config)
         return model
@@ -556,11 +561,15 @@ def main(config: dict = None):
         training_args.resume_from_checkpoint &= has_ckpt
         
     # Wandb config 
-    training_args.run_name = "glue_" + data_args.task_name # wandb run name
-    os.environ["WANDB_PROJECT"] = "monarch_hf" + "_peft" if use_monarch else "" 
-    # group runs within the same hour
-    os.environ["WANDB_RUN_GROUP"] = get_run_group(data_args.task_name, do_tune)
-    # training_args.fsdp = "full_shard"
+    if use_wandb:
+        training_args.run_name = "glue_" + data_args.task_name # wandb run name
+        os.environ["WANDB_PROJECT"] = "monarch_hf" + "_peft" if use_monarch else "GLUE_FT" 
+        # group runs within the same hour
+        os.environ["WANDB_RUN_GROUP"] = get_run_group(data_args.task_name, do_tune, group)
+        # training_args.fsdp = "full_shard"
+        print("Wandb project: ", os.environ["WANDB_PROJECT"])
+        print("Wandb run group: ", os.environ["WANDB_RUN_GROUP"])
+    
     trainer = Trainer(
         model_init=model_init,
         args=training_args,
@@ -571,18 +580,33 @@ def main(config: dict = None):
         data_collator=data_collator,
     )
     
+    # Ray Tune hyperparameter search
     if do_tune:
-        # Ray Tune
-        param_space = {
-            # "rank": tune.choice([1, 2, 3]),  # Tuning rank causes dim mismatch when merging
-            "nblocks": tune.choice([2, 4, 8]), # Smaller nblocks saves params (due to rank 1 SVD) but are slower due to memory bound. M2-BERT uses 4 blocks for MLP, but in other cases it seems mostly sqrt(n)
-            "learning_rate": tune.quniform(2e-4, 2e-6, 1e-6),
-            "per_device_train_batch_size": tune.choice([8, 16, 32]),
-            "weight_decay": tune.choice([0.01, 0.1, 1e-5, 5e-6]),
-            "lr_scheduler_type": tune.choice(["cosine", "cosine_with_restarts"]),
-        }
+        
+        # PEFT monarch search space
+        if use_monarch:
+            param_space = {
+                # "rank": tune.choice([1, 2, 3]),  # Tuning rank causes dim mismatch when merging
+                "nblocks": tune.choice([2, 4, 8]), # Smaller nblocks saves params (due to rank 1 SVD) but are slower due to memory bound. M2-BERT uses 4 blocks for MLP, but in other cases it seems mostly sqrt(n)
+                "learning_rate": tune.quniform(2e-4, 2e-6, 1e-6),
+                "per_device_train_batch_size": tune.choice([8, 16, 32]),
+                "weight_decay": tune.choice([0.01, 0.1, 1e-5, 5e-6]),
+                "lr_scheduler_type": tune.choice(["cosine", "cosine_with_restarts"]),
+            }
+            n_trials = 50
+            
+        else:
+            # Raw finetuning
+            param_space = {
+                "learning_rate": tune.grid_search([1e-5, 2e-5, 3e-5]),
+                "per_device_train_batch_size": tune.choice([16, 32]),
+                "weight_decay": tune.choice([0.1]),
+                "lr_scheduler_type": tune.choice(["cosine", "cosine_with_restarts", "linear"]),
+            }
+            n_trials = 18
+
         scheduler = ASHAScheduler(
-            max_t=15, # max_t * eval_every(eval_steps in configs) = max training steps
+            max_t=14, # max_t * eval_every(eval_steps in configs) = max training steps
             metric = "eval_loss",
             mode = "min",
             grace_period=5,
@@ -598,7 +622,7 @@ def main(config: dict = None):
         best_run = trainer.hyperparameter_search(
             hp_space=lambda _: param_space,
             backend="ray",
-            n_trials=50, # under the hood it calls ray.tune.run(num_samples=n_trials, ...)
+            n_trials=n_trials, # under the hood it calls ray.tune.run(num_samples=n_trials, ...)
             # num_samples=50,
             scheduler=scheduler,
             keep_checkpoints_num=0,

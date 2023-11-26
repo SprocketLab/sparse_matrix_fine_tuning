@@ -168,7 +168,6 @@ def override_config(old_configs: List[Dict], new_args: List[str]):
         except (SyntaxError, ValueError):
             # if that goes wrong, just use the string
             attempt = val
-        
         exists = False
         for config in old_configs:
             config = config.__dict__
@@ -179,16 +178,17 @@ def override_config(old_configs: List[Dict], new_args: List[str]):
                 print(f"Overriding: {key} = {attempt}")
                 config[key] = val
                 exists = True
-                
+
         if not exists:
             extra_args[key] = attempt
-        return extra_args
+    return extra_args
         
-def get_run_group(task_name: str, do_tune: bool=False):
+def get_run_group(task_name: str, do_tune: bool=False, group: str=None):
     """
     Get wandb run group
     """
-    group = "tune" if do_tune else "" # if hyperapram tuning, add tune to group name
-    group += "_" + task_name   
-    group += "_" + globals().get("group", time.strftime("%m-%d-%H", time.localtime()))
-    return group
+    run_group = "tune" if do_tune else "" # if hyperapram tuning, add tune to group name
+    run_group += "_" + task_name   
+    run_group += "_" + group if group is not None else ""
+    run_group += "_" + time.strftime("%m-%d-%H", time.localtime())
+    return run_group
