@@ -289,7 +289,7 @@ class RobertaSelfAttention(nn.Module):
                 new_layer.bias = layer.bias
             new_layer.requires_grad_(True)  # must go after setting bias, otherwise requires_grad will be set to False
             setattr(self, name, new_layer)
-        
+
         print(f"Using monarch layer of shapes: {new_layer.blkdiag1.shape}, {new_layer.blkdiag2.shape}")
 
     def set_peft_config(self, peft_config):

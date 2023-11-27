@@ -230,12 +230,15 @@ def main(config: dict = None):
         # parse command line args
         model_args, data_args, training_args = parser.parse_args_into_dataclasses()
     
-    # NOTE: Extra command line args
+    # NOTE: Allowed extra command line args
     # @Wenxuan
-    use_monarch = globals().get("monarch", False)
+    use_monarch = globals().get("monarch", True)
     do_tune = globals().get("do_tune", False)
     use_wandb = globals().get("use_wandb", True)
-    group = globals().get("group", None) # For grouping runs in wandb
+    # For grouping runs in wandb
+    group = globals().get("group", None) 
+    project = globals().get("project", None) 
+    use_peft = globals().get("use_peft", True)
     
     if not use_wandb:
         print("Disabling wandb")
@@ -414,7 +417,7 @@ def main(config: dict = None):
                 if k in hyperparams.keys():
                     print("Overriding {} with {}".format(k, peft_config[k]))
                     peft_config[k] = hyperparams[k]
-        
+
         if use_monarch:
             model.roberta.set_peft_config(peft_config)
         return model
@@ -554,7 +557,7 @@ def main(config: dict = None):
         data_collator = None
 
     # @Wenxuan
-    # Initialize our Trainer
+    # Initialize Trainer
     training_args.save_total_limit = 1 # avoid flooding the disk
     has_ckpt = any([file.startswith("checkpoint") for file in os.listdir(training_args.output_dir)])
     if training_args.resume_from_checkpoint is not None:
@@ -564,12 +567,17 @@ def main(config: dict = None):
     if use_wandb:
         training_args.run_name = "glue_" + data_args.task_name # wandb run name
         os.environ["WANDB_PROJECT"] = "monarch_hf" + "_peft" if use_monarch else "GLUE_FT" 
+        os.environ["WANDB_PROJECT"] = project if project else os.environ["WANDB_PROJECT"] # Override if provided
+        
         # group runs within the same hour
         os.environ["WANDB_RUN_GROUP"] = get_run_group(data_args.task_name, do_tune, group)
         # training_args.fsdp = "full_shard"
         print("Wandb project: ", os.environ["WANDB_PROJECT"])
         print("Wandb run group: ", os.environ["WANDB_RUN_GROUP"])
     
+    if not use_peft:
+        peft_config["use_peft"] = False # Will not use merging adapter style
+        
     trainer = Trainer(
         model_init=model_init,
         args=training_args,
@@ -588,13 +596,17 @@ def main(config: dict = None):
             param_space = {
                 # "rank": tune.choice([1, 2, 3]),  # Tuning rank causes dim mismatch when merging
                 "nblocks": tune.choice([2, 4, 8]), # Smaller nblocks saves params (due to rank 1 SVD) but are slower due to memory bound. M2-BERT uses 4 blocks for MLP, but in other cases it seems mostly sqrt(n)
-                "learning_rate": tune.quniform(2e-4, 2e-6, 1e-6),
-                "per_device_train_batch_size": tune.choice([8, 16, 32]),
+                "learning_rate": tune.quniform(1e-4, 2e-6, 1e-6),
+                "per_device_train_batch_size": tune.choice([16, 32]), # In Monarch-Mixer they mainly used 32 and 16 
                 "weight_decay": tune.choice([0.01, 0.1, 1e-5, 5e-6]),
-                "lr_scheduler_type": tune.choice(["cosine", "cosine_with_restarts"]),
+                "lr_scheduler_type": tune.choice(["cosine", "cosine_with_restarts", "linear"]),
             }
             n_trials = 50
             
+            if not use_peft:
+                del param_space["nblocks"]
+                n_trials = 36
+                
         else:
             # Raw finetuning
             param_space = {

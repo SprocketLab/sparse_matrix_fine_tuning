@@ -187,8 +187,8 @@ def get_run_group(task_name: str, do_tune: bool=False, group: str=None):
     """
     Get wandb run group
     """
-    run_group = "tune" if do_tune else "" # if hyperapram tuning, add tune to group name
-    run_group += "_" + task_name   
-    run_group += "_" + group if group is not None else ""
-    run_group += "_" + time.strftime("%m-%d-%H", time.localtime())
+    run_group = "tune" + "_" if do_tune else "" # if hyperapram tuning, add tune to group name
+    run_group += task_name + "_"
+    run_group += group + "_" if group is not None else ""
+    run_group += time.strftime("%m-%d-%H", time.localtime())
     return run_group

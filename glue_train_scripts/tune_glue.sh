@@ -12,7 +12,3 @@ python run_glue.py /fly/task_configs/qqp.json  --do_tune=True
 python run_glue.py /fly/task_configs/mnli.json --do_tune=True
 python run_glue.py /fly/task_configs/wnli.json --do_tune=True
 
-# $out_path = "results/monarch_roberta_glue"
-# # find all .tsv files in results/monarch_roberta_glue and zip them
-# find . -name "*.tsv" | zip $out_path/glue_submit.zip -@
-# echo "Zipped all .tsv files in $out_path to glue_submit.zip. Ready for submission."
