@@ -71,6 +71,18 @@ task_to_submit = {
     "stsb": "STS-B",
     "wnli": "WNLI",
 }
+
+task_to_metric = {
+    "cola": "eval_matthews_correlation",
+    "mnli": "eval_accuracy",
+    "mrpc": "eval_combined_score",
+    "qnli": "eval_accuracy",
+    "qqp": "eval_combined_score",
+    "rte": "eval_accuracy",
+    "sst2": "eval_accuracy",
+    "stsb": "eval_pearson_correlation",
+    "wnli": "eval_accuracy",
+}
 logger = logging.getLogger(__name__)
 
 
@@ -629,8 +641,8 @@ def main(config: dict = None):
 
         scheduler = ASHAScheduler(
             max_t=14, # max_t * eval_every(eval_steps in configs) = max training steps
-            metric = "eval_loss",
-            mode = "min",
+            metric = task_to_metric[data_args.task_name],
+            mode = "max",
             grace_period=5,
         )
         
