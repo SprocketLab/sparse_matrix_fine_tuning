@@ -59,7 +59,18 @@ task_to_keys = {
     "stsb": ("sentence1", "sentence2"),
     "wnli": ("sentence1", "sentence2"),
 }
-
+task_to_submit = {
+    "cola": "CoLA",
+    "mnli": "MNLI-m",
+    "mnli-mm": "MNLI-mm",
+    "mrpc": "MRPC",
+    "qnli": "QNLI",
+    "qqp": "QQP",
+    "rte": "RTE",
+    "sst2": "SST-2",
+    "stsb": "STS-B",
+    "wnli": "WNLI",
+}
 logger = logging.getLogger(__name__)
 
 
@@ -244,7 +255,7 @@ def main(config: dict = None):
         print("Disabling wandb")
         os.environ["WANDB_MODE"] = "disabled"
             
-    training_args.output_dir = os.path.join(training_args.output_dir, data_args.task_name)
+    training_args.output_dir = os.path.join(training_args.output_dir, data_args.task_name) 
     os.makedirs(training_args.output_dir, exist_ok=True)
     
     # Sending telemetry. Tracking the example usage helps us better allocate resources to maintain them. The
@@ -377,9 +388,8 @@ def main(config: dict = None):
             label_list = raw_datasets["train"].unique("label")
             label_list.sort()  # Let's sort it for determinism
             num_labels = len(label_list)
-
+            
     # Load pretrained model and tokenizer
-    #
     # In distributed training, the .from_pretrained methods guarantee that only one local process can concurrently
     # download model & vocab.
     config = AutoConfig.from_pretrained(
@@ -723,7 +733,7 @@ def main(config: dict = None):
             predictions = trainer.predict(predict_dataset, metric_key_prefix="predict").predictions
             predictions = np.squeeze(predictions) if is_regression else np.argmax(predictions, axis=1)
 
-            output_predict_file = os.path.join(training_args.output_dir, f"predict_results_{task}.tsv")
+            output_predict_file = os.path.join(training_args.output_dir, f"{task_to_submit[task]}.tsv")
             if trainer.is_world_process_zero():
                 with open(output_predict_file, "w") as writer:
                     logger.info(f"***** Predict results {task} *****")

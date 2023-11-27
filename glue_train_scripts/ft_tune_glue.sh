@@ -9,7 +9,7 @@ if [ "$1" != "" ]; then
     echo "Using group name $GROUP_NAME from command line."
 else
     echo "Using default group name $GROUP_NAME."
-
+fi
 
 # Use the group name in your commands
 python run_glue.py /fly/task_configs/cola.json --do_tune=True --group="$GROUP_NAME" --monarch=False 
