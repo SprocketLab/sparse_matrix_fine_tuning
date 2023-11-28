@@ -442,6 +442,11 @@ def main(config: dict = None):
 
         if use_monarch:
             model.roberta.set_peft_config(peft_config)
+        
+        # NOTE: Ray doesn't support torch.compile
+        if torch.__version__.startswith("2") and not do_tune:
+            model = torch.compile(model)
+            
         return model
     
     
@@ -671,6 +676,7 @@ def main(config: dict = None):
         # Use best hyperparams for full training 
         print("Best hyperparameters: ", best_run.hyperparameters)
         json.dump(best_run.hyperparameters, open(os.path.join(training_args.output_dir, "best_hyperparams.json"), "w"))
+        do_tune = False # enable torch.compile
         trainer = Trainer(
             model=model_init(best_run.hyperparameters),
             args=training_args,

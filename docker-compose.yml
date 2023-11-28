@@ -24,7 +24,7 @@ services:
             count: all
             capabilities: [gpu]
     ipc: host
-    shm_size: '1g'
+    shm_size: '2g'
     container_name: peft
     # ports:
     #   - "5050:5050"

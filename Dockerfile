@@ -2,7 +2,7 @@
 # ARG COMPAT=0
 ARG PERSONAL=0
 # FROM nvidia/cuda:11.3.1-devel-ubuntu20.04 as base-0
-FROM nvcr.io/nvidia/pytorch:22.06-py3 as base
+FROM nvcr.io/nvidia/pytorch:23.10-py3 as base
 
 ENV HOST docker
 ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
@@ -41,7 +41,7 @@ RUN git clone https://github.com/idiap/fast-transformers \
     && rm -rf fast-transformers
 
 # xgboost conflicts with deepspeed
-RUN pip uninstall -y xgboost && DS_BUILD_UTILS=1 DS_BUILD_FUSED_LAMB=1 pip install deepspeed==0.6.5
+RUN pip uninstall -y xgboost && DS_BUILD_UTILS=1 DS_BUILD_FUSED_LAMB=1 pip install deepspeed
 
 # General packages that we don't care about the version
 # fs for reading tar files
@@ -88,7 +88,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
    # openmpi-bin \
 
 # m2 dependencies
-RUN pip install "einops==0.5.0" "mosaicml[nlp,wandb]>=0.14.0,<0.15" "mosaicml-streaming==0.4.1" "omegaconf==2.2.3" "transformers==4.28.1" "opt_einsum" "triton==2.0.0.dev20221103"
+RUN pip install einops omegaconf transformers==4.28.1 opt_einsum triton
 RUN pip install ray==2.6
 # Some how this fixes the pydantic__version__ bug...
 RUN python -m pip install -U pydantic spacy==3.4.4
+RUN git config --global --add safe.directory /fly
