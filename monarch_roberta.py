@@ -7,6 +7,7 @@ import logging
 from train_utils import *
 import argparse
 import time
+from transformers.trainer_utils import get_last_checkpoint
 parser = argparse.ArgumentParser()
 parser.add_argument(
             "--peft", action="store_true", help="""use PEFT 
@@ -54,8 +55,8 @@ param_stats(roberta_model, training=True, print_trainable=args.prt_layers) # che
 run_trainer(trainer, test_dataset, peft_config['precision'] )
     
 
-# Check loading fine-tuned Roberta
-finetuned_model = RobertaForSequenceClassification.from_pretrained(model_id, config=model_config, peft_config=peft_config).to(device)
-weights = save_dir + "/model.pt"
-finetuned_model.load_state_dict(torch.load(weights), strict=False)
+# # Check loading fine-tuned Roberta
+# finetuned_model = RobertaForSequenceClassification.from_pretrained(model_id, config=model_config, peft_config=peft_config).to(device)
+# weights = save_dir + "/model.pt"
+# finetuned_model.load_state_dict(torch.load(weights), strict=False)
 

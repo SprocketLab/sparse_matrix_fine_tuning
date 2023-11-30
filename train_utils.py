@@ -115,7 +115,6 @@ def setup_trainer(model_id, dataset_id, save_dir, train_config, peft_config={}, 
     roberta_model = RobertaForSequenceClassification.from_pretrained(model_id, config=config).to(device)
     if peft_config['monarch']:
         roberta_model.roberta.set_peft_config(peft_config) 
-        roberta_model.roberta.init_monarch_layers() # project weights to monarch matrices
     elif peft_config['lora']:
         loralib.mark_only_lora_as_trainable(roberta_model)
 

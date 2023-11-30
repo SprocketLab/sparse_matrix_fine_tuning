@@ -8,4 +8,5 @@ glue_data/**
 .vscode/**
 *.tar
 ray_results/**
+fly_src/models/__pycache__/**
 ```

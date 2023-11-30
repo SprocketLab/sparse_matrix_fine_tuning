@@ -264,10 +264,10 @@ class RobertaSelfAttention(nn.Module):
             return sizes
         
         for name in self.peft_config["layers_to_replace"]:
-            layer = getattr(self, name)
-            weights = list(layer.parameters())[0]
+            layer = getattr(self, name) # should be an nn.linear layer
+            weights = layer.weight 
             m, n = weights.shape
-
+            
             if self.peft_config["use_peft"]:
                 # freeze dense, init and train monarch, and then merge during inference
                 nblocks = self.nblocks
@@ -912,12 +912,15 @@ class RobertaModel(RobertaPreTrainedModel):
         self.encoder = RobertaEncoder(config, peft_config)
 
         self.pooler = RobertaPooler(config) if add_pooling_layer else None
-        self.param_set = False
+        self.monarch_param_set = False
         # Initialize weights and apply final processing
         self.post_init()
 
     # @Wenxuan
     def init_monarch_layers(self):
+        if self.monarch_param_set:
+            return
+        
         for name, module in self.named_modules():
             if isinstance(module, RobertaSelfAttention):
                 module.init_monarch_layers()
@@ -932,8 +935,8 @@ class RobertaModel(RobertaPreTrainedModel):
         # TODO: why peft_config disappears??
         super().train(mode)
         
-        if mode and hasattr(self, "peft_config") and self.peft_config["monarch"] and not self.param_set:
-            self.param_set = True
+        if mode and hasattr(self, "peft_config") and self.peft_config["monarch"] and not self.monarch_param_set:
+            self.monarch_param_set = True
             self.init_monarch_layers()
             param_stats(self, training=True)
         
@@ -946,7 +949,7 @@ class RobertaModel(RobertaPreTrainedModel):
         """
         self.peft_config = peft_config
         print("PEFT config set. Will reinit layers when entering training mode.")
-        self.param_set = False
+        self.monarch_param_set = False
         
         # set config and init submodules for all attention layers
         for name, module in self.named_modules():
