@@ -80,7 +80,7 @@ task_to_metric = {
     "qqp": "eval_combined_score",
     "rte": "eval_accuracy",
     "sst2": "eval_accuracy",
-    "stsb": "eval_pearson_correlation",
+    "stsb": "eval_pearson",
     "wnli": "eval_accuracy",
 }
 logger = logging.getLogger(__name__)
@@ -605,19 +605,19 @@ def main(config: dict = None):
     if not use_peft:
         peft_config["use_peft"] = False # Will not use merging adapter style
         
-    trainer = Trainer(
-        model_init=model_init,
-        args=training_args,
-        train_dataset=train_dataset if training_args.do_train else None,
-        eval_dataset=eval_dataset if training_args.do_eval else None,
-        compute_metrics=compute_metrics,
-        tokenizer=tokenizer,
-        data_collator=data_collator,
-    )
     
     # Ray Tune hyperparameter search
     if do_tune:
-        
+        trainer = Trainer(
+            model_init=model_init,
+            args=training_args,
+            train_dataset=train_dataset if training_args.do_train else None,
+            eval_dataset=eval_dataset if training_args.do_eval else None,
+            compute_metrics=compute_metrics,
+            tokenizer=tokenizer,
+            data_collator=data_collator,
+        )
+            
         # PEFT monarch search space
         if use_monarch:
             param_space = {
@@ -677,15 +677,18 @@ def main(config: dict = None):
         print("Best hyperparameters: ", best_run.hyperparameters)
         json.dump(best_run.hyperparameters, open(os.path.join(training_args.output_dir, "best_hyperparams.json"), "w"))
         do_tune = False # enable torch.compile
-        trainer = Trainer(
-            model=model_init(best_run.hyperparameters),
-            args=training_args,
-            train_dataset=train_dataset if training_args.do_train else None,
-            eval_dataset=eval_dataset if training_args.do_eval else None,
-            compute_metrics=compute_metrics,
-            tokenizer=tokenizer,
-            data_collator=data_collator,
-        )
+    
+    # load best hyperparams from last tune 
+    best_hyperparams = json.load(open(os.path.join(training_args.output_dir, "best_hyperparams.json"), "r"))
+    trainer = Trainer(
+        model=model_init(best_hyperparams),
+        args=training_args,
+        train_dataset=train_dataset if training_args.do_train else None,
+        eval_dataset=eval_dataset if training_args.do_eval else None,
+        compute_metrics=compute_metrics,
+        tokenizer=tokenizer,
+        data_collator=data_collator,
+    )
     
     # # Training
     if training_args.do_train:

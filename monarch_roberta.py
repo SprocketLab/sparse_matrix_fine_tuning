@@ -51,12 +51,13 @@ peft_config = {"lora": False,
                }
 roberta_model, trainer, test_dataset, model_config = setup_trainer(model_id, dataset_id, save_dir, train_config, peft_config, device)
 roberta_model.train()
-param_stats(roberta_model, training=True, print_trainable=args.prt_layers) # check trainable params
-run_trainer(trainer, test_dataset, peft_config['precision'] )
+run_trainer(trainer, test_dataset, peft_config['precision'])
     
 
-# # Check loading fine-tuned Roberta
-# finetuned_model = RobertaForSequenceClassification.from_pretrained(model_id, config=model_config, peft_config=peft_config).to(device)
-# weights = save_dir + "/model.pt"
-# finetuned_model.load_state_dict(torch.load(weights), strict=False)
+# Check loading fine-tuned Roberta
+ckpt_dir = get_last_checkpoint(save_dir)
+roberta_model = RobertaForSequenceClassification.from_pretrained(model_id, config=model_config).to(device)
+roberta_model.roberta.set_peft_config(peft_config)
+roberta_model.eval()
+roberta_model.load_state_dict(torch.load(os.path.join(ckpt_dir, "pytorch_model.bin")))
 

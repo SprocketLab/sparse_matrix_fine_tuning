@@ -1,6 +1,6 @@
 {
     "model_name_or_path": "roberta-large",
-    "task_name": "sst2",
+    "task_name": "stsb",
     "do_train": true,
     "do_eval": true,
     "max_seq_length": 128,

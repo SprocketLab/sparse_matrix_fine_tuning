@@ -289,7 +289,7 @@ class RobertaSelfAttention(nn.Module):
                 new_layer.bias = layer.bias
             new_layer.requires_grad_(True)  # must go after setting bias, otherwise requires_grad will be set to False
             setattr(self, name, new_layer)
-
+            
         print(f"Using monarch layer of shapes: {new_layer.blkdiag1.shape}, {new_layer.blkdiag2.shape}")
 
     def set_peft_config(self, peft_config):
@@ -929,16 +929,14 @@ class RobertaModel(RobertaPreTrainedModel):
                 module.requires_grad_(True)
             else:
                 module.requires_grad_(False)
-    
+        self.monarch_param_set = True
     
     def train(self, mode: bool = True):
         # TODO: why peft_config disappears??
-        super().train(mode)
-        
-        if mode and hasattr(self, "peft_config") and self.peft_config["monarch"] and not self.monarch_param_set:
-            self.monarch_param_set = True
+        if hasattr(self, "peft_config") and self.peft_config["monarch"] and not self.monarch_param_set:
             self.init_monarch_layers()
             param_stats(self, training=True)
+        super().train(mode)
         
 
             
@@ -948,7 +946,7 @@ class RobertaModel(RobertaPreTrainedModel):
             reinit their submodules based on config
         """
         self.peft_config = peft_config
-        print("PEFT config set. Will reinit layers when entering training mode.")
+        print("PEFT config set. Will init layers when entering training mode.")
         self.monarch_param_set = False
         
         # set config and init submodules for all attention layers
