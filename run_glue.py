@@ -600,11 +600,6 @@ def main(config: dict = None):
         print("Wandb project: ", os.environ["WANDB_PROJECT"])
         print("Wandb run group: ", os.environ["WANDB_RUN_GROUP"])
 
-        if not do_tune:
-            wandb.init(config=peft_config, group=os.environ["WANDB_RUN_GROUP"], project=os.environ["WANDB_PROJECT"])
-        else:
-            wandb.init(group=os.environ["WANDB_RUN_GROUP"], project=os.environ["WANDB_PROJECT"])
-    
     if not use_peft:
         peft_config["use_peft"] = False # Will not use merging adapter style
         
@@ -632,7 +627,7 @@ def main(config: dict = None):
                 "weight_decay": tune.choice([0.01, 0.1, 1e-5, 5e-6]),
                 "lr_scheduler_type": tune.choice(["cosine", "cosine_with_restarts"]), # mostly linear underperforms
             }
-            n_trials = 50
+            n_trials = 40
             
             if not use_peft:
                 del param_space["nblocks"]
