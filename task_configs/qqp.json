@@ -8,7 +8,7 @@
     "learning_rate": 1e-05,
     "num_train_epochs": 10,
     "output_dir": "results/monarch_roberta_glue/",
-    "fp16": true,
+    "fp16": false,
     "overwrite_output_dir": true,
     "do_predict": true,
     "logging_steps": 50,
@@ -16,5 +16,6 @@
     "weight_decay": 0.1,
     "lr_scheduler_type": "cosine",
     "evaluation_strategy": "steps",
-    "eval_steps": 150
+    "eval_steps": 150,
+    "bf16": true
 }

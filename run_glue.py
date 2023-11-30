@@ -442,11 +442,10 @@ def main(config: dict = None):
 
         if use_monarch:
             model.roberta.set_peft_config(peft_config)
-        
+
         # NOTE: Ray doesn't support torch.compile and it also causes a bug with trainer...
         # if torch.__version__.startswith("2") and not do_tune:
         #     model = torch.compile(model)
-            
         return model
     
     
@@ -598,9 +597,13 @@ def main(config: dict = None):
         
         # group runs within the same hour
         os.environ["WANDB_RUN_GROUP"] = get_run_group(data_args.task_name, do_tune, group)
-        # training_args.fsdp = "full_shard"
         print("Wandb project: ", os.environ["WANDB_PROJECT"])
         print("Wandb run group: ", os.environ["WANDB_RUN_GROUP"])
+
+        if not do_tune:
+            wandb.init(config=peft_config, group=os.environ["WANDB_RUN_GROUP"], project=os.environ["WANDB_PROJECT"])
+        else:
+            wandb.init(group=os.environ["WANDB_RUN_GROUP"], project=os.environ["WANDB_PROJECT"])
     
     if not use_peft:
         peft_config["use_peft"] = False # Will not use merging adapter style
@@ -622,11 +625,12 @@ def main(config: dict = None):
         if use_monarch:
             param_space = {
                 # "rank": tune.choice([1, 2, 3]),  # Tuning rank causes dim mismatch when merging
-                "nblocks": tune.choice([2, 4, 8]), # Smaller nblocks saves params (due to rank 1 SVD) but are slower due to memory bound. M2-BERT uses 4 blocks for MLP, but in other cases it seems mostly sqrt(n)
+                # "nblocks": tune.choice([2, 4, 8]), # Smaller nblocks saves params (due to rank 1 SVD) but are slower due to memory bound. M2-BERT uses 4 blocks for MLP, but in other cases it seems mostly sqrt(n)
+                "nblocks": tune.choice(['sqrt(n)']),
                 "learning_rate": tune.quniform(1e-4, 2e-6, 1e-6),
-                "per_device_train_batch_size": tune.choice([16, 32]), # In Monarch-Mixer they mainly used 32 and 16 
+                "per_device_train_batch_size": tune.choice([16, 32]), # In Monarch-Mixer they mixed 32 and 16 
                 "weight_decay": tune.choice([0.01, 0.1, 1e-5, 5e-6]),
-                "lr_scheduler_type": tune.choice(["cosine", "cosine_with_restarts", "linear"]),
+                "lr_scheduler_type": tune.choice(["cosine", "cosine_with_restarts"]), # mostly linear underperforms
             }
             n_trials = 50
             
@@ -675,11 +679,19 @@ def main(config: dict = None):
     
         # Use best hyperparams for full training 
         print("Best hyperparameters: ", best_run.hyperparameters)
-        json.dump(best_run.hyperparameters, open(os.path.join(training_args.output_dir, "best_hyperparams.json"), "w"))
+        best_param_path = os.path.join(training_args.output_dir, "best_hyperparams.json")
+        json.dump(best_run.hyperparameters, open(best_param_path, "w"))
+        
         do_tune = False # enable torch.compile
     
     # load best hyperparams from last tune 
-    best_hyperparams = json.load(open(os.path.join(training_args.output_dir, "best_hyperparams.json"), "r"))
+    best_param_path = os.path.join(training_args.output_dir, "best_hyperparams.json")
+    if os.path.exists(best_param_path):
+        best_hyperparams = json.load(open(best_param_path, "r"))  
+        print("Loading best hyperparams: ", best_hyperparams)
+    else:
+        best_hyperparams = None
+        
     trainer = Trainer(
         model=model_init(best_hyperparams),
         args=training_args,

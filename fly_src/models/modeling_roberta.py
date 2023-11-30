@@ -268,12 +268,14 @@ class RobertaSelfAttention(nn.Module):
             weights = layer.weight 
             m, n = weights.shape
             
-            if self.peft_config["use_peft"]:
+            if self.peft_config["use_peft"] and self.nblocks != "sqrt(n)":
                 # freeze dense, init and train monarch, and then merge during inference
                 nblocks = self.nblocks
             else:
                 # project dense to monarch and keep monarch only
                 nblocks = factor(layer.in_features)[0]  # increase to sqrt(n) blocks when used alone -> more params
+                if self.nblocks == "sqrt(n)":
+                    self.nblocks = nblocks
 
             bias = layer.bias != None
             new_layer = MonarchLinear(
