@@ -1,4 +1,6 @@
 results/**
+!results
+!results/monarch_roberta_glue
 !results/monarch_roberta_glue/AX.tsv
 wandb/**
 __pycache__/**

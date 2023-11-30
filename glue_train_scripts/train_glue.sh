@@ -11,6 +11,7 @@ CUDA_VISIBLE_DEVICES=5 python run_glue.py /fly/task_configs/stsb.json &
 CUDA_VISIBLE_DEVICES=6 python run_glue.py /fly/task_configs/qqp.json  &
 CUDA_VISIBLE_DEVICES=7 python run_glue.py /fly/task_configs/mnli.json &
 CUDA_VISIBLE_DEVICES=0  python run_glue.py /fly/task_configs/wnli.json 
+CUDA_VISIBLE_DEVICES=1 python run_glue.py task_configs/stsb.json
 
 $out_path = "results/monarch_roberta_glue"
 # find all .tsv files in results/monarch_roberta_glue and zip them

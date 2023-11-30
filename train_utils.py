@@ -168,6 +168,7 @@ def override_config(old_configs: List[Dict], new_args: List[str]):
         except (SyntaxError, ValueError):
             # if that goes wrong, just use the string
             attempt = val
+            
         exists = False
         for config in old_configs:
             config = config.__dict__
@@ -176,9 +177,10 @@ def override_config(old_configs: List[Dict], new_args: List[str]):
                     f"wrong type for {key}, expected {type(config[key])}, got {type(attempt)}"
                 # cross fingers
                 print(f"Overriding: {key} = {attempt}")
-                config[key] = val
+                config[key] = attempt
                 exists = True
-
+        
+        # Use this as global variable?
         if not exists:
             extra_args[key] = attempt
     return extra_args

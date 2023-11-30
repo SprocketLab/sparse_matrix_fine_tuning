@@ -422,7 +422,7 @@ def main(config: dict = None):
     
     
     # helper to init and set hyperparams for Ray Tune search
-    def model_init(hyperparams):
+    def model_init(hyperparams = None):
         model = RobertaForSequenceClassification.from_pretrained(
             pretrained_model_name_or_path=model_args.model_name_or_path,
             from_tf=bool(".ckpt" in model_args.model_name_or_path),
@@ -443,9 +443,9 @@ def main(config: dict = None):
         if use_monarch:
             model.roberta.set_peft_config(peft_config)
         
-        # NOTE: Ray doesn't support torch.compile
-        if torch.__version__.startswith("2") and not do_tune:
-            model = torch.compile(model)
+        # NOTE: Ray doesn't support torch.compile and it also causes a bug with trainer...
+        # if torch.__version__.startswith("2") and not do_tune:
+        #     model = torch.compile(model)
             
         return model
     
