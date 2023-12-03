@@ -7,6 +7,8 @@ from transformers import (
     AutoModel,
     AutoConfig,
 ) 
+import warnings 
+import loralib
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__))) # add current directory to path
 from fly_src.models.modeling_roberta import RobertaForSequenceClassification
@@ -31,8 +33,8 @@ def param_stats(model, training=False, print_trainable=False):
             if print_trainable:
                 print("trainable:", name)            
                 
-    print("Total GPU memory: %.2f GB" % (torch.cuda.mem_get_info()[1] / 1024 ** 3))
-    print("Avail GPU memory %.2f GB" % (torch.cuda.mem_get_info()[0] / 1024 ** 3))
+    # print("Total GPU memory: %.2f GB" % (torch.cuda.mem_get_info()[1] / 1024 ** 3))
+    # print("Avail GPU memory %.2f GB" % (torch.cuda.mem_get_info()[0] / 1024 ** 3))
     print(
         f"Total parameters: {param_count / 1024 ** 2:.2f}M,\n \
         trainable parameters: {param_trainable / 1024 ** 2:.2f}M ({100 * param_trainable / param_count:.2f}%)\n \
@@ -152,15 +154,24 @@ def run_trainer(trainer, test_dataset, precision="fp16", device="cuda"):
         print("fine-tuned roberta accuracy: ", round(accuracy_score(test_dataset["label"], finetuned_roberta_predictions), 3))
 
 
-def override_config(old_configs: List[Dict], new_args: List[str]):
+def override_config(old_configs: List[Dict], new_args: List[str] or Dict):
     """Scan through the old configs and update them with new args if they exist
     """
     extra_args = {}
+    new_args = new_args.items() if type(new_args) == dict else new_args
+    
     for arg in new_args:
-        assert arg.startswith('--'), "wrong format, extra argument must be --key=value"
-        key, val = arg.split('=')
-        key = key[2:]
         
+        if type(arg) == tuple:
+            # dictionary
+            key, val = arg
+        elif arg.startswith('--'):
+            # command line args
+            key, val = arg.split('=')
+            key = key[2:]
+        else:
+            raise ValueError("wrong format, extra command line argument must be --key=value")
+
         try:
             # attempt to eval it it (e.g. if bool, number, or etc)
             attempt = literal_eval(val)
@@ -172,8 +183,9 @@ def override_config(old_configs: List[Dict], new_args: List[str]):
         for config in old_configs:
             config = config.__dict__
             if key in config.keys():
-                assert type(attempt) == type(config[key]), \
-                    f"wrong type for {key}, expected {type(config[key])}, got {type(attempt)}"
+                if not(type(attempt) == type(config[key]) or config[key] == None):
+                    warnings.warn(f"wrong type for {key}, expected {type(config[key])}, got {type(attempt)}")
+
                 # cross fingers
                 print(f"Overriding: {key} = {attempt}")
                 config[key] = attempt

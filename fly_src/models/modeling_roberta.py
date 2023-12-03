@@ -68,9 +68,7 @@ def param_stats(model, training=False, print_trainable=False):
             param_trainable += torch.numel(param) 
             if print_trainable:
                 print("trainable:", name)            
-                
-    print("Total GPU memory: %.2f GB" % (torch.cuda.mem_get_info()[1] / 1024 ** 3))
-    print("Avail GPU memory %.2f GB" % (torch.cuda.mem_get_info()[0] / 1024 ** 3))
+
     print(
         f"Total parameters: {param_count / 1024 ** 2:.2f}M,\n \
         trainable parameters: {param_trainable / 1024 ** 2:.2f}M ({100 * param_trainable / param_count:.2f}%)\n \
@@ -915,6 +913,8 @@ class RobertaModel(RobertaPreTrainedModel):
 
         self.pooler = RobertaPooler(config) if add_pooling_layer else None
         self.monarch_param_set = False
+        self.log_param_steps = 1000
+        self.train_mode_count = 0
         # Initialize weights and apply final processing
         self.post_init()
 
@@ -935,10 +935,13 @@ class RobertaModel(RobertaPreTrainedModel):
     
     def train(self, mode: bool = True):
         # TODO: why peft_config disappears??
+        super().train(mode)
         if hasattr(self, "peft_config") and self.peft_config["monarch"] and not self.monarch_param_set:
             self.init_monarch_layers()
+            
+        if self.train_mode_count % self.log_param_steps == 0:
             param_stats(self, training=True)
-        super().train(mode)
+            self.train_mode_count += 1
         
 
             

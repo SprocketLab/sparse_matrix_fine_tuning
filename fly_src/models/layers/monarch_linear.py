@@ -148,6 +148,11 @@ class MonarchLinear(StructuredLinear):
                 self.dense.data -= blockdiag_butterfly_multiply(
                     torch.eye(self.in_features, device=self.device), self.blkdiag1, self.blkdiag2
                 )
+                # re-register monarch weights
+                if isinstance(self.blkdiag1, torch.Tensor):
+                    self.blkdiag1 = nn.Parameter(self.blkdiag1)
+                    self.blkdiag2 = nn.Parameter(self.blkdiag2)
+                    
                 self.merged = False
                 self.dense.requires_grad_(False) # freeze dense, train monarch adapter
         else:
@@ -156,7 +161,15 @@ class MonarchLinear(StructuredLinear):
                 self.dense.data += blockdiag_butterfly_multiply(
                     torch.eye(self.in_features, device=self.device), self.blkdiag1, self.blkdiag2
                 )
-                # self.blkdiag1 = self.blkdiag2 = None # save storage
+                # unregister the monarch weights
+                # self.blkdiag1 = self.blkdiag1.data
+                # self.blkdiag2 = self.blkdiag2.data
+                data1 = self.blkdiag1.data
+                data2 = self.blkdiag2.data
+                del self.blkdiag1, self.blkdiag2
+                self.blkdiag1 = data1
+                self.blkdiag2 = data2
+                
                 self.merged = True
 
 

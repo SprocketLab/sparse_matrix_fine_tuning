@@ -385,7 +385,8 @@ def main(config: dict = None):
     if data_args.task_name is not None:
         is_regression = data_args.task_name == "stsb"
         if not is_regression:
-            label_list = raw_datasets["train"].features["label"].names
+            label_list = json.load(open("task_configs/labels.json", "r"))[data_args.task_name]
+            # label_list = raw_datasets["train"].features["label"].names
             num_labels = len(label_list)
         else:
             num_labels = 1
@@ -588,7 +589,7 @@ def main(config: dict = None):
     has_ckpt = any([file.startswith("checkpoint") for file in os.listdir(training_args.output_dir)])
     if training_args.resume_from_checkpoint is not None:
         training_args.resume_from_checkpoint &= has_ckpt
-        
+
     # Wandb config 
     if use_wandb:
         training_args.run_name = "glue_" + data_args.task_name # wandb run name
@@ -625,7 +626,7 @@ def main(config: dict = None):
                 "learning_rate": tune.quniform(1e-4, 2e-6, 1e-6),
                 "per_device_train_batch_size": tune.choice([16, 32]), # In Monarch-Mixer they mixed 32 and 16 
                 "weight_decay": tune.choice([0.01, 0.1, 1e-5, 5e-6]),
-                "lr_scheduler_type": tune.choice(["cosine", "cosine_with_restarts"]), # mostly linear underperforms
+                "lr_scheduler_type": tune.choice(["cosine"]), # mostly linear underperforms
             }
             n_trials = 40
             
@@ -639,9 +640,9 @@ def main(config: dict = None):
                 "learning_rate": tune.grid_search([1e-5, 2e-5, 3e-5]),
                 "per_device_train_batch_size": tune.choice([16, 32]),
                 "weight_decay": tune.choice([0.1]),
-                "lr_scheduler_type": tune.choice(["cosine", "cosine_with_restarts", "linear"]),
+                "lr_scheduler_type": tune.choice(["cosine", "linear"]),
             }
-            n_trials = 18
+            n_trials = 15
 
         scheduler = ASHAScheduler(
             max_t=14, # max_t * eval_every(eval_steps in configs) = max training steps
@@ -684,6 +685,7 @@ def main(config: dict = None):
     if os.path.exists(best_param_path):
         best_hyperparams = json.load(open(best_param_path, "r"))  
         print("Loading best hyperparams: ", best_hyperparams)
+        override_config([model_args, data_args, training_args], best_hyperparams)
     else:
         best_hyperparams = None
         
@@ -696,6 +698,7 @@ def main(config: dict = None):
         tokenizer=tokenizer,
         data_collator=data_collator,
     )
+
     
     # # Training
     if training_args.do_train:
@@ -720,7 +723,12 @@ def main(config: dict = None):
     # Evaluation
     if training_args.do_eval:
         logger.info("*** Evaluate ***")
-
+        if training_args.resume_from_checkpoint:
+            last_checkpoint = os.path.join(get_last_checkpoint(training_args.output_dir),"pytorch_model.bin")
+            trainer.model.roberta.init_monarch_layers()
+            trainer.model.eval()
+            trainer.model.load_state_dict(torch.load(last_checkpoint))
+            
         # Loop to handle MNLI double evaluation (matched, mis-matched)
         tasks = [data_args.task_name]
         eval_datasets = [eval_dataset]
