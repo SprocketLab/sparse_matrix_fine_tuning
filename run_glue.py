@@ -424,6 +424,7 @@ def main(config: dict = None):
     
     # helper to init and set hyperparams for Ray Tune search
     def model_init(hyperparams = None):
+        wandb.init()
         model = RobertaForSequenceClassification.from_pretrained(
             pretrained_model_name_or_path=model_args.model_name_or_path,
             from_tf=bool(".ckpt" in model_args.model_name_or_path),
@@ -638,11 +639,11 @@ def main(config: dict = None):
             # Raw finetuning
             param_space = {
                 "learning_rate": tune.grid_search([1e-5, 2e-5, 3e-5]),
-                "per_device_train_batch_size": tune.choice([16, 32]),
+                "per_device_train_batch_size": tune.grid_search([16, 32]),
                 "weight_decay": tune.choice([0.1]),
-                "lr_scheduler_type": tune.choice(["cosine", "linear"]),
+                "lr_scheduler_type": tune.grid_search(["cosine", "linear"]),
             }
-            n_trials = 15
+            n_trials = 1 # grid search will try all combinations by default
 
         scheduler = ASHAScheduler(
             max_t=14, # max_t * eval_every(eval_steps in configs) = max training steps
@@ -667,7 +668,7 @@ def main(config: dict = None):
             keep_checkpoints_num=0,
             checkpoint_score_attr="training_iteration",
             progress_reporter=reporter,
-            resources_per_trial={"cpu": 2, "gpu": 1},
+            resources_per_trial={"cpu": 1, "gpu": 1},
             local_dir="ray_results",
             name=os.environ["WANDB_RUN_GROUP"],
             max_failures=100, # tolerate OOM
