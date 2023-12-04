@@ -92,5 +92,4 @@ RUN pip install einops omegaconf transformers==4.28.1 opt_einsum triton
 RUN pip install ray==2.6
 # Some how this fixes the pydantic__version__ bug...
 RUN python -m pip install -U pydantic spacy==3.4.4
-RUN git config --global --add safe.directory /fly
 RUN pip install accelerate -U

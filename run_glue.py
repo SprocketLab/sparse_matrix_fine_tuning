@@ -42,6 +42,7 @@ from ray import train, tune
 from ray.tune.schedulers import ASHAScheduler
 import ray.train.huggingface.transformers as ray_hf
 from ray.tune import CLIReporter
+from ray.air.integrations.wandb import WandbLoggerCallback
 
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
 check_min_version("4.21.0.dev0")
@@ -424,7 +425,7 @@ def main(config: dict = None):
     
     # helper to init and set hyperparams for Ray Tune search
     def model_init(hyperparams = None):
-        wandb.init()
+        # wandb.init()
         model = RobertaForSequenceClassification.from_pretrained(
             pretrained_model_name_or_path=model_args.model_name_or_path,
             from_tf=bool(".ckpt" in model_args.model_name_or_path),
@@ -644,11 +645,12 @@ def main(config: dict = None):
                 "lr_scheduler_type": tune.grid_search(["cosine", "linear"]),
             }
             n_trials = 1 # grid search will try all combinations by default
-
+        
+        direction = "max"
         scheduler = ASHAScheduler(
             max_t=14, # max_t * eval_every(eval_steps in configs) = max training steps
             metric = task_to_metric[data_args.task_name],
-            mode = "max",
+            mode = direction,
             grace_period=5,
         )
         
@@ -672,13 +674,14 @@ def main(config: dict = None):
             local_dir="ray_results",
             name=os.environ["WANDB_RUN_GROUP"],
             max_failures=100, # tolerate OOM
+            callbacks=[WandbLoggerCallback()],
+            direction="maximize" if direction == "max" else "minimize",
         )
     
         # Use best hyperparams for full training 
         print("Best hyperparameters: ", best_run.hyperparameters)
         best_param_path = os.path.join(training_args.output_dir, "best_hyperparams.json")
         json.dump(best_run.hyperparameters, open(best_param_path, "w"))
-        
         do_tune = False # enable torch.compile
     
     # load best hyperparams from last tune 
