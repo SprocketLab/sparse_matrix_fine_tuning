@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Default group name
-GROUP_NAME="FT_train"
+GROUP_NAME="FT"
 
 # Check if an argument is provided
 if [ "$1" != "" ]; then

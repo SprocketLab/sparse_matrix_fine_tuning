@@ -93,3 +93,4 @@ RUN pip install ray==2.6
 # Some how this fixes the pydantic__version__ bug...
 RUN python -m pip install -U pydantic spacy==3.4.4
 RUN pip install accelerate -U
+RUN pip install jupyterlab==4.0.3

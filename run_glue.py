@@ -425,7 +425,7 @@ def main(config: dict = None):
     
     # helper to init and set hyperparams for Ray Tune search
     def model_init(hyperparams = None):
-        # wandb.init()
+        torch.manual_seed(training_args.seed)
         model = RobertaForSequenceClassification.from_pretrained(
             pretrained_model_name_or_path=model_args.model_name_or_path,
             from_tf=bool(".ckpt" in model_args.model_name_or_path),
@@ -648,7 +648,7 @@ def main(config: dict = None):
         
         direction = "max"
         scheduler = ASHAScheduler(
-            max_t=14, # max_t * eval_every(eval_steps in configs) = max training steps
+            max_t=12, # max_t * eval_every(eval_steps in configs) = max training steps
             metric = task_to_metric[data_args.task_name],
             mode = direction,
             grace_period=5,
@@ -674,7 +674,7 @@ def main(config: dict = None):
             local_dir="ray_results",
             name=os.environ["WANDB_RUN_GROUP"],
             max_failures=100, # tolerate OOM
-            callbacks=[WandbLoggerCallback()],
+            callbacks=[WandbLoggerCallback(project=os.environ["WANDB_PROJECT"], group=os.environ["WANDB_RUN_GROUP"])],
             direction="maximize" if direction == "max" else "minimize",
         )
     
@@ -692,6 +692,10 @@ def main(config: dict = None):
         override_config([model_args, data_args, training_args], best_hyperparams)
     else:
         best_hyperparams = None
+        
+    if data_args.task_name == "qqp":
+        training_args.eval_steps = 1000 # 110K total steps for QQP
+        training_args.save_steps = 1000
         
     trainer = Trainer(
         model=model_init(best_hyperparams),
