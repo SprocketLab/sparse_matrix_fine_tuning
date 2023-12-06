@@ -26,6 +26,6 @@ services:
     ipc: host
     shm_size: '2g'
     container_name: peft
-    # ports:
-    #   - "5050:5050"
+    ports:
+      - "5050:5050"
       
