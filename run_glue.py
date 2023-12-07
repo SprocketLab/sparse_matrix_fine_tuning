@@ -623,11 +623,11 @@ def main(config: dict = None):
         if use_monarch:
             param_space = {
                 # "rank": tune.choice([1, 2, 3]),  # Tuning rank causes dim mismatch when merging
-                # "nblocks": tune.choice([2, 4, 8]), # Smaller nblocks saves params (due to rank 1 SVD) but are slower due to memory bound. M2-BERT uses 4 blocks for MLP, but in other cases it seems mostly sqrt(n)
-                "nblocks": tune.choice(['sqrt(n)']),
-                "learning_rate": tune.quniform(1e-4, 2e-6, 1e-6),
+                # "nblocks": tune.choice([2, 4]), # Smaller nblocks saves params (due to rank 1 SVD) but are slower due to memory bound. M2-BERT uses 4 blocks for MLP, but in other cases it seems mostly sqrt(n)
+                "nblocks": tune.choice(['sqrt(n)', 4]),
+                "learning_rate": tune.quniform(8e-5, 2e-6, 1e-6),
                 "per_device_train_batch_size": tune.choice([16, 32]), # In Monarch-Mixer they mixed 32 and 16 
-                "weight_decay": tune.choice([0.01, 0.1, 1e-5, 5e-6]),
+                "weight_decay": tune.choice([0.01, 0.1, 1e-3]),
                 "lr_scheduler_type": tune.choice(["cosine"]), # mostly linear underperforms
             }
             n_trials = 40

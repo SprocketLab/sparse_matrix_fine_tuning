@@ -1,5 +1,11 @@
 # !/bin/bash
+GROUP_NAME=""
 
+# Check if an argument is provided
+if [ "$1" != "" ]; then
+    GROUP_NAME="$1"
+    echo "Using group name $GROUP_NAME from command line."
+fi
 
 python run_glue.py /fly/task_configs/cola.json --do_tune=True
 python run_glue.py /fly/task_configs/mrpc.json --do_tune=True

@@ -56,9 +56,7 @@ class MonarchLinear(StructuredLinear):
         self.mid_blksz = self.nblocks * rank
         self.out_blksz = int(math.ceil(self.out_features / nblocks)) * rank
         
-
         # Get actual input/output features without permutation
-
         self.device = device
         self.peft = peft
         if self.peft and rank > 1:
@@ -76,6 +74,8 @@ class MonarchLinear(StructuredLinear):
         self.blkdiag2 = nn.Parameter(
                 torch.zeros(nblocks, self.out_blksz, self.mid_blksz) # (nblocks, l, nblocks * r)
         )
+        self.scaler = nn.Parameter(torch.diag(torch.zeros(self.out_features)))
+        
         self.reset_parameters()
         
         if weights is not None:
@@ -87,10 +87,10 @@ class MonarchLinear(StructuredLinear):
 
     def reset_parameters(self) -> None:
         # Mimic init.kaiming_uniform: https://github.com/pytorch/pytorch/blob/24087d07ca7ffa244575d259711dd7c99245a67a/torch/nn/init.py#L360
-        if self.peft:
-            monarch_factors = [self.blkdiag1] # set the second factor to 0 to init at the pretrained point
-        else:
-            monarch_factors = [self.blkdiag1, self.blkdiag2]
+        # if self.peft:
+        #     monarch_factors = [self.blkdiag1] # set the second factor to 0 to init at the pretrained point
+        # else:
+        monarch_factors = [self.blkdiag1, self.blkdiag2]
             
         for blkdiag in monarch_factors:
             fan_in = blkdiag.shape[-1]
@@ -152,7 +152,7 @@ class MonarchLinear(StructuredLinear):
                 if isinstance(self.blkdiag1, torch.Tensor):
                     self.blkdiag1 = nn.Parameter(self.blkdiag1)
                     self.blkdiag2 = nn.Parameter(self.blkdiag2)
-                    
+
                 self.merged = False
                 self.dense.requires_grad_(False) # freeze dense, train monarch adapter
         else:
@@ -169,7 +169,6 @@ class MonarchLinear(StructuredLinear):
                 del self.blkdiag1, self.blkdiag2
                 self.blkdiag1 = data1
                 self.blkdiag2 = data2
-                
                 self.merged = True
 
 
@@ -177,17 +176,19 @@ class MonarchLinear(StructuredLinear):
         if self.peft:
             if self.merged:
                 # inference
-                return F.linear(x, self.dense, self.bias)
+                x = F.linear(x, self.dense, self.bias)
             else:
                 # training
-                return self.monarch_forward(x) + F.linear(x, self.dense, self.bias)
+                x = self.monarch_forward(x) + F.linear(x, self.dense, self.bias)
         else:
-            return self.monarch_forward(x)
+            x = self.monarch_forward(x)
+        
+        return x @ self.scaler 
 
 
     # Override magic methods
     def __repr__(self):
-        weight_shape = nblocks = {self.blkdiag1.shape[0]} if self.blkdiag1 is not None else self.dense.shape
+        weight_shape = self.nblocks = {self.blkdiag1.shape[0]} if self.blkdiag1 is not None else self.dense.shape
         return (
             f"{self.__class__.__name__}(in_features={self.in_features}, out_features={self.out_features}, "
             f"weight_shape={weight_shape}, requires_grad={list(self.parameters())[0].requires_grad})"

@@ -202,6 +202,6 @@ def get_run_group(task_name: str, do_tune: bool=False, group: str=None):
     """
     run_group = "tune" + "_" if do_tune else "" # if hyperapram tuning, add tune to group name
     run_group += task_name + "_"
-    run_group += group + "_" if group is not None else ""
+    run_group += group + "_" if group not in [None, ""] else ""
     run_group += time.strftime("%m-%d-%H", time.localtime())
     return run_group
