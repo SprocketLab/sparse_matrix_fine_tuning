@@ -16,13 +16,13 @@
 """PyTorch RoBERTa model."""
 import math 
 import json
+import wandb
 from typing import List, Optional, Tuple, Union
 from packaging import version
 import torch
 import torch.utils.checkpoint
 from torch import nn
 from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss
-
 from transformers.activations import ACT2FN, gelu
 from transformers.modeling_outputs import (
     BaseModelOutputWithPastAndCrossAttentions,
@@ -289,6 +289,7 @@ class RobertaSelfAttention(nn.Module):
                 new_layer.bias = layer.bias
             new_layer.requires_grad_(True)  # must go after setting bias, otherwise requires_grad will be set to False
             setattr(self, name, new_layer)
+
             
         print(f"Using monarch layer of shapes: {new_layer.blkdiag1.shape}, {new_layer.blkdiag2.shape}")
 
@@ -915,6 +916,7 @@ class RobertaModel(RobertaPreTrainedModel):
         self.monarch_param_set = False
         self.log_param_steps = 1000
         self.train_mode_count = 0
+        self.wandb_watch_enabled = False
         # Initialize weights and apply final processing
         self.post_init()
 
@@ -941,10 +943,17 @@ class RobertaModel(RobertaPreTrainedModel):
             
         if self.train_mode_count % self.log_param_steps == 0:
             param_stats(self, training=True)
-            self.train_mode_count += 1
+        self.train_mode_count += 1
         
-
+        # check if wandb is initialized
+        if wandb.run is not None and not self.wandb_watch_enabled:
+            print('Enabling wandb watch.')
+            for name, module in self.named_modules():
+                if "scaler" in name:
+                    wandb.watch(module)
+            self.wandb_watch_enabled = True
             
+
     def set_peft_config(self, peft_config=None):
         """
             Set peft config for all attention layers and

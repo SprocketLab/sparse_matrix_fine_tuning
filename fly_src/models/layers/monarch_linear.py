@@ -24,7 +24,13 @@ logger = get_logger()
 def factor_balance(mid_blksz, out_blksz):
     total = mid_blksz * out_blksz
 
+class Scaler(nn.Module):
+    def __init__(self, out_features):
+        super().__init__()
+        self.scaler = nn.Parameter(torch.zeros(out_features))
 
+    def forward(self, x):
+        return x @ torch.diag(self.scaler)
 # @Wenxuan
 class MonarchLinear(StructuredLinear):
     """
@@ -74,7 +80,7 @@ class MonarchLinear(StructuredLinear):
         self.blkdiag2 = nn.Parameter(
                 torch.zeros(nblocks, self.out_blksz, self.mid_blksz) # (nblocks, l, nblocks * r)
         )
-        self.scaler = nn.Parameter(torch.diag(torch.zeros(self.out_features)))
+        self.scaler = Scaler(self.out_features)
         
         self.reset_parameters()
         
@@ -183,7 +189,7 @@ class MonarchLinear(StructuredLinear):
         else:
             x = self.monarch_forward(x)
         
-        return x @ self.scaler 
+        return self.scaler(x)
 
 
     # Override magic methods
