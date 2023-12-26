@@ -21,16 +21,34 @@ from fly_src.ops.blockdiag_butterfly_einsum import (
 
 logger = get_logger()
 
+hooked = False
+check_freq = 1000
+check_step = 0
+
+def hook_fn(module, grad_input, grad_output):
+    # print(f"{module}'s output's grad (dy) is {grad_output}")
+    global check_freq, check_step
+    if check_step % check_freq == 0:
+        print(f"{module}'s has dW {grad_input[1]} and scaler value {module.scaler}")
+    check_step += 1
+    
+    
 def factor_balance(mid_blksz, out_blksz):
     total = mid_blksz * out_blksz
 
+# @Wenxuan
+# Use a diagonal matrix or a scaler to scale output of monarch factors
 class Scaler(nn.Module):
     def __init__(self, out_features):
         super().__init__()
-        self.scaler = nn.Parameter(torch.zeros(out_features))
-
+        self.scaler = nn.Parameter(torch.zeros(1))
+        
     def forward(self, x):
-        return x @ torch.diag(self.scaler)
+        x = x * self.scaler
+        # layernorm to avoid vanishing gradient
+        x = F.layer_norm(x, x.shape[1:])
+        return x
+
 # @Wenxuan
 class MonarchLinear(StructuredLinear):
     """
@@ -88,6 +106,13 @@ class MonarchLinear(StructuredLinear):
             self.set_weights_from_dense_init(weights, rank)
 
         self.to(device)
+        
+        # Hook only one layer to debug
+        global hooked
+        if not hooked:
+            self.hook = self.scaler.register_backward_hook(hook_fn)
+            hooked = True
+            
         logger.info(f"Linear class {self.__class__}: saving={self.saving}")
 
 
@@ -177,19 +202,17 @@ class MonarchLinear(StructuredLinear):
                 self.blkdiag2 = data2
                 self.merged = True
 
-
     def forward(self, x):
         if self.peft:
             if self.merged:
                 # inference
-                x = F.linear(x, self.dense, self.bias)
+                x = F.linear(x, self.dense)
             else:
                 # training
-                x = self.monarch_forward(x) + F.linear(x, self.dense, self.bias)
+                x = self.monarch_forward(x) + F.linear(x, self.dense)
         else:
             x = self.monarch_forward(x)
-        
-        return self.scaler(x)
+        return self.scaler(x) + self.bias
 
 
     # Override magic methods

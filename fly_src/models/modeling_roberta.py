@@ -53,7 +53,7 @@ from transformers.models.roberta.configuration_roberta import RobertaConfig
 import sys, os
 
 sys.path.insert(0, "/fly")  # docker working dir
-from fly_src.models.layers.monarch_linear import MonarchLinear
+from fly_src.models.layers.monarch_linear import MonarchLinear, Scaler
 import loralib as lora
 
 def param_stats(model, training=False, print_trainable=False):
@@ -929,7 +929,7 @@ class RobertaModel(RobertaPreTrainedModel):
             if isinstance(module, RobertaSelfAttention):
                 module.init_monarch_layers()
                 
-            if isinstance(module, MonarchLinear):
+            if isinstance(module, MonarchLinear) or isinstance(module, Scaler):
                 module.requires_grad_(True)
             else:
                 module.requires_grad_(False)
@@ -950,7 +950,7 @@ class RobertaModel(RobertaPreTrainedModel):
             print('Enabling wandb watch.')
             for name, module in self.named_modules():
                 if "scaler" in name:
-                    wandb.watch(module)
+                    wandb.watch(module, log="all", log_freq=20)
             self.wandb_watch_enabled = True
             
 
