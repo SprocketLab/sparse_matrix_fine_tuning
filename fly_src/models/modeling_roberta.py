@@ -248,6 +248,13 @@ class RobertaSelfAttention(nn.Module):
         self.query = nn.Linear(self.config.hidden_size, self.all_head_size)
         self.key = nn.Linear(self.config.hidden_size, self.all_head_size)
         self.value = nn.Linear(self.config.hidden_size, self.all_head_size)
+    
+    # @Wenxuan
+    # TODO: load and project monarch weights from lora
+    def load_weights_from_lora(self, lora_path):
+        lora_dict = torch.load(lora_path)
+        for name, module in lora_dict:
+            pass
         
     # @Wenxuan
     def init_monarch_layers(self, print_shape=False):

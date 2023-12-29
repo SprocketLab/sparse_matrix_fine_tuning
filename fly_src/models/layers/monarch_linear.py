@@ -22,14 +22,14 @@ from fly_src.ops.blockdiag_butterfly_einsum import (
 logger = get_logger()
 
 hooked = False
-check_freq = 1000
+check_freq = 500
 check_step = 0
 
 def hook_fn(module, grad_input, grad_output):
     # print(f"{module}'s output's grad (dy) is {grad_output}")
     global check_freq, check_step
     if check_step % check_freq == 0:
-        print(f"{module}'s has dW {grad_input[1]} and scaler value {module.scaler}")
+        print(f"{module} has dW {grad_input[1]} and scaler value {module.scaler}")
     check_step += 1
     
     
@@ -44,9 +44,9 @@ class Scaler(nn.Module):
         self.scaler = nn.Parameter(torch.zeros(1))
         
     def forward(self, x):
-        x = x * self.scaler
-        # layernorm to avoid vanishing gradient
+        x = self.scaler * x
         x = F.layer_norm(x, x.shape[1:])
+        # layernorm to avoid vanishing gradient
         return x
 
 # @Wenxuan
@@ -110,7 +110,7 @@ class MonarchLinear(StructuredLinear):
         # Hook only one layer to debug
         global hooked
         if not hooked:
-            self.hook = self.scaler.register_backward_hook(hook_fn)
+            self.hook = self.scaler.register_full_backward_hook(hook_fn)
             hooked = True
             
         logger.info(f"Linear class {self.__class__}: saving={self.saving}")
