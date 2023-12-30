@@ -228,7 +228,7 @@ def main(config: dict = None):
     # or by passing the --help flag to this script.
     # We now keep distinct sets of args, for a cleaner separation of concerns.
     
-    peft_config = json.load(open("task_configs/peft_monarch.json", "r"))  # load monarch config
+    peft_config = json.load(open("task_configs/glue_peft_configs/peft_monarch.json", "r"))  # load monarch config
     
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
     
@@ -236,7 +236,7 @@ def main(config: dict = None):
     # Example CLA usage: python run_glue_hf.py task_configs/cola.json 
     if sys.argv[1].endswith(".json"):
         model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
-        extra_args = override_config([model_args, data_args, training_args], sys.argv[2:])
+        extra_args = override_config([model_args, data_args, training_args, peft_config], sys.argv[2:])
         
         # Add additional args to global variables
         if extra_args is not None:
@@ -670,7 +670,7 @@ def main(config: dict = None):
             keep_checkpoints_num=0,
             checkpoint_score_attr="training_iteration",
             progress_reporter=reporter,
-            resources_per_trial={"cpu": 1, "gpu": 1},
+            resources_per_trial={"cpu": 1, "gpu": 0.5},
             local_dir="ray_results",
             name=os.environ["WANDB_RUN_GROUP"],
             max_failures=100, # tolerate OOM

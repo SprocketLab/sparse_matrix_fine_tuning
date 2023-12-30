@@ -62,6 +62,7 @@ class MonarchLinear(StructuredLinear):
         weights=None,
         rank=1,
         peft=False,
+        use_scaler=False,
         device="cuda",
         **kwargs,
     ):
@@ -72,6 +73,7 @@ class MonarchLinear(StructuredLinear):
             rank (int, optional): SVD rank for decomposing each block
             peft (bool, optional): whether to use PEFT(freeze dense, train task-specific monarch matrices and fuse)
                 or FT (project dense to and train monarch matrices only).
+            use_scaler (bool, optional): whether to scale the output of monarch factors
         """
         super().__init__(*args, **kwargs)
 
@@ -83,6 +85,7 @@ class MonarchLinear(StructuredLinear):
         # Get actual input/output features without permutation
         self.device = device
         self.peft = peft
+        self.use_scaler = use_scaler
         if self.peft and rank > 1:
             raise NotImplementedError("Adapters with rank > 1 can't be merged with dense weights due to dim mismatch")
         
@@ -98,7 +101,7 @@ class MonarchLinear(StructuredLinear):
         self.blkdiag2 = nn.Parameter(
                 torch.zeros(nblocks, self.out_blksz, self.mid_blksz) # (nblocks, l, nblocks * r)
         )
-        self.scaler = Scaler(self.out_features)
+        
         
         self.reset_parameters()
         
@@ -107,31 +110,39 @@ class MonarchLinear(StructuredLinear):
 
         self.to(device)
         
-        # Hook only one layer to debug
-        global hooked
-        if not hooked:
-            self.hook = self.scaler.register_full_backward_hook(hook_fn)
-            hooked = True
+        # Set a scaling matrix
+        if self.use_scaler: 
+            self.scaler = Scaler(self.out_features)
+            # Hook only one layer to debug grads 
+            global hooked
+            if not hooked:
+                self.hook = self.scaler.register_backward_hook(hook_fn)
+                hooked = True
+        else:
+            self.scaler = nn.Identity()
             
         logger.info(f"Linear class {self.__class__}: saving={self.saving}")
 
 
     def reset_parameters(self) -> None:
-        # Mimic init.kaiming_uniform: https://github.com/pytorch/pytorch/blob/24087d07ca7ffa244575d259711dd7c99245a67a/torch/nn/init.py#L360
-        # if self.peft:
-        #     monarch_factors = [self.blkdiag1] # set the second factor to 0 to init at the pretrained point
-        # else:
-        monarch_factors = [self.blkdiag1, self.blkdiag2]
+        monarch_factors = [self.blkdiag1]
+        if self.use_scaler:
+            monarch_factors.append(self.blkdiag2) # DO NOT zero init the 2nd monarch factor
             
         for blkdiag in monarch_factors:
-            fan_in = blkdiag.shape[-1]
-            gain = init.calculate_gain(nonlinearity="leaky_relu", param=math.sqrt(5))
-            std = gain / math.sqrt(fan_in)
-            bound = (
-                math.sqrt(3.0) * std
-            )  # Calculate uniform bounds from standard deviation
-            with torch.no_grad():
-                blkdiag.uniform_(-bound, bound)
+            init.kaiming_uniform_(blkdiag, a=math.sqrt(5)) # sqrt(5) is for computing "gain", which should cancel out and give uniform(-1 / std, 1 / std)
+            
+            # Mimic init.kaiming_uniform but only on each block: p of (k, q, p) instead of q * p
+            # https://github.com/pytorch/pytorch/blob/main/torch/nn/modules/linear.py
+            # fan_in = blkdiag.shape[-1]
+            # gain = init.calculate_gain(nonlinearity="leaky_relu", param=math.sqrt(5)) 
+            # std = gain / math.sqrt(fan_in)
+            # bound = (
+            #     math.sqrt(3.0) * std
+            # )  
+            # Calculate uniform bounds from standard deviation
+            # with torch.no_grad():
+            #     blkdiag.uniform_(-bound, bound)
         self.reset_parameters_bias()
 
 
@@ -158,7 +169,7 @@ class MonarchLinear(StructuredLinear):
         assert w.ndim == 2, "w must be a 2D weight matrix"
         is_square = w.shape[0] == w.shape[1]
         if self.peft:
-            self.dense = nn.Parameter(w)
+            self.dense = nn.Parameter(w, requires_grad=False)
         else:
             # project to monarch matrix
             # blkdiag1, blkdiag2 = blockdiag_butterfly_project(w)
@@ -185,7 +196,8 @@ class MonarchLinear(StructuredLinear):
                     self.blkdiag2 = nn.Parameter(self.blkdiag2)
 
                 self.merged = False
-                self.dense.requires_grad_(False) # freeze dense, train monarch adapter
+            self.dense.requires_grad_(False) # freeze dense, train monarch adapter
+            
         else:
             if self.peft and not self.merged:
                 # Merge the weights and mark it

@@ -10,5 +10,7 @@
     ],
     "use_peft": true, 
     "precision": "fp16",
-    "weight_decay": 0.1
+    "weight_decay": 0.1,
+    "use_scaler": false,
+    "from_lora": ""
 }

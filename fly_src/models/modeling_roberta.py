@@ -48,7 +48,7 @@ from transformers.utils import (
     replace_return_docstrings,
 )
 from transformers.models.roberta.configuration_roberta import RobertaConfig
-
+from collections import defaultdict
 # peft imports
 import sys, os
 
@@ -68,7 +68,6 @@ def param_stats(model, training=False, print_trainable=False):
             param_trainable += torch.numel(param) 
             if print_trainable:
                 print("trainable:", name)            
-
     print(
         f"Total parameters: {param_count / 1024 ** 2:.2f}M,\n \
         trainable parameters: {param_trainable / 1024 ** 2:.2f}M ({100 * param_trainable / param_count:.2f}%)\n \
@@ -249,12 +248,6 @@ class RobertaSelfAttention(nn.Module):
         self.key = nn.Linear(self.config.hidden_size, self.all_head_size)
         self.value = nn.Linear(self.config.hidden_size, self.all_head_size)
     
-    # @Wenxuan
-    # TODO: load and project monarch weights from lora
-    def load_weights_from_lora(self, lora_path):
-        lora_dict = torch.load(lora_path)
-        for name, module in lora_dict:
-            pass
         
     # @Wenxuan
     def init_monarch_layers(self, print_shape=False):
@@ -291,10 +284,15 @@ class RobertaSelfAttention(nn.Module):
                 weights=weights,
                 bias=bias,
                 peft=self.peft_config["use_peft"],
+                use_scaler=self.peft_config["use_scaler"],
             )
             if bias:
                 new_layer.bias = layer.bias
-            new_layer.requires_grad_(True)  # must go after setting bias, otherwise requires_grad will be set to False
+            
+            # Set layer training mode 
+            new_layer.requires_grad_(True) 
+            if hasattr(new_layer, "dense"):
+                new_layer.dense.requires_grad_(False)
             setattr(self, name, new_layer)
 
             
@@ -921,18 +919,37 @@ class RobertaModel(RobertaPreTrainedModel):
 
         self.pooler = RobertaPooler(config) if add_pooling_layer else None
         self.monarch_param_set = False
-        self.log_param_steps = 1000
-        self.train_mode_count = 0
+        self.log_param_steps = 500
+        self.train_mode_count = 490
         self.wandb_watch_enabled = False
         # Initialize weights and apply final processing
         self.post_init()
-
+        
+    # # @Wenxuan
+    # def load_weights_from_lora(self, lora_path):
+    #     """
+    #     Multiply each lora matrix into dense, and then project onto monarch
+    #     """
+    #     lora_dict = torch.load(lora_path)
+    #     weight_dict = {}
+    #     for name, module in lora_dict:
+    #         name = name.split(".")
+    #         layer_name = (".").join(name[:-1])
+    #         param_type = name[-1]
+    #         if "lora" in param_type:
+                
+            
     # @Wenxuan
     def init_monarch_layers(self):
         if self.monarch_param_set:
             return
-        
+        if self.peft_config["from_lora"]:
+            lora_dict = torch.load(self.peft_config["from_lora"])
+            
         for name, module in self.named_modules():
+            # # Get lora dense weights of the corresponding layer
+            # if self.peft_config["from_lora"]:
+            
             if isinstance(module, RobertaSelfAttention):
                 module.init_monarch_layers()
                 
@@ -949,7 +966,7 @@ class RobertaModel(RobertaPreTrainedModel):
             self.init_monarch_layers()
             
         if self.train_mode_count % self.log_param_steps == 0:
-            param_stats(self, training=True)
+            param_stats(self, training=True, print_trainable=False)
         self.train_mode_count += 1
         
         # check if wandb is initialized
