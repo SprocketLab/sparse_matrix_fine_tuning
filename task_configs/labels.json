@@ -19,6 +19,11 @@
         "entailment",
         "not_entailment"
     ],
+    "mnli": [
+        "entailment",
+        "neutral",
+        "contradiction"
+    ],
     "mnli-m": [
         "entailment",
         "neutral",

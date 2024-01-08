@@ -57,9 +57,9 @@ class BlockdiagButterflyMultiply(torch.autograd.Function):
     bmm performance.
     The backward pass is also written manually with careful memory copies.
     Arguments:
-        x: (batch, n)
-        w1_bfly: (k, q, p), where k = n / p
-        w2_bfly: (l, s, r), where l = k * q / r = n * q / (p * r)
+        x: (batch, n) @ (n, p)
+        w1_bfly: (k, q, p), where k = n / p, NOTE: q is customized output dim 
+        w2_bfly: (l, s, r), where l = k * q / r = n * q / (p * r), NOTE: s is customized output dim
     Outputs:
         out: (batch, m), where m = l * s = n * s * q / (p * r)
     """
@@ -74,12 +74,12 @@ class BlockdiagButterflyMultiply(torch.autograd.Function):
         assert k * p == n
         assert l * r == k * q
         x_reshaped = x.reshape(batch_dim, k, p).transpose(0, 1)
-        out1 = torch.empty(batch_dim, k, q, device=x.device, dtype=x.dtype).transpose(0, 1)
+        out1 = torch.empty(batch_dim, k, q, device=x.device, dtype=x.dtype).transpose(0, 1) 
         out1 = torch.bmm(x_reshaped, w1_bfly.transpose(-1, -2), out=out1) # (k, batch_dim, p) @ (k, p, q) -> (k, batch_dim, q)
         out1 = out1.transpose(0, 1).reshape(batch_dim, r, l).transpose(-1, -2).contiguous().transpose(0, 1) # (batch_dim, k, q) -> (batch_dim, r, l) -> (batch_dim, l, r) -> (l, batch_dim, r)
         out2 = torch.empty(batch_dim, l, s, device=x.device, dtype=x.dtype).transpose(0, 1)
-        out2 = torch.bmm(out1, w2_bfly.transpose(-1, -2), out=out2)
-        out2 = out2.permute(1, 2, 0).reshape(*batch_shape, s * l)
+        out2 = torch.bmm(out1, w2_bfly.transpose(-1, -2), out=out2) # (l, batch_dim, r) @ (l, r, s) -> (l, batch_dim, s)
+        out2 = out2.permute(1, 2, 0).reshape(*batch_shape, s * l) # (batch_dim, l, s) -> (batch_dim, s, l) -> (batch_dim, m = s * l)
         ctx.save_for_backward(x, w1_bfly, w2_bfly, out1)
         return out2
 

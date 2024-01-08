@@ -9,7 +9,7 @@ from torch.nn import init
 
 class StructuredLinear(nn.Module):
 
-    def __init__(self, in_features, out_features, bias=None, device=None, dtype=None):
+    def __init__(self, in_features, out_features, bias=None, device=None, dtype=None, **kwargs):
         """Subclasses should call reset_parameters
         """
         factory_kwargs = {'device': device, 'dtype': dtype}

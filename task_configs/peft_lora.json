@@ -1,7 +1,7 @@
 {
     "lora": true,
     "monarch": false,
-    "rank": "sqrt(n)",
+    "rank": 4,
     "layers_to_replace": [
         "query",
         "value",

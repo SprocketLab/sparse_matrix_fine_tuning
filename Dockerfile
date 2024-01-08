@@ -94,3 +94,4 @@ RUN pip install ray==2.6
 RUN python -m pip install -U pydantic spacy==3.4.4
 RUN pip install accelerate -U
 RUN pip install jupyterlab==4.0.3
+RUN pip install datasets==2.16.1

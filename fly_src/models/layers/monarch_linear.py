@@ -25,13 +25,17 @@ hooked = False
 check_freq = 500
 check_step = 0
 
-def hook_fn(module, grad_input, grad_output):
-    # print(f"{module}'s output's grad (dy) is {grad_output}")
+def backward_hook(module, grad_input, grad_output):
     global check_freq, check_step
     if check_step % check_freq == 0:
-        print(f"{module} has dW {grad_input[1]} and scaler value {module.scaler}")
+        print(f"{module} has mean dX {grad_input[0].mean()} and scaler value {module.scaler}")
     check_step += 1
-    
+
+def grad_hook(grad):
+    global check_freq, check_step
+    if check_step % check_freq == 0:
+        print(f"Scaler has  dW {grad}")  
+    check_step += 1
     
 def factor_balance(mid_blksz, out_blksz):
     total = mid_blksz * out_blksz
@@ -41,10 +45,16 @@ def factor_balance(mid_blksz, out_blksz):
 class Scaler(nn.Module):
     def __init__(self, out_features):
         super().__init__()
-        self.scaler = nn.Parameter(torch.zeros(1))
+        self.scaler = nn.Parameter((torch.zeros(out_features)))
         
+        # hook only module
+        global hooked
+        if not hooked:
+            self.hook = self.scaler.register_hook(grad_hook)
+            hooked = True
+            
     def forward(self, x):
-        x = self.scaler * x
+        x = x @ torch.diag(self.scaler)
         x = F.layer_norm(x, x.shape[1:])
         # layernorm to avoid vanishing gradient
         return x
@@ -86,11 +96,13 @@ class MonarchLinear(StructuredLinear):
         self.device = device
         self.peft = peft
         self.use_scaler = use_scaler
+        self.rank = rank
+        self.lora_style_init = kwargs.get("lora_style_init", False)
         if self.peft and rank > 1:
             raise NotImplementedError("Adapters with rank > 1 can't be merged with dense weights due to dim mismatch")
         
         self.merged = False
-        assert rank <= min(
+        assert self.rank <= min(
             self.in_blksz, self.out_blksz
         ), "rank must be smaller than the smaller block size"
         
@@ -102,9 +114,7 @@ class MonarchLinear(StructuredLinear):
                 torch.zeros(nblocks, self.out_blksz, self.mid_blksz) # (nblocks, l, nblocks * r)
         )
         
-        
         self.reset_parameters()
-        
         if weights is not None:
             self.set_weights_from_dense_init(weights, rank)
 
@@ -112,37 +122,42 @@ class MonarchLinear(StructuredLinear):
         
         # Set a scaling matrix
         if self.use_scaler: 
+            if self.lora_style_init:
+                raise ValueError("LoRA init already zeros out; no need for scaler")
             self.scaler = Scaler(self.out_features)
-            # Hook only one layer to debug grads 
-            global hooked
-            if not hooked:
-                self.hook = self.scaler.register_backward_hook(hook_fn)
-                hooked = True
         else:
             self.scaler = nn.Identity()
-            
+        self.scaler.to(self.device)
+        
         logger.info(f"Linear class {self.__class__}: saving={self.saving}")
 
 
     def reset_parameters(self) -> None:
         monarch_factors = [self.blkdiag1]
         if self.use_scaler:
-            monarch_factors.append(self.blkdiag2) # DO NOT zero init the 2nd monarch factor
+            monarch_factors.append(self.blkdiag2) # zero init the scaler only
             
-        for blkdiag in monarch_factors:
-            init.kaiming_uniform_(blkdiag, a=math.sqrt(5)) # sqrt(5) is for computing "gain", which should cancel out and give uniform(-1 / std, 1 / std)
-            
-            # Mimic init.kaiming_uniform but only on each block: p of (k, q, p) instead of q * p
-            # https://github.com/pytorch/pytorch/blob/main/torch/nn/modules/linear.py
-            # fan_in = blkdiag.shape[-1]
-            # gain = init.calculate_gain(nonlinearity="leaky_relu", param=math.sqrt(5)) 
-            # std = gain / math.sqrt(fan_in)
-            # bound = (
-            #     math.sqrt(3.0) * std
-            # )  
-            # Calculate uniform bounds from standard deviation
-            # with torch.no_grad():
-            #     blkdiag.uniform_(-bound, bound)
+        if self.lora_style_init:
+            lora_rank = 4
+            lora_A = torch.zeros(lora_rank, self.in_features)
+            self.set_weights_from_dense_init(lora_A, rank=self.rank)
+            # zero out 2nd monarch factor to start training from checkpoint
+            self.blkdiag2.data.zero_()
+        else:
+            for blkdiag in monarch_factors:
+                # init.kaiming_uniform_(blkdiag, a=math.sqrt(5)) # sqrt(5) should cancel "gain" out and give uniform(-1 / std, 1 / std)
+                
+                ## Mimic init.kaiming_uniform but only on each block: p of (k, q, p) instead of q * p
+                ## https://github.com/pytorch/pytorch/blob/main/torch/nn/modules/linear.py
+                fan_in = blkdiag.shape[-1]
+                gain = init.calculate_gain(nonlinearity="leaky_relu", param=math.sqrt(5)) 
+                std = gain / math.sqrt(fan_in)
+                bound = (
+                    math.sqrt(3.0) * std
+                )  
+                ## Calculate uniform bounds from standard deviation
+                with torch.no_grad():
+                    blkdiag.uniform_(-bound, bound)
         self.reset_parameters_bias()
 
 
@@ -151,7 +166,6 @@ class MonarchLinear(StructuredLinear):
         return (self.blkdiag1.numel() + self.blkdiag2.numel()) / (
             self.in_features * self.out_features
         )
-
 
     def monarch_forward(self, x):
         output = blockdiag_butterfly_multiply(
@@ -224,7 +238,7 @@ class MonarchLinear(StructuredLinear):
                 x = self.monarch_forward(x) + F.linear(x, self.dense)
         else:
             x = self.monarch_forward(x)
-        return self.scaler(x) + self.bias
+        return self.scaler(x + self.bias) 
 
 
     # Override magic methods
@@ -235,12 +249,3 @@ class MonarchLinear(StructuredLinear):
             f"weight_shape={weight_shape}, requires_grad={list(self.parameters())[0].requires_grad})"
         )
     
-    # TODO: make it actually merge when saving 
-    # def __getstate__(self):
-    #     """
-    #     Override to remove the dense weights from state dict
-    #     """
-    #     state = super().__getstate__()
-    #     if self.peft:
-    #         state["dense"] = None
-    #     return state
