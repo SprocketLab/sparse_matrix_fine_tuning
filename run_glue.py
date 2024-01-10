@@ -688,6 +688,7 @@ def main(config: dict = None):
     if os.path.exists(best_param_path):
         best_hyperparams = json.load(open(best_param_path, "r"))  
         print("Loading best hyperparams: ", best_hyperparams)
+        override_config([best_hyperparams], sys.argv[2:])
         override_config([model_args, data_args, training_args], best_hyperparams)
     else:
         best_hyperparams = None

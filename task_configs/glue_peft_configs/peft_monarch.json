@@ -12,6 +12,7 @@
     "precision": "fp16",
     "weight_decay": 0.1,
     "use_scaler": false,
+    "scaler_type": "scaler",
     "from_lora": "",
     "lora_style_init": false
 }

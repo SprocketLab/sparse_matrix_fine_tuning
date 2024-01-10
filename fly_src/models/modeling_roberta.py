@@ -93,6 +93,87 @@ ROBERTA_PRETRAINED_MODEL_ARCHIVE_LIST = [
     # See all RoBERTa models at https://huggingface.co/models?filter=roberta
 ]
 
+adapted_layers = set()
+""" @Wenxuan """
+class PEFT_adapter():        
+    def init_monarch_layers(self, print_shape=False):
+        if not self.peft_config.get("monarch", False):
+            return 
+        global adapted_layers
+        
+        def factor(n):
+            # find factors closest to sqrt(n)
+            sizes = [(i, n // i) for i in range(1, math.floor(math.sqrt(n)) + 1) if n % i == 0][-1]
+            # Larger factor first (nblocks) -> memory bound. Smaller factor first -> compute bound
+            sizes = (sizes[0], sizes[1])
+            return sizes
+        
+        for name in self.peft_config["layers_to_replace"]:
+            if not hasattr(self, name):
+                continue
+            
+            layer = getattr(self, name)
+            weights = layer.weight 
+            m, n = weights.shape
+            
+            if self.peft_config["use_peft"] and self.nblocks != "sqrt(n)":
+                # freeze dense, init and train monarch, and then merge during inference
+                nblocks = self.nblocks
+            else:
+                # project dense to monarch and keep monarch only
+                nblocks = factor(layer.in_features)[0]  # increase to sqrt(n) blocks -> more params
+                if self.nblocks == "sqrt(n)":
+                    self.nblocks = nblocks
+
+            bias = layer.bias != None
+            new_layer = MonarchLinear(
+                in_features=n,
+                out_features=m,
+                nblocks=nblocks,
+                rank=self.peft_config["rank"],
+                weights=weights,
+                bias=bias,
+                peft_config=self.peft_config
+                # peft=self.peft_config["use_peft"],
+                # use_scaler=self.peft_config["use_scaler"],
+                # lora_style_init=self.peft_config["lora_style_init"],
+            )
+            if bias:
+                new_layer.bias = layer.bias
+            
+            # Set layer training mode 
+            new_layer.requires_grad_(True) 
+            if hasattr(new_layer, "dense"):
+                new_layer.dense.requires_grad_(False)
+            setattr(self, name, new_layer)
+            # For printing
+            adapted_layers.add((name, (m, n), new_layer.blkdiag1.shape, new_layer.blkdiag2.shape))
+            
+
+
+    def set_peft_config(self, peft_config):
+        self.peft_config = peft_config
+        
+        if peft_config["lora"] and isinstance(self, RobertaSelfAttention):
+            # Set lora layers
+            (rank, alpha, dropout, bias) = (
+                peft_config["lora_r"],
+                peft_config["lora_alpha"],
+                peft_config["lora_dropout"],
+                peft_config["lora_bias"],
+            )
+            self.query = lora.Linear(
+                self.config.hidden_size, self.all_head_size, rank, alpha, dropout, bias=bias
+            )
+            self.key = nn.Linear(self.config.hidden_size, self.all_head_size)
+            self.value = lora.Linear(
+                self.config.hidden_size, self.all_head_size, rank, alpha, dropout, bias=bias
+            )
+        elif peft_config["monarch"]:
+            self.rank = peft_config["rank"]
+            self.nblocks = peft_config["nblocks"]
+            
+        
 
 class RobertaEmbeddings(nn.Module):
     """
@@ -213,7 +294,7 @@ class RobertaEmbeddings(nn.Module):
 
 
 # Copied from transformers.models.bert.modeling_bert.BertSelfAttention with Bert->Roberta
-class RobertaSelfAttention(nn.Module):
+class RobertaSelfAttention(nn.Module, PEFT_adapter):
     def __init__(self, config, position_embedding_type=None, peft_config=None):
         super().__init__()
         if config.hidden_size % config.num_attention_heads != 0 and not hasattr(
@@ -249,76 +330,76 @@ class RobertaSelfAttention(nn.Module):
         self.value = nn.Linear(self.config.hidden_size, self.all_head_size)
     
         
-    # @Wenxuan
-    def init_monarch_layers(self, print_shape=False):
-        if not self.peft_config.get("monarch", False):
-            return 
+    # # @Wenxuan
+    # def init_monarch_layers(self, print_shape=False):
+    #     if not self.peft_config.get("monarch", False):
+    #         return 
         
-        def factor(n):
-            # find factors closest to sqrt(n)
-            sizes = [(i, n // i) for i in range(1, math.floor(math.sqrt(n)) + 1) if n % i == 0][-1]
-            # Larger factor first (nblocks) -> memory bound. Smaller factor first -> compute bound
-            sizes = (sizes[0], sizes[1])
-            return sizes
+    #     def factor(n):
+    #         # find factors closest to sqrt(n)
+    #         sizes = [(i, n // i) for i in range(1, math.floor(math.sqrt(n)) + 1) if n % i == 0][-1]
+    #         # Larger factor first (nblocks) -> memory bound. Smaller factor first -> compute bound
+    #         sizes = (sizes[0], sizes[1])
+    #         return sizes
         
-        for name in self.peft_config["layers_to_replace"]:
-            layer = getattr(self, name) # should be an nn.linear layer
-            weights = layer.weight 
-            m, n = weights.shape
+    #     for name in self.peft_config["layers_to_replace"]:
+    #         layer = getattr(self, name) # should be an nn.linear layer
+    #         weights = layer.weight 
+    #         m, n = weights.shape
             
-            if self.peft_config["use_peft"] and self.nblocks != "sqrt(n)":
-                # freeze dense, init and train monarch, and then merge during inference
-                nblocks = self.nblocks
-            else:
-                # project dense to monarch and keep monarch only
-                nblocks = factor(layer.in_features)[0]  # increase to sqrt(n) blocks when used alone -> more params
-                if self.nblocks == "sqrt(n)":
-                    self.nblocks = nblocks
+    #         if self.peft_config["use_peft"] and self.nblocks != "sqrt(n)":
+    #             # freeze dense, init and train monarch, and then merge during inference
+    #             nblocks = self.nblocks
+    #         else:
+    #             # project dense to monarch and keep monarch only
+    #             nblocks = factor(layer.in_features)[0]  # increase to sqrt(n) blocks when used alone -> more params
+    #             if self.nblocks == "sqrt(n)":
+    #                 self.nblocks = nblocks
 
-            bias = layer.bias != None
-            new_layer = MonarchLinear(
-                in_features=n,
-                out_features=m,
-                nblocks=nblocks,
-                rank=self.rank,
-                weights=weights,
-                bias=bias,
-                peft=self.peft_config["use_peft"],
-                use_scaler=self.peft_config["use_scaler"],
-                lora_style_init=self.peft_config["lora_style_init"],
-            )
-            if bias:
-                new_layer.bias = layer.bias
+    #         bias = layer.bias != None
+    #         new_layer = MonarchLinear(
+    #             in_features=n,
+    #             out_features=m,
+    #             nblocks=nblocks,
+    #             rank=self.rank,
+    #             weights=weights,
+    #             bias=bias,
+    #             peft=self.peft_config["use_peft"],
+    #             use_scaler=self.peft_config["use_scaler"],
+    #             lora_style_init=self.peft_config["lora_style_init"],
+    #         )
+    #         if bias:
+    #             new_layer.bias = layer.bias
             
-            # Set layer training mode 
-            new_layer.requires_grad_(True) 
-            if hasattr(new_layer, "dense"):
-                new_layer.dense.requires_grad_(False)
-            setattr(self, name, new_layer)
+    #         # Set layer training mode 
+    #         new_layer.requires_grad_(True) 
+    #         if hasattr(new_layer, "dense"):
+    #             new_layer.dense.requires_grad_(False)
+    #         setattr(self, name, new_layer)
 
             
-        print(f"Using monarch layer of shapes: {new_layer.blkdiag1.shape}, {new_layer.blkdiag2.shape}")
+    #     print(f"Using monarch layer of shapes: {new_layer.blkdiag1.shape}, {new_layer.blkdiag2.shape}")
 
-    def set_peft_config(self, peft_config):
-        self.peft_config = peft_config
+    # def set_peft_config(self, peft_config):
+    #     self.peft_config = peft_config
         
-        if peft_config["lora"]:
-            (rank, alpha, dropout, bias) = (
-                peft_config["lora_r"],
-                peft_config["lora_alpha"],
-                peft_config["lora_dropout"],
-                peft_config["lora_bias"],
-            )
-            self.query = lora.Linear(
-                self.config.hidden_size, self.all_head_size, rank, alpha, dropout, bias=bias
-            )
-            self.key = nn.Linear(self.config.hidden_size, self.all_head_size)
-            self.value = lora.Linear(
-                self.config.hidden_size, self.all_head_size, rank, alpha, dropout, bias=bias
-            )
-        elif peft_config["monarch"]:
-            self.rank = peft_config["rank"]
-            self.nblocks = peft_config["nblocks"]
+    #     if peft_config["lora"]:
+    #         (rank, alpha, dropout, bias) = (
+    #             peft_config["lora_r"],
+    #             peft_config["lora_alpha"],
+    #             peft_config["lora_dropout"],
+    #             peft_config["lora_bias"],
+    #         )
+    #         self.query = lora.Linear(
+    #             self.config.hidden_size, self.all_head_size, rank, alpha, dropout, bias=bias
+    #         )
+    #         self.key = nn.Linear(self.config.hidden_size, self.all_head_size)
+    #         self.value = lora.Linear(
+    #             self.config.hidden_size, self.all_head_size, rank, alpha, dropout, bias=bias
+    #         )
+    #     elif peft_config["monarch"]:
+    #         self.rank = peft_config["rank"]
+    #         self.nblocks = peft_config["nblocks"]
             
             
     def transpose_for_scores(self, x: torch.Tensor) -> torch.Tensor:
@@ -541,7 +622,7 @@ class RobertaIntermediate(nn.Module):
 
 
 # Copied from transformers.models.bert.modeling_bert.BertOutput
-class RobertaOutput(nn.Module):
+class RobertaOutput(nn.Module, PEFT_adapter):
     def __init__(self, config):
         super().__init__()
         self.dense = nn.Linear(config.intermediate_size, config.hidden_size)
@@ -920,26 +1001,13 @@ class RobertaModel(RobertaPreTrainedModel):
 
         self.pooler = RobertaPooler(config) if add_pooling_layer else None
         self.monarch_param_set = False
-        self.log_param_steps = 500
+        self.log_param_steps = 600
         self.train_mode_count = 490
         self.wandb_watch_enabled = False
         # Initialize weights and apply final processing
         self.post_init()
+        self.layers_to_adapt = [RobertaSelfAttention, RobertaOutput]
         
-    # # @Wenxuan
-    # def load_weights_from_lora(self, lora_path):
-    #     """
-    #     Multiply each lora matrix into dense, and then project onto monarch
-    #     """
-    #     lora_dict = torch.load(lora_path)
-    #     weight_dict = {}
-    #     for name, module in lora_dict:
-    #         name = name.split(".")
-    #         layer_name = (".").join(name[:-1])
-    #         param_type = name[-1]
-    #         if "lora" in param_type:
-                
-            
     # @Wenxuan
     def init_monarch_layers(self):
         if self.monarch_param_set:
@@ -948,25 +1016,36 @@ class RobertaModel(RobertaPreTrainedModel):
             lora_dict = torch.load(self.peft_config["from_lora"])
             
         for name, module in self.named_modules():
-            # # Get lora dense weights of the corresponding layer
-            # if self.peft_config["from_lora"]:
-            
-            if isinstance(module, RobertaSelfAttention):
+            # Replace linear with monarch if is target layer
+            if any([isinstance(module, layer) for layer in self.layers_to_adapt]):
                 module.init_monarch_layers()
-                
+            else:
+                module.requires_grad_(False)
+            
+            # Only enable grads for adapters
             if isinstance(module, MonarchLinear) or isinstance(module, Scaler):
+                if self.peft_config["from_lora"]:
+                    # Get merged lora weights of the corresponding layer
+                    dense = lora_dict[name + ".dense"] + lora_dict[name + "lora_A"] @ lora_dict[name + "lora_B"]
+                    module.set_weights_from_dense_init(dense)
+                    
                 module.requires_grad_(True)
             else:
                 module.requires_grad_(False)
         self.monarch_param_set = True
-    
+        
+        global adapted_layers
+        for name, old_shape, shape_1, shape_2 in adapted_layers:
+            print(f"Adapted {name} {old_shape} with monarch layers: {shape_1}, {shape_2}")
+            
+            
     def train(self, mode: bool = True):
         # TODO: why peft_config disappears??
         super().train(mode)
         if hasattr(self, "peft_config") and self.peft_config["monarch"] and not self.monarch_param_set:
             self.init_monarch_layers()
             
-        if self.train_mode_count % self.log_param_steps == 0:
+        if mode and self.train_mode_count % self.log_param_steps == 0:
             param_stats(self, training=True, print_trainable=False)
         self.train_mode_count += 1
         
@@ -990,7 +1069,7 @@ class RobertaModel(RobertaPreTrainedModel):
         
         # set config and init submodules for all attention layers
         for name, module in self.named_modules():
-            if isinstance(module, RobertaSelfAttention):
+            if any([isinstance(module, layer) for layer in self.layers_to_adapt]):
                 module.set_peft_config(peft_config)
                 
     def get_input_embeddings(self):

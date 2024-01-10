@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # coding: utf-8
 import os
+# change cwd to last level
+os.chdir(os.path.dirname(os.getcwd()))
 import torch
 from datasets import load_dataset
 import logging
