@@ -9,12 +9,15 @@
         "key"
     ],
     "use_peft": true, 
-    "mlp": false,
     "precision": "fp16",
     "weight_decay": 0.1,
     "use_scaler": false,
     "scaler_type": "scaler",
     "from_lora": "",
+    
+    "mlp": false,
     "lora_style_init": false,
-    "use_mult_factor": false
+    "use_mult_factor": false,
+    "layernorm": true,
+    "affine": false
 }

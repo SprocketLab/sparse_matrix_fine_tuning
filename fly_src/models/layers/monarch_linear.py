@@ -45,7 +45,7 @@ class Scaler(nn.Module):
     """
         Scale output of monarch factors
     """
-    def __init__(self, out_features, scaler_type="scaler"):
+    def __init__(self, out_features, scaler_type="scaler", affine=False, layernorm=False):
         super().__init__()
         assert scaler_type in ["scaler", "diag"]
         self.scaler_type = scaler_type
@@ -54,7 +54,8 @@ class Scaler(nn.Module):
             self.scaler = nn.Parameter((torch.zeros(1)))
         else:
             self.scaler = nn.Parameter((torch.zeros(out_features)))
-            
+        self.norm = nn.LayerNorm(out_features, elementwise_affine=affine)
+        
         # hook only module
         global hooked
         if not hooked:
@@ -66,7 +67,7 @@ class Scaler(nn.Module):
             x = x * self.scaler
         else:
             x = x @ torch.diag(self.scaler)
-        x = F.layer_norm(x, (x.shape[-1], ))
+        x = self.norm(x)
         return x
 
 """ @Wenxuan """
@@ -149,7 +150,9 @@ class MonarchLinear(StructuredLinear):
         if self.use_scaler: 
             if self.lora_style_init:
                 raise ValueError("LoRA init already zeroed out; no need for scaler")
-            self.scaler = Scaler(self.out_features, self.scaler_type)
+            layernorm = peft_config.get("layernorm", False)
+            affine = peft_config.get("affine", False)
+            self.scaler = Scaler(self.out_features, self.scaler_type, affine, layernorm)
         else:
             self.scaler = nn.Identity()
         self.scaler.to(self.device)

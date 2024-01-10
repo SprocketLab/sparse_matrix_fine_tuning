@@ -985,6 +985,7 @@ class RobertaModel(RobertaPreTrainedModel):
             print('Enabling wandb watch.')
             max_per_key = 2
             
+            # log modules of interest
             for name, module in self.named_modules():
                 if isinstance(module, MonarchLinear) or isinstance(module, Scaler):
                     layer_name = name.split(".")[-1]
@@ -994,6 +995,9 @@ class RobertaModel(RobertaPreTrainedModel):
 
             for (module, layer_name), count in self.watch_count.items():
                 print(f"Watched {count} {layer_name} layers  ")
+            
+            # log all py files for reference
+            wandb.run.log_code("/fly", include_fn = lambda x: x.endswith(".py"))
             self.wandb_watch_enabled = True
             
 
