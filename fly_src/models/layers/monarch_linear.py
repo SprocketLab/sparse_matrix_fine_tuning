@@ -66,7 +66,7 @@ class Scaler(nn.Module):
             x = x * self.scaler
         else:
             x = x @ torch.diag(self.scaler)
-        # x = F.layer_norm(x, x.shape[1:])
+        x = F.layer_norm(x, (x.shape[-1], ))
         return x
 
 """ @Wenxuan """
@@ -196,7 +196,7 @@ class MonarchLinear(StructuredLinear):
         output = blockdiag_butterfly_multiply(
             self.preprocess(x), self.blkdiag1, self.blkdiag2
         )
-        return self.postprocess(output)
+        return self.scaler(self.postprocess(output))
 
 
     def set_weights_from_dense_init(self, w: torch.Tensor, rank=1):
@@ -223,19 +223,17 @@ class MonarchLinear(StructuredLinear):
         if mode:
             if self.peft and self.merged:
                 # split out monarch for separate training
-                # (out, in) + (in, out).T
-                self.dense.data -= blockdiag_butterfly_multiply(
-                    torch.eye(self.in_features, device=self.device), self.blkdiag1, self.blkdiag2
-                ).T
+                # (out, in) - (in, out).T
+                merged_weights = self.monarch_forward(torch.eye(self.in_features, device=self.device)).T
+                self.dense.data -= merged_weights
                 self.merged = False
             self.dense.requires_grad_(False) # freeze dense, train monarch adapter
             
         else:
             if self.peft and not self.merged:
-                # Merge the weights and mark it
-                self.dense.data += blockdiag_butterfly_multiply(
-                    torch.eye(self.in_features, device=self.device), self.blkdiag1, self.blkdiag2
-                ).T
+                # Merge the adapter weights and mark it
+                merged_weights = self.monarch_forward(torch.eye(self.in_features, device=self.device)).T
+                self.dense.data += merged_weights
                 self.merged = True
 
 
@@ -247,10 +245,10 @@ class MonarchLinear(StructuredLinear):
                 
             if not self.merged:                
                 # training with adapter
-                x = x + self.scaler(self.monarch_forward(x))
+                x = x + self.monarch_forward(x)
         else:
             # Dense already projected to monarch
-            x = self.scaler(self.monarch_forward(x))
+            x = self.monarch_forward(x)
         return x + self.bias
 
 
