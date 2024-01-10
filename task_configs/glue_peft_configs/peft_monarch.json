@@ -3,10 +3,11 @@
     "monarch": true,
     "rank": 1,
     "nblocks": 4,
-    "layers_to_replace": [
+    "layers_to_adapt": [
         "query",
         "value",
-        "key"
+        "key",
+        "dense"
     ],
     "use_peft": true, 
     "precision": "fp16",
@@ -14,5 +15,6 @@
     "use_scaler": false,
     "scaler_type": "scaler",
     "from_lora": "",
-    "lora_style_init": false
+    "lora_style_init": false,
+    "use_mult_factor": false
 }

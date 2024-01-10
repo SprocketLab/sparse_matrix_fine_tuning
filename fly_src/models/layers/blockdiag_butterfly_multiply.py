@@ -6,49 +6,53 @@ from torch.nn import functional as F
 
 from einops import rearrange
 
-# @Wenxuan: check this and page 6 bottom for a basic understanding 
-# Supports rectangular matrices
-def blockdiag_butterfly_multiply_reference(x, w1_bfly, w2_bfly, version=2):
-    """
-    This implementation is slow but more likely to be correct.
-    There are 3 implementations, which should all yield the same answer
-    (q, p) and (s, r) are blocks in the monarch matrix
-    Arguments:
-        x: (batch, n) 
-        
-        Assume we project dense W (m, n) to w1_bfly and w2_bfly.
-        w1_bfly: (k, q, p), NOTE where n = k * p = in_dim,  k = num_blocks, q = intermediate_out_dim, p = block1_in_dim  
-        NOTE Both q and p can be called "block size", and generally you can set q = p = sqrt(n).
-        w2_bfly: (l, s, r), where l = k * q / r = n * q / (p * r)
-        NOTE l * s = m, l = num_blocks, r = block2_in_dim, s = blk_out_dim
-    Outputs:
-        out: (batch, m), where m = l * s = n * s * q / (p * r) 
-    """
-    if version not in [1, 2, 3]:
-        raise NotImplementedError('version must be either 1, 2, or 3')
-    batch, n = x.shape
-    k, q, p = w1_bfly.shape
-    l, s, r = w2_bfly.shape
-    assert k * p == n
-    assert l * r == k * q
+class BlockdiagMultiply(torch.autograd.Function):
 
-    x_reshaped = rearrange(x, 'b (k p) -> b k p', k=k)
-    if version == 1:  # Implementation 1 (only works for when k = q = p = l = s = r = sqrt(n))
-        assert k == q == p == l == s == r == int(math.sqrt(n))
-        return torch.einsum('bkp,kqp,qlk->blq', x_reshaped, w1_bfly, w2_bfly).reshape(batch, n)
-    elif version == 2:  # Implementation 2
-        out1 = torch.einsum('kqp,bkp->bkq', w1_bfly, x_reshaped)
-        out1 = rearrange(rearrange(out1, 'b k q -> b (k q)'), 'b (r l) -> b l r', l=l)
-        return torch.einsum('lsr,blr->bsl', w2_bfly, out1).reshape(batch, s * l)
-    # Implementation 3: most likely to be correct, but it's the slowest
-    elif version == 3:
-        w1_dense = torch.block_diag(*torch.unbind(w1_bfly, dim=0))
-        out1 = F.linear(x, w1_dense)
-        out1 = rearrange(out1, 'b (r l) -> b (l r)', l=l)
-        w2_dense = torch.block_diag(*torch.unbind(w2_bfly, dim=0))
-        out2 = F.linear(out1, w2_dense)
-        out2 = rearrange(out2, 'b (l s) -> b (s l)', l=l)
-        return out2
+    """This is a faster implementation, with careful memory copies for the fastest
+    bmm performance.
+    The backward pass is also written manually with careful memory copies.
+    Arguments:
+        x: (..., n)
+        weight: (nblocks, q, n / nblocks)
+    Outputs:
+        out: (..., nblocks * q)
+    """
+
+    @staticmethod
+    @torch.cuda.amp.custom_fwd(cast_inputs=torch.bfloat16)
+    def forward(ctx, x, weight):
+        ctx.save_for_backward(x, weight)
+        batch_shape, n = x.shape[:-1], x.shape[-1]
+        batch_dim = np.prod(batch_shape)
+        nblocks, q, p = weight.shape
+        assert nblocks * p == n
+        x_reshaped = x.reshape(batch_dim, nblocks, p).transpose(0, 1)
+        out = torch.empty(batch_dim, nblocks, q, device=x.device, dtype=x.dtype).transpose(0, 1)
+        out = torch.bmm(x_reshaped, weight.transpose(-1, -2), out=out).transpose(0, 1)
+        return out.reshape(*batch_shape, nblocks * q)
+
+    @staticmethod
+    @torch.cuda.amp.custom_bwd
+    def backward(ctx, dout):
+        x, weight = ctx.saved_tensors
+        batch_shape, n = x.shape[:-1], x.shape[-1]
+        batch_dim = np.prod(batch_shape)
+        nblocks, q, p = weight.shape
+        assert nblocks * p == n
+        dx, dweight = None, None
+        dout_reshaped = dout.reshape(batch_dim, nblocks, q).transpose(0, 1)
+        if ctx.needs_input_grad[0]:
+            dx = torch.empty(batch_dim, nblocks, p, device=x.device, dtype=x.dtype)
+            dx = torch.bmm(dout_reshaped, weight.conj(),
+                           out=dx.transpose(0, 1)).transpose(0, 1).reshape(*batch_shape, n)
+        if ctx.needs_input_grad[1]:
+            x_reshaped = x.reshape(batch_dim, nblocks, p).transpose(0, 1)
+            dweight = torch.bmm(dout_reshaped.transpose(-1, -2), x_reshaped.conj())
+        return dx, dweight
+
+
+single_monarch_mult = BlockdiagMultiply.apply
+
 
 # @Wenxuan figure out the dimensions here 
 class BlockdiagButterflyMultiply(torch.autograd.Function):
@@ -115,3 +119,46 @@ class BlockdiagButterflyMultiply(torch.autograd.Function):
         return dx, dw1_bfly, dw2_bfly
 
 blockdiag_butterfly_multiply = BlockdiagButterflyMultiply.apply
+
+# Supports rectangular matrices
+def blockdiag_butterfly_multiply_reference(x, w1_bfly, w2_bfly, version=2):
+    """
+    This implementation is slow but more likely to be correct.
+    There are 3 implementations, which should all yield the same answer
+    (q, p) and (s, r) are blocks in the monarch matrix
+    Arguments:
+        x: (batch, n) 
+        
+        Assume we project dense W (m, n) to w1_bfly and w2_bfly.
+        w1_bfly: (k, q, p), NOTE where n = k * p = in_dim,  k = num_blocks, q = intermediate_out_dim, p = block1_in_dim  
+        NOTE Both q and p can be called "block size", and generally you can set q = p = sqrt(n).
+        w2_bfly: (l, s, r), where l = k * q / r = n * q / (p * r)
+        NOTE l * s = m, l = num_blocks, r = block2_in_dim, s = blk_out_dim
+    Outputs:
+        out: (batch, m), where m = l * s = n * s * q / (p * r) 
+    """
+    if version not in [1, 2, 3]:
+        raise NotImplementedError('version must be either 1, 2, or 3')
+    batch, n = x.shape
+    k, q, p = w1_bfly.shape
+    l, s, r = w2_bfly.shape
+    assert k * p == n
+    assert l * r == k * q
+
+    x_reshaped = rearrange(x, 'b (k p) -> b k p', k=k)
+    if version == 1:  # Implementation 1 (only works for when k = q = p = l = s = r = sqrt(n))
+        assert k == q == p == l == s == r == int(math.sqrt(n))
+        return torch.einsum('bkp,kqp,qlk->blq', x_reshaped, w1_bfly, w2_bfly).reshape(batch, n)
+    elif version == 2:  # Implementation 2
+        out1 = torch.einsum('kqp,bkp->bkq', w1_bfly, x_reshaped)
+        out1 = rearrange(rearrange(out1, 'b k q -> b (k q)'), 'b (r l) -> b l r', l=l)
+        return torch.einsum('lsr,blr->bsl', w2_bfly, out1).reshape(batch, s * l)
+    # Implementation 3: most likely to be correct, but it's the slowest
+    elif version == 3:
+        w1_dense = torch.block_diag(*torch.unbind(w1_bfly, dim=0))
+        out1 = F.linear(x, w1_dense)
+        out1 = rearrange(out1, 'b (r l) -> b (l r)', l=l)
+        w2_dense = torch.block_diag(*torch.unbind(w2_bfly, dim=0))
+        out2 = F.linear(out1, w2_dense)
+        out2 = rearrange(out2, 'b (l s) -> b (s l)', l=l)
+        return out2

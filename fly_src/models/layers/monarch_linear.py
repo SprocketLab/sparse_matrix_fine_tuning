@@ -7,7 +7,7 @@ from torch.nn import init
 from einops import rearrange
 import torch.nn.functional as F
 from fly_src.models.layers.structured_linear import StructuredLinear
-from fly_src.models.layers.blockdiag_butterfly_multiply import blockdiag_butterfly_multiply
+from fly_src.models.layers.blockdiag_butterfly_multiply import blockdiag_butterfly_multiply, single_monarch_mult
 from fly_src.utils.utils import get_logger
 
 # NOTE converting weights to monarch matrices
@@ -100,7 +100,7 @@ class MonarchLinear(StructuredLinear):
         self.mid_blksz = self.nblocks * rank
         self.out_blksz = int(math.ceil(self.out_features / nblocks)) * rank
         
-        # Get configs
+        # Get peft configs
         self.device = device
         self.peft_config = peft_config
         self.peft = peft_config["use_peft"]
@@ -108,6 +108,9 @@ class MonarchLinear(StructuredLinear):
         self.rank = rank
         self.lora_style_init = peft_config.get("lora_style_init", False)
         self.scaler_type = peft_config.get("scaler_type", "scaler")
+        
+        self.use_mult_factor = peft_config.get("use_mult_factor", False) # X @ W @ M_mult + X @ M1 @ M2 * scaler
+        self.use_scaler = self.use_scaler or self.use_mult_factor
         assert self.scaler_type in ["scaler", "diag"]
         
         if self.peft and rank > 1:
@@ -120,12 +123,19 @@ class MonarchLinear(StructuredLinear):
         
         # Init weights
         self.blkdiag1 = nn.Parameter(
-                torch.zeros(nblocks, self.mid_blksz, self.in_blksz) # (nblocks, r * nblocks, i)
+                torch.zeros(nblocks, self.mid_blksz, self.in_blksz, device=self.device) # (nblocks, r * nblocks , in_features / nblocks)
         )  
         self.blkdiag2 = nn.Parameter(
-                torch.zeros(nblocks, self.out_blksz, self.mid_blksz) # (nblocks, l, nblocks * r)
+                torch.zeros(nblocks, self.out_blksz, self.mid_blksz, device=self.device) # (nblocks, out_features / nblocks, r * nblocks)
         )
         
+        if self.use_mult_factor:
+            # init a batch of identity matrices as a multiplicative factor
+            # (nblocks, out_features / nblocks, in_features / nblocks)
+            self.blkdiag_mult = nn.Parameter(
+                torch.eye(self.out_blksz, self.in_blksz, device=self.device).repeat(nblocks, 1, 1)
+            )
+            
         self.reset_parameters()
         if weights is not None:
             if self.peft:
@@ -231,13 +241,15 @@ class MonarchLinear(StructuredLinear):
 
     def forward(self, x):
         if self.peft:
-            if self.merged:
-                # inference
-                x = F.linear(x, self.dense)
-            else:
-                # training
-                x = self.scaler(self.monarch_forward(x)) + F.linear(x, self.dense)
+            x = F.linear(x, self.dense)
+            if self.use_mult_factor:
+                x = single_monarch_mult(x, self.blkdiag_mult)
+                
+            if not self.merged:                
+                # training with adapter
+                x = x + self.scaler(self.monarch_forward(x))
         else:
+            # Dense already projected to monarch
             x = self.scaler(self.monarch_forward(x))
         return x + self.bias
 
