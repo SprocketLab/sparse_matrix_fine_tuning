@@ -932,7 +932,7 @@ class RobertaModel(RobertaPreTrainedModel):
         self.pooler = RobertaPooler(config) if add_pooling_layer else None
         self.monarch_param_set = False
         self.log_param_steps = 600
-        self.train_mode_count = 590
+        self.train_mode_count = 0
         self.layers_to_adapt = [RobertaSelfAttention, RobertaOutput]
         self.watch_count = defaultdict(int)
         self.wandb_watch_enabled = False
@@ -983,14 +983,14 @@ class RobertaModel(RobertaPreTrainedModel):
         # check if wandb is initialized
         if wandb.run is not None and not self.wandb_watch_enabled:
             print('Enabling wandb watch.')
-            max_per_key = 2
+            max_per_key = 3
             
             # log modules of interest
             for name, module in self.named_modules():
                 if isinstance(module, MonarchLinear) or isinstance(module, Scaler):
                     layer_name = name.split(".")[-1]
                     if self.watch_count[(type(module), layer_name)] < max_per_key:
-                        wandb.watch(module, log="parameters", log_freq=100)
+                        wandb.watch(module, log="parameters", log_freq=300)
                         self.watch_count[(type(module), layer_name)] += 1
 
             for (module, layer_name), count in self.watch_count.items():

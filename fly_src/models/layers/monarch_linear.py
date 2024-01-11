@@ -22,6 +22,7 @@ from fly_src.ops.blockdiag_butterfly_einsum import (
 logger = get_logger()
 
 hooked = False
+hooked_module = None
 check_freq = 600
 check_step = 0
 
@@ -34,7 +35,7 @@ def backward_hook(module, grad_input, grad_output):
 def grad_hook(grad):
     global check_freq, check_step
     if check_step % check_freq == 0:
-        print(f"Scaler has  dW {grad}")  
+        print(f"Scaler has  dW {grad} and value {hooked_module.scaler}. ")  
     check_step += 1
     
 def factor_balance(mid_blksz, out_blksz):
@@ -57,8 +58,9 @@ class Scaler(nn.Module):
         self.norm = nn.LayerNorm(out_features, elementwise_affine=affine)
         
         # hook only module
-        global hooked
+        global hooked, hooked_module
         if not hooked:
+            hooked_module = self
             self.hook = self.scaler.register_hook(grad_hook)
             hooked = True
             
@@ -99,7 +101,7 @@ class MonarchLinear(StructuredLinear):
         self.nblocks = nblocks
         self.in_blksz = int(math.ceil(self.in_features / nblocks))
         self.mid_blksz = self.nblocks * rank
-        self.out_blksz = int(math.ceil(self.out_features / nblocks)) * rank
+        self.out_blksz = int(math.ceil(self.out_features / nblocks)) 
         
         # Get peft configs
         self.device = device

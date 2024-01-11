@@ -27,16 +27,17 @@ from transformers import (
     EvalPrediction,
     HfArgumentParser,
     PretrainedConfig,
-    Trainer,
     TrainingArguments,
     default_data_collator,
     set_seed,
+    Trainer
 )
 from fly_src.models.modeling_roberta import RobertaForSequenceClassification
 from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version, send_example_telemetry
 from transformers.utils.versions import require_version
-from train_utils import *
+from train_utils import param_stats, override_config, MyAwesomeTrainer, get_run_group
+import torch
 
 from ray import train, tune
 from ray.tune.schedulers import ASHAScheduler
@@ -44,6 +45,9 @@ import ray.train.huggingface.transformers as ray_hf
 from ray.tune import CLIReporter
 from ray.air.integrations.wandb import WandbLoggerCallback
 
+# TODO: Still checking whether we need this given a careful sequence of operations
+# torch.use_deterministic_algorithms(True)
+# torch.backends.cudnn.deterministic = True
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
 check_min_version("4.21.0.dev0")
 
@@ -445,7 +449,7 @@ def main(config: dict = None):
 
         if use_monarch:
             model.roberta.set_peft_config(peft_config)
-
+            # model.roberta.init_monarch_layers()
         # NOTE: Ray doesn't support torch.compile and it also causes a bug with trainer...
         # if torch.__version__.startswith("2") and not do_tune:
         #     model = torch.compile(model)
@@ -609,7 +613,7 @@ def main(config: dict = None):
     
     # Ray Tune hyperparameter search
     if do_tune:
-        trainer = Trainer(
+        trainer = MyAwesomeTrainer(
             model_init=model_init,
             args=training_args,
             train_dataset=train_dataset if training_args.do_train else None,
@@ -618,7 +622,7 @@ def main(config: dict = None):
             tokenizer=tokenizer,
             data_collator=data_collator,
         )
-            
+        
         # PEFT monarch search space
         if use_monarch:
             param_space = {
@@ -697,7 +701,7 @@ def main(config: dict = None):
         training_args.eval_steps = 1000 # 110K total steps for QQP
         training_args.save_steps = 1000
         
-    trainer = Trainer(
+    trainer = MyAwesomeTrainer(
         model=model_init(best_hyperparams),
         args=training_args,
         train_dataset=train_dataset if training_args.do_train else None,
@@ -706,7 +710,6 @@ def main(config: dict = None):
         tokenizer=tokenizer,
         data_collator=data_collator,
     )
-
     
     # # Training
     if training_args.do_train:
@@ -789,20 +792,9 @@ def main(config: dict = None):
                             item = label_list[item]
                             writer.write(f"{index}\t{item}\n")
         print("Inferece time on test set: ", time.time() - t1)
-        
-    # kwargs = {"finetuned_from": model_args.model_name_or_path, "tasks": "text-classification"}
-    # if data_args.task_name is not None:
-    #     kwargs["language"] = "en"
-    #     kwargs["dataset_tags"] = "glue"
-    #     kwargs["dataset_args"] = data_args.task_name
-    #     kwargs["dataset"] = f"GLUE {data_args.task_name.upper()}"
 
-    # if training_args.push_to_hub:
-    #     trainer.push_to_hub(**kwargs)
-    # else:
-    #     trainer.create_model_card(**kwargs)
-
-
+    print("Best hyperparameters: ", best_hyperparams)
+    print("peft_config: ", peft_config)
 
 if __name__ == "__main__":
     main()
