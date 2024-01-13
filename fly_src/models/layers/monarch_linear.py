@@ -94,7 +94,6 @@ class MonarchLinear(StructuredLinear):
             rank (int, optional): SVD rank for decomposing each block
         """
         super().__init__(*args, **kwargs)
-
         self.nblocks = nblocks
         self.in_blksz = int(math.ceil(self.in_features / nblocks))
         self.mid_blksz = self.nblocks * rank
@@ -103,7 +102,7 @@ class MonarchLinear(StructuredLinear):
         # Get peft configs
         self.device = device
         self.peft_config = peft_config
-        self.peft = peft_config["use_peft"]
+        self.use_adapter = peft_config["adapter"]
         self.use_scaler = peft_config.get("scaler", False)
         self.rank = rank
         self.lora_style_init = peft_config.get("lora_style_init", False)
@@ -112,9 +111,6 @@ class MonarchLinear(StructuredLinear):
         self.use_mult_factor = peft_config.get("use_mult_factor", False) # X @ W @ M_mult + X @ M1 @ M2 * scaler
         self.use_scaler = self.use_scaler or self.use_mult_factor
         assert self.scaler_type in ["scaler", "diag"]
-        
-        if self.peft and rank > 1:
-            raise NotImplementedError("Adapters with rank > 1 can't be merged with dense weights due to dim mismatch")
         
         self.merged = False
         assert self.rank <= min(
@@ -138,7 +134,7 @@ class MonarchLinear(StructuredLinear):
             
         self.reset_parameters()
         if weights is not None:
-            if self.peft:
+            if self.use_adapter:
                 self.dense = nn.Parameter(weights, requires_grad=False)
             else:
                 self.set_weights_from_dense_init(weights, rank)
@@ -214,6 +210,7 @@ class MonarchLinear(StructuredLinear):
         blkdiag1, blkdiag2 = blockdiag_butterfly_project_einsum_rank(
             w, self.nblocks, self.nblocks, rank
         )
+        assert blkdiag1.shape == self.blkdiag1.shape and blkdiag2.shape == self.blkdiag2.shape, "Projected monarch shapes do not match original shapes"
         self.blkdiag1 = nn.Parameter(blkdiag1)
         self.blkdiag2 = nn.Parameter(blkdiag2)
         
@@ -223,16 +220,17 @@ class MonarchLinear(StructuredLinear):
         """
         super().train(mode)
         if mode:
-            if self.peft and self.merged:
-                # split out monarch for separate training
-                # (out, in) - (in, out).T
-                merged_weights = self.monarch_forward(torch.eye(self.in_features, device=self.device)).T
-                self.dense.data -= merged_weights
-                self.merged = False
-            self.dense.requires_grad_(False) # freeze dense, train monarch adapter
+            if self.use_adapter:
+                if self.merged:
+                    # split out monarch for separate training
+                    # (out, in) - (in, out).T
+                    merged_weights = self.monarch_forward(torch.eye(self.in_features, device=self.device)).T
+                    self.dense.data -= merged_weights
+                    self.merged = False
+                self.dense.requires_grad_(False) # freeze dense, train monarch adapter
             
         else:
-            if self.peft and not self.merged:
+            if self.use_adapter and not self.merged:
                 # Merge the adapter weights and mark it
                 merged_weights = self.monarch_forward(torch.eye(self.in_features, device=self.device)).T
                 self.dense.data += merged_weights
@@ -240,7 +238,7 @@ class MonarchLinear(StructuredLinear):
 
 
     def forward(self, x):
-        if self.peft:
+        if self.use_adapter:
             out_main = F.linear(x, self.dense)
             if self.use_mult_factor:
                 out_main = single_monarch_mult(out_main, self.blkdiag_mult)

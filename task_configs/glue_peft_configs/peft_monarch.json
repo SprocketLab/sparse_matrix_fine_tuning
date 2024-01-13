@@ -8,7 +8,7 @@
         "value",
         "key"
     ],
-    "use_peft": true, 
+    "adapter": true, 
     "precision": "fp16",
     "weight_decay": 0.1,
     "scaler": false,

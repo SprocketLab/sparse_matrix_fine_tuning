@@ -619,17 +619,18 @@ def main(config: dict = None):
             tokenizer=tokenizer,
             data_collator=data_collator,
             same_lr=peft_config["same_lr"],
+            use_scaler=peft_config["scaler"],
         )
         
         # PEFT monarch search space
         if use_monarch:
             param_space = {
                 # "rank": tune.choice([1, 2, 3]),  # Tuning rank causes dim mismatch when merging
-                "nblocks": tune.choice(['sqrt(n)', 4]),
+                # "nblocks": tune.choice(['sqrt(n)', 4]),
                 "learning_rate": tune.quniform(8e-5, 2e-6, 1e-6),
                 "per_device_train_batch_size": tune.choice([16, 32]), # In Monarch-Mixer they mixed 32 and 16 
                 "weight_decay": tune.choice([0.01, 0.1, 1e-3]),
-                "lr_scheduler_type": tune.choice(["cosine"]), # mostly linear underperforms
+                "lr_scheduler_type": tune.choice(["cosine", "linear"]), # mostly linear underperforms
             }
             n_trials = 40
             
@@ -708,6 +709,7 @@ def main(config: dict = None):
         tokenizer=tokenizer,
         data_collator=data_collator,
         same_lr=peft_config["same_lr"],
+        use_scaler=peft_config["scaler"],
     )
     
     # # Training

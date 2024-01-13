@@ -119,7 +119,7 @@ class PEFT_adapter():
             weights = layer.weight 
             m, n = weights.shape
             
-            if self.peft_config["use_peft"] and self.nblocks != "sqrt(n)":
+            if self.peft_config["adapter"] and self.nblocks != "sqrt(n)":
                 # freeze dense, init and train monarch, and then merge during inference
                 nblocks = self.nblocks
             else:
@@ -976,7 +976,8 @@ class RobertaModel(RobertaPreTrainedModel):
         super().train(mode)
         if hasattr(self, "peft_config") and self.peft_config["monarch"] and not self.monarch_param_set:
             self.init_monarch_layers()
-            self.trainer.create_optimizer_and_scheduler(self.trainer.num_training_steps)
+            if mode:
+                self.trainer.create_optimizer_and_scheduler(self.trainer.num_training_steps)
             self.monarch_param_set = True
             
         if mode and self.train_mode_count % self.log_param_steps == 0:
