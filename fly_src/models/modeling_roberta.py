@@ -113,6 +113,9 @@ class PEFT_adapter():
                 continue
             
             layer = getattr(self, name)
+            # if isinstance(layer, MonarchLinear):
+            #     continue
+            
             weights = layer.weight 
             m, n = weights.shape
             
@@ -134,9 +137,6 @@ class PEFT_adapter():
                 weights=weights,
                 bias=bias,
                 peft_config=self.peft_config
-                # peft=self.peft_config["use_peft"],
-                # use_scaler=self.peft_config["use_scaler"],
-                # lora_style_init=self.peft_config["lora_style_init"],
             )
             if bias:
                 new_layer.bias = layer.bias
@@ -172,8 +172,7 @@ class PEFT_adapter():
         elif peft_config["monarch"]:
             self.rank = peft_config["rank"]
             self.nblocks = peft_config["nblocks"]
-            if peft_config["mlp"]:
-                self.peft_config["layers_to_adapt"] += ["dense"]
+
             
         
 
@@ -944,9 +943,10 @@ class RobertaModel(RobertaPreTrainedModel):
     def init_monarch_layers(self):
         if self.monarch_param_set:
             return
+        
         if self.peft_config["from_lora"]:
             lora_dict = torch.load(self.peft_config["from_lora"])
-            
+
         for name, module in self.named_modules():
             # Replace linear with monarch if is target layer
             if any([isinstance(module, layer) for layer in self.layers_to_adapt]):
@@ -970,16 +970,18 @@ class RobertaModel(RobertaPreTrainedModel):
         for name, old_shape, shape_1, shape_2 in adapted_layers:
             print(f"Adapted {name} {old_shape} with monarch layers: {shape_1}, {shape_2}")
             
-            
+
     def train(self, mode: bool = True):
         super().train(mode)
         if hasattr(self, "peft_config") and self.peft_config["monarch"] and not self.monarch_param_set:
             self.init_monarch_layers()
+            self.trainer.create_optimizer_and_scheduler(self.trainer.num_training_steps)
+            self.monarch_param_set = True
             
         if mode and self.train_mode_count % self.log_param_steps == 0:
             param_stats(self, training=True, print_trainable=False)
         self.train_mode_count += 1
-        
+
         # check if wandb is initialized
         if wandb.run is not None and not self.wandb_watch_enabled:
             print('Enabling wandb watch.')
@@ -996,13 +998,19 @@ class RobertaModel(RobertaPreTrainedModel):
             for (module, layer_name), count in self.watch_count.items():
                 print(f"Watched {count} {layer_name} layers  ")
             
-            # log all py files for reference
-            wandb.run.log_code("/fly", include_fn = lambda x: x.endswith(".py"))
+            # Log all py files for reference
+            files_to_log = ["modeling_roberta.py", "monarch_linear.py", "train_utils.py"]
+            import glob
+            for file in glob.glob("/fly/**/*.py", recursive=True):
+                if any([file.endswith(f) for f in files_to_log]):
+                    artifact = wandb.Artifact(os.path.basename(file), type="code")
+                    artifact.add_file(file)
+                    wandb.run.log_artifact(artifact)
             self.wandb_watch_enabled = True
             
 
     def set_peft_config(self, peft_config=None):
-        """
+        """ @Wenxuan
             Set peft config for all attention layers and
             reinit their submodules based on config
         """
@@ -1010,7 +1018,8 @@ class RobertaModel(RobertaPreTrainedModel):
         print("PEFT config set. Will init layers when entering training mode.")
         self.monarch_param_set = False
         
-        # set config and init submodules for all attention layers
+        if peft_config["mlp"]:
+            self.peft_config["layers_to_adapt"] += ["dense"]
         for name, module in self.named_modules():
             if any([isinstance(module, layer) for layer in self.layers_to_adapt]):
                 module.set_peft_config(peft_config)

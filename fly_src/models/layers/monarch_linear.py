@@ -92,9 +92,6 @@ class MonarchLinear(StructuredLinear):
             nblocks (int, optional): Number of blocks in block-diag monarch factor. More blocks -> less precision loss in SVD
             weights (torch.Tensor, optional): The dense weight matrix for projection. If none will init with Kaiming
             rank (int, optional): SVD rank for decomposing each block
-            peft (bool, optional): whether to use PEFT(freeze dense, train task-specific monarch matrices and fuse)
-                or FT (project dense to and train monarch matrices only).
-            use_scaler (bool, optional): whether to scale the output of monarch factors
         """
         super().__init__(*args, **kwargs)
 
@@ -107,7 +104,7 @@ class MonarchLinear(StructuredLinear):
         self.device = device
         self.peft_config = peft_config
         self.peft = peft_config["use_peft"]
-        self.use_scaler = peft_config.get("use_scaler", False)
+        self.use_scaler = peft_config.get("scaler", False)
         self.rank = rank
         self.lora_style_init = peft_config.get("lora_style_init", False)
         self.scaler_type = peft_config.get("scaler_type", "scaler")

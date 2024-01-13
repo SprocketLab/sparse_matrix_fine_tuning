@@ -45,9 +45,10 @@ import ray.train.huggingface.transformers as ray_hf
 from ray.tune import CLIReporter
 from ray.air.integrations.wandb import WandbLoggerCallback
 
-# TODO: Still checking whether we need this given a careful sequence of operations
+# NOTE: Given the same GPU (A100) we probably don't need this
 # torch.use_deterministic_algorithms(True)
 # torch.backends.cudnn.deterministic = True
+
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
 check_min_version("4.21.0.dev0")
 
@@ -242,11 +243,6 @@ def main(config: dict = None):
         model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
         extra_args = override_config([model_args, data_args, training_args, peft_config], sys.argv[2:])
         
-        # Add additional args to global variables
-        if extra_args is not None:
-            for k, v in extra_args.items():
-                globals()[k] = v
-        
     elif config is not None:
         model_args, data_args, training_args = parser.parse_dict(config, allow_extra_keys=True)
         
@@ -258,15 +254,16 @@ def main(config: dict = None):
         # parse command line args
         model_args, data_args, training_args = parser.parse_args_into_dataclasses()
     
-    # NOTE: Allowed extra command line args
-    # @Wenxuan
-    use_monarch = globals().get("monarch", True)
-    do_tune = globals().get("do_tune", False)
-    use_wandb = globals().get("use_wandb", True)
+    training_args.metric_for_best_model = task_to_metric[data_args.task_name] # Do NOT use loss 
+    training_args.greater_is_better = True 
+    # NOTE: Accept extra command line args
+    use_monarch = extra_args.get("monarch", True)
+    do_tune = extra_args.get("do_tune", False)
+    use_wandb = extra_args.get("use_wandb", True)
     # For grouping runs in wandb
-    group = globals().get("group", None) 
-    project = globals().get("project", None) 
-    use_peft = globals().get("use_peft", True)
+    group = extra_args.get("group", None) 
+    project = extra_args.get("project", None) 
+    use_peft = extra_args.get("use_peft", True)
     
     if not use_wandb:
         print("Disabling wandb")
@@ -621,6 +618,7 @@ def main(config: dict = None):
             compute_metrics=compute_metrics,
             tokenizer=tokenizer,
             data_collator=data_collator,
+            same_lr=peft_config["same_lr"],
         )
         
         # PEFT monarch search space
@@ -700,7 +698,7 @@ def main(config: dict = None):
     if data_args.task_name == "qqp":
         training_args.eval_steps = 1000 # 110K total steps for QQP
         training_args.save_steps = 1000
-        
+
     trainer = MyAwesomeTrainer(
         model=model_init(best_hyperparams),
         args=training_args,
@@ -709,6 +707,7 @@ def main(config: dict = None):
         compute_metrics=compute_metrics,
         tokenizer=tokenizer,
         data_collator=data_collator,
+        same_lr=peft_config["same_lr"],
     )
     
     # # Training

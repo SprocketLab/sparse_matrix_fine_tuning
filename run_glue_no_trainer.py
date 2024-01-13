@@ -13,6 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """ Finetuning a 🤗 Transformers model for sequence classification on GLUE."""
+# Ex launch command:
+# export TASK_NAME=cola
+# accelerate launch run_glue_no_trainer.py \
+#   --model_name_or_path roberta-large \
+#   --task_name $TASK_NAME \
+#   --max_length 128 \
+#   --per_device_train_batch_size 32 \
+#   --learning_rate 8e-5 \
+#   --num_train_epochs 20 \
+#   --output_dir /tmp/$TASK_NAME/
+
 import argparse
 import json
 import logging
@@ -20,7 +31,7 @@ import math
 import os
 import random
 from pathlib import Path
-
+from run_glue import task_to_metric
 import datasets
 import torch
 from datasets import load_dataset, load_metric
@@ -147,12 +158,12 @@ def parse_args():
         "--num_warmup_steps", type=int, default=0, help="Number of steps for the warmup in the lr scheduler."
     )
     parser.add_argument("--output_dir", type=str, default=None, help="Where to store the final model.")
-    parser.add_argument("--seed", type=int, default=None, help="A seed for reproducible training.")
-    parser.add_argument("--push_to_hub", action="store_true", help="Whether or not to push the model to the Hub.")
-    parser.add_argument(
-        "--hub_model_id", type=str, help="The name of the repository to keep in sync with the local `output_dir`."
-    )
-    parser.add_argument("--hub_token", type=str, help="The token to use to push to the Model Hub.")
+    parser.add_argument("--seed", type=int, default=42, help="A seed for reproducible training.")
+    # parser.add_argument("--push_to_hub", action="store_true", help="Whether or not to push the model to the Hub.")
+    # parser.add_argument(
+    #     "--hub_model_id", type=str, help="The name of the repository to keep in sync with the local `output_dir`."
+    # )
+    # parser.add_argument("--hub_token", type=str, help="The token to use to push to the Model Hub.")
     parser.add_argument(
         "--checkpointing_steps",
         type=str,
@@ -198,8 +209,8 @@ def parse_args():
             extension = args.validation_file.split(".")[-1]
             assert extension in ["csv", "json"], "`validation_file` should be a csv or a json file."
 
-    if args.push_to_hub:
-        assert args.output_dir is not None, "Need an `output_dir` to create a repo when `--push_to_hub` is passed."
+    # if args.push_to_hub:
+    #     assert args.output_dir is not None, "Need an `output_dir` to create a repo when `--push_to_hub` is passed."
 
     return args
 
@@ -234,22 +245,7 @@ def main():
     if args.seed is not None:
         set_seed(args.seed)
 
-    # Handle the repository creation
-    if accelerator.is_main_process:
-        if args.push_to_hub:
-            if args.hub_model_id is None:
-                repo_name = get_full_repo_name(Path(args.output_dir).name, token=args.hub_token)
-            else:
-                repo_name = args.hub_model_id
-            repo = Repository(args.output_dir, clone_from=repo_name)
-
-            with open(os.path.join(args.output_dir, ".gitignore"), "w+") as gitignore:
-                if "step_*" not in gitignore:
-                    gitignore.write("step_*\n")
-                if "epoch_*" not in gitignore:
-                    gitignore.write("epoch_*\n")
-        elif args.output_dir is not None:
-            os.makedirs(args.output_dir, exist_ok=True)
+    os.makedirs(args.output_dir, exist_ok=True)
     accelerator.wait_for_everyone()
 
     # Get the datasets: you can either provide your own CSV/JSON training and evaluation files (see below)
@@ -305,16 +301,35 @@ def main():
     # download model & vocab.
     config = AutoConfig.from_pretrained(args.model_name_or_path, num_labels=num_labels, finetuning_task=args.task_name)
     tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path, use_fast=not args.use_slow_tokenizer)
-    model = RobertaForSequenceClassification.from_pretrained(
-        args.model_name_or_path,
-        from_tf=bool(".ckpt" in args.model_name_or_path),
-        config=config,
-        ignore_mismatched_sizes=args.ignore_mismatched_sizes,
-    )
-    peft_config = json.load(open("task_configs/glue_peft_configs/peft_monarch.json", "r"))  # load monarch config
-    model.roberta.set_peft_config(peft_config)  # set monarch config
-    model.roberta.init_monarch_layers()
+    
+    # Load monarch config
+    peft_config = json.load(open("task_configs/glue_peft_configs/peft_monarch.json", "r"))  
+    # Helper to init and set hyperparams for Ray Tune search
+    def model_init(hyperparams = None):
+        torch.manual_seed(args.seed)
+        model = RobertaForSequenceClassification.from_pretrained(
+            pretrained_model_name_or_path=args.model_name_or_path,
+            from_tf=bool(".ckpt" in args.model_name_or_path),
+            config=config,
+        )
+        
+        # Hyperparameter search
+        if hyperparams is not None:
+            for k in peft_config.keys():
+                if k in hyperparams.keys():
+                    print("Overriding {} with {}".format(k, peft_config[k]))
+                    peft_config[k] = hyperparams[k]
 
+        model.roberta.set_peft_config(peft_config)
+        model.roberta.init_monarch_layers()
+        # NOTE: Ray doesn't support torch.compile and it also causes a bug with trainer...
+        # if torch.__version__.startswith("2") and not do_tune:
+        #     model = torch.compile(model)
+        return model
+    best_hyperparams = json.load(open("results/monarch_roberta_glue/cola/best_hyperparams.json", "r"))
+    task_config = json.load(open(os.path.join("task_configs/glue_peft_configs", args.task_name + ".json"), "r"))
+    model = model_init(best_hyperparams)
+    
     # Preprocessing the datasets
     if args.task_name is not None:
         sentence1_key, sentence2_key = task_to_keys[args.task_name]
@@ -414,7 +429,7 @@ def main():
     no_decay = ["bias", "LayerNorm.weight"]
     large_lr = ["scaler"]
     new_lr = 5e-3
-    
+    new_decay = 0.0
     optimizer_grouped_parameters = [
         {
             "params": [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay) and not any(nd in n for nd in large_lr)],
@@ -438,7 +453,8 @@ def main():
     if args.max_train_steps is None:
         args.max_train_steps = args.num_train_epochs * num_update_steps_per_epoch
         overrode_max_train_steps = True
-
+    
+    args.num_warmup_steps = math.ceil(task_config['warmup_ratio'] * args.max_train_steps)
     lr_scheduler = get_scheduler(
         name=args.lr_scheduler_type,
         optimizer=optimizer,
@@ -585,18 +601,6 @@ def main():
                 step=completed_steps,
             )
 
-        if args.push_to_hub and epoch < args.num_train_epochs - 1:
-            accelerator.wait_for_everyone()
-            unwrapped_model = accelerator.unwrap_model(model)
-            unwrapped_model.save_pretrained(
-                args.output_dir, is_main_process=accelerator.is_main_process, save_function=accelerator.save
-            )
-            if accelerator.is_main_process:
-                tokenizer.save_pretrained(args.output_dir)
-                repo.push_to_hub(
-                    commit_message=f"Training in progress epoch {epoch}", blocking=False, auto_lfs_prune=True
-                )
-
         if args.checkpointing_steps == "epoch":
             output_dir = f"epoch_{epoch}"
             if args.output_dir is not None:
@@ -611,8 +615,6 @@ def main():
         )
         if accelerator.is_main_process:
             tokenizer.save_pretrained(args.output_dir)
-            if args.push_to_hub:
-                repo.push_to_hub(commit_message="End of training", auto_lfs_prune=True)
 
     if args.task_name == "mnli":
         # Final evaluation on mismatched validation set
@@ -636,7 +638,8 @@ def main():
 
     if args.output_dir is not None:
         with open(os.path.join(args.output_dir, "all_results.json"), "w") as f:
-            json.dump({"eval_accuracy": eval_metric["accuracy"]}, f)
+            breakpoint()
+            json.dump({"eval_accuracy": eval_metric[task_to_metric[args.task_name].replace("eval_", "")]}, f)
 
 
 if __name__ == "__main__":
