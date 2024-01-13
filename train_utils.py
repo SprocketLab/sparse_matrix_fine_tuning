@@ -228,14 +228,14 @@ class MyAwesomeTrainer(Trainer):
 
         # if self.optimizer is None:
         no_decay = ["bias", "LayerNorm.weight"]
-        large_lr = ["scaler"]
+        large_lr = ["scaler",] #"blkdiag2"]
         if self.same_lr:
             new_lr = self.args.learning_rate 
             new_decay = self.args.weight_decay
             print("Using the same lr for all layers")
         else:
-            new_lr = 5e-3 
-            new_decay = 0 
+            new_lr = 5e-3
+            new_decay = 0 #self.args.weight_decay
             print(f"Using lr {new_lr} and weight decay {new_decay} for {large_lr}")
             
         optimizer_grouped_parameters = [
@@ -253,7 +253,6 @@ class MyAwesomeTrainer(Trainer):
                 "weight_decay": new_decay
             }
         ]
-        
         optimizer_cls, optimizer_kwargs = Trainer.get_optimizer_cls_and_kwargs(self.args)
 
         self.optimizer = optimizer_cls(optimizer_grouped_parameters, **optimizer_kwargs)

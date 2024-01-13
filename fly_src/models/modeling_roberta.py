@@ -535,7 +535,7 @@ class RobertaAttention(nn.Module):
 
 
 # Copied from transformers.models.bert.modeling_bert.BertIntermediate
-class RobertaIntermediate(nn.Module):
+class RobertaIntermediate(nn.Module, PEFT_adapter):
     def __init__(self, config):
         super().__init__()
         self.dense = nn.Linear(config.hidden_size, config.intermediate_size)
@@ -544,6 +544,7 @@ class RobertaIntermediate(nn.Module):
             self.intermediate_act_fn = ACT2FN[config.hidden_act]
         else:
             self.intermediate_act_fn = config.hidden_act 
+            
     def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
         hidden_states = self.dense(hidden_states)
         hidden_states = self.intermediate_act_fn(hidden_states)
@@ -551,7 +552,7 @@ class RobertaIntermediate(nn.Module):
 
 
 # Copied from transformers.models.bert.modeling_bert.BertOutput
-class RobertaOutput(nn.Module, PEFT_adapter):
+class RobertaOutput(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.dense = nn.Linear(config.intermediate_size, config.hidden_size)
@@ -932,7 +933,7 @@ class RobertaModel(RobertaPreTrainedModel):
         self.monarch_param_set = False
         self.log_param_steps = 600
         self.train_mode_count = 0
-        self.layers_to_adapt = [RobertaSelfAttention, RobertaOutput]
+        self.layers_to_adapt = [RobertaSelfAttention, RobertaIntermediate]
         self.watch_count = defaultdict(int)
         self.wandb_watch_enabled = False
         # Initialize weights and apply final processing

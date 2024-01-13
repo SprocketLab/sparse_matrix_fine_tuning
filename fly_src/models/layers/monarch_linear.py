@@ -241,13 +241,15 @@ class MonarchLinear(StructuredLinear):
 
     def forward(self, x):
         if self.peft:
-            x = F.linear(x, self.dense)
+            out_main = F.linear(x, self.dense)
             if self.use_mult_factor:
-                x = single_monarch_mult(x, self.blkdiag_mult)
+                out_main = single_monarch_mult(out_main, self.blkdiag_mult)
                 
             if not self.merged:                
                 # training with adapter
-                x = x + self.monarch_forward(x)
+                x = out_main + self.monarch_forward(x)
+            else:
+                x = out_main
         else:
             # Dense already projected to monarch
             x = self.monarch_forward(x)
@@ -256,9 +258,9 @@ class MonarchLinear(StructuredLinear):
 
     # Override magic methods
     def __repr__(self):
-        weight_shape = self.nblocks = {self.blkdiag1.shape[0]} if self.blkdiag1 is not None else self.dense.shape
+        # weight_shape = self.nblocks = {self.blkdiag1.shape[0]} if self.blkdiag1 is not None else self.dense.shape
         return (
             f"{self.__class__.__name__}(in_features={self.in_features}, out_features={self.out_features}, "
-            f"weight_shape={weight_shape}, requires_grad={list(self.parameters())[0].requires_grad})"
+            f"nblocks={self.nblocks}, requires_grad={list(self.parameters())[0].requires_grad})"
         )
     

@@ -77,6 +77,7 @@ class BlockdiagButterflyMultiply(torch.autograd.Function):
         l, s, r = w2_bfly.shape
         assert k * p == n
         assert l * r == k * q
+        
         x_reshaped = x.reshape(batch_dim, k, p).transpose(0, 1)
         out1 = torch.empty(batch_dim, k, q, device=x.device, dtype=x.dtype).transpose(0, 1) 
         out1 = torch.bmm(x_reshaped, w1_bfly.transpose(-1, -2), out=out1) # (k, batch_dim, p) @ (k, p, q) -> (k, batch_dim, q)
