@@ -10,7 +10,6 @@
     ],
     "adapter": true, 
     "precision": "fp16",
-    "weight_decay": 0.1,
     "scaler": false,
     "layernorm": true,
     "same_lr": true,

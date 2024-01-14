@@ -45,7 +45,8 @@ import ray.train.huggingface.transformers as ray_hf
 from ray.tune import CLIReporter
 from ray.air.integrations.wandb import WandbLoggerCallback
 
-# NOTE: Given the same GPU (A100) we probably don't need this
+# NOTE: Given the same GPU (A100) results are mostly reproducible without this.
+# Besides it does NOT gurarantee deterministic results across different GPUs
 # torch.use_deterministic_algorithms(True)
 # torch.backends.cudnn.deterministic = True
 
@@ -256,6 +257,7 @@ def main(config: dict = None):
     
     training_args.metric_for_best_model = task_to_metric[data_args.task_name] # Do NOT use loss 
     training_args.greater_is_better = True 
+    
     # NOTE: Accept extra command line args
     use_monarch = extra_args.get("monarch", True)
     do_tune = extra_args.get("do_tune", False)
@@ -520,6 +522,8 @@ def main(config: dict = None):
             result["label"] = [(label_to_id[l] if l != -1 else -1) for l in examples["label"]]
         return result
 
+    # Get mapped datasets
+    
     with training_args.main_process_first(desc="dataset map pre-processing"):
         raw_datasets = raw_datasets.map(
             preprocess_function,
@@ -632,7 +636,7 @@ def main(config: dict = None):
                 "weight_decay": tune.choice([0.01, 0.1, 1e-3]),
                 "lr_scheduler_type": tune.choice(["cosine", "linear"]), # mostly linear underperforms
             }
-            n_trials = 40
+            n_trials = 45
             
             if not use_peft:
                 del param_space["nblocks"]
@@ -658,7 +662,7 @@ def main(config: dict = None):
         
         reporter = CLIReporter(
             parameter_columns=["learning_rate", "per_device_train_batch_size", "weight_decay"],
-            metric_columns=["train_loss", "eval_loss", "eval_accuracy", "training_iteration"],
+            metric_columns=["train_loss", "eval_loss", task_to_metric[data_args.task_name], "training_iteration"],
             max_progress_rows=10,
             max_report_frequency=10,
         )   
@@ -667,7 +671,6 @@ def main(config: dict = None):
             hp_space=lambda _: param_space,
             backend="ray",
             n_trials=n_trials, # under the hood it calls ray.tune.run(num_samples=n_trials, ...)
-            # num_samples=50,
             scheduler=scheduler,
             keep_checkpoints_num=0,
             checkpoint_score_attr="training_iteration",
@@ -740,6 +743,7 @@ def main(config: dict = None):
             trainer.model.roberta.init_monarch_layers()
             trainer.model.eval()
             trainer.model.load_state_dict(torch.load(last_checkpoint))
+            # breakpoint()
             
         # Loop to handle MNLI double evaluation (matched, mis-matched)
         tasks = [data_args.task_name]

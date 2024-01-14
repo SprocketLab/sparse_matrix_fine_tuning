@@ -20,6 +20,7 @@ from tqdm import tqdm
 from sklearn.metrics import accuracy_score
 from ast import literal_eval
 from typing import Dict, List, Tuple
+from ray import tune
 
 def param_stats(model, training=False, print_trainable=False):
     param_count = 0
@@ -95,7 +96,7 @@ def prep_data(dataset_id, tokenizer):
 
 def setup_trainer(model_id, dataset_id, save_dir, train_config, peft_config={}, device="cuda"):
     """
-
+    Setup trainer for finetuning on ag_news dataset
     Args:
         train_config: training hyperparams
         peft_config: model configs setting PEFT (lora, monarch)
@@ -215,12 +216,22 @@ class MyAwesomeTrainer(Trainer):
         self.same_lr = kwargs.pop("same_lr", False)
         self.use_scaler = kwargs.pop("use_scaler", False)
         super().__init__(*args, **kwargs)
-        
         if hasattr(self.model, "roberta") and self.train_dataset is not None:
             self.model.roberta.trainer = self # for re-initializing optimizer later
             len_dataloader = len(self.get_train_dataloader()) // self.args.gradient_accumulation_steps
             self.num_training_steps = math.ceil(len_dataloader * self.args.num_train_epochs)
-
+            
+    # def evaluate(self, eval_dataset=None):
+    #     output = super().evaluate(eval_dataset)
+    #     # check if ray tune is on
+    #     if tune.is_session_enabled():
+    #         tune.report(**output)
+    #     return output
+    
+    def training_step(self, model, inputs):
+        self.model.roberta.trainer = self # assignment is faster than if; just do it every time. Must assign like this in ray tune
+        return super().training_step(model, inputs)
+    
     def create_optimizer(self):
         """
         Modified from https://github.com/huggingface/transformers/blob/v4.36.1/src/transformers/trainer.py#L923

@@ -148,8 +148,7 @@ class PEFT_adapter():
             setattr(self, name, new_layer)
             # For printing
             adapted_layers.add((name, (m, n), new_layer.blkdiag1.shape, new_layer.blkdiag2.shape))
-            
-
+        
 
     def set_peft_config(self, peft_config):
         self.peft_config = peft_config
