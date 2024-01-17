@@ -12,7 +12,8 @@
     "precision": "fp16",
     "scaler": false,
     "layernorm": true,
-    "same_lr": true,
+    "large_lr": false,
+    "new_lr": 5e-3,
     "scaler_type": "scaler",
     "from_lora": "",
     

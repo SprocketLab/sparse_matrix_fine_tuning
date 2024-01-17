@@ -51,7 +51,7 @@ from transformers.models.roberta.configuration_roberta import RobertaConfig
 from collections import defaultdict
 # peft imports
 import sys, os
-
+import ray
 sys.path.insert(0, "/fly")  # docker working dir
 from fly_src.models.layers.monarch_linear import MonarchLinear, Scaler
 import loralib as lora
@@ -984,7 +984,8 @@ class RobertaModel(RobertaPreTrainedModel):
         self.train_mode_count += 1
 
         # check if wandb is initialized
-        if wandb.run is not None and not self.wandb_watch_enabled:
+        # if ray tune search is on, don't watch
+        if wandb.run is not None and not self.wandb_watch_enabled and not ray.tune.is_session_enabled():
             print('Enabling wandb watch.')
             max_per_key = 3
             

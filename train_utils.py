@@ -213,11 +213,12 @@ def get_run_group(task_name: str, do_tune: bool=False, group: str=None):
 
 class MyAwesomeTrainer(Trainer):
     def __init__(self, *args, **kwargs):
-        self.same_lr = kwargs.pop("same_lr", False)
+        self.large_lr = kwargs.pop("large_lr", False)
         self.use_scaler = kwargs.pop("use_scaler", False)
+        self.new_lr = kwargs.pop("new_lr", 5e-3)
         super().__init__(*args, **kwargs)
         if hasattr(self.model, "roberta") and self.train_dataset is not None:
-            self.model.roberta.trainer = self # for re-initializing optimizer later
+            self.model.roberta.trainer = self # for re-initializing optimizer to add monarch params
             len_dataloader = len(self.get_train_dataloader()) // self.args.gradient_accumulation_steps
             self.num_training_steps = math.ceil(len_dataloader * self.args.num_train_epochs)
             
@@ -229,7 +230,9 @@ class MyAwesomeTrainer(Trainer):
     #     return output
     
     def training_step(self, model, inputs):
-        self.model.roberta.trainer = self # assignment is faster than if; just do it every time. Must assign like this in ray tune
+        # for re-initializing optimizer to add monarch params
+        # assignment is faster than if; just do it every time. Must assign like this in ray tune
+        self.model.roberta.trainer = self 
         return super().training_step(model, inputs)
     
     def create_optimizer(self):
@@ -241,14 +244,15 @@ class MyAwesomeTrainer(Trainer):
         # if self.optimizer is None:
         no_decay = ["bias", "LayerNorm.weight"]
         large_lr = ["scaler",] if self.use_scaler else ["blkdiag2", "blkdiag_mult"]
-        if self.same_lr:
+        
+        if self.large_lr:
+            new_lr = self.new_lr
+            new_decay = 0 if self.use_scaler else self.args.weight_decay
+            print(f"Using lr {new_lr} and weight decay {new_decay} for {large_lr}")
+        else:
             new_lr = self.args.learning_rate 
             new_decay = self.args.weight_decay
             print("Using the same lr for all layers")
-        else:
-            new_lr = 5e-3
-            new_decay = 0 if self.use_scaler else self.args.weight_decay
-            print(f"Using lr {new_lr} and weight decay {new_decay} for {large_lr}")
             
         optimizer_grouped_parameters = [
             {
@@ -291,3 +295,4 @@ class MyAwesomeTrainer(Trainer):
     # def create_optmizer_and_scheduler(self, num_training_steps):
     #     super().create_optimizer_and_scheduler(num_training_steps)
     #     self.num_training_steps = num_training_steps
+

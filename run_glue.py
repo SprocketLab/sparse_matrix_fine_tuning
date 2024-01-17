@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 import datasets
 import numpy as np
+import shutil
 from datasets import load_dataset, load_metric
 from transformers import (
     AutoConfig,
@@ -82,9 +83,9 @@ task_to_submit = {
 task_to_metric = {
     "cola": "eval_matthews_correlation",
     "mnli": "eval_accuracy",
-    "mrpc": "eval_combined_score",
+    "mrpc": "eval_accuracy",
     "qnli": "eval_accuracy",
-    "qqp": "eval_combined_score",
+    "qqp": "eval_accuracy",
     "rte": "eval_accuracy",
     "sst2": "eval_accuracy",
     "stsb": "eval_pearson",
@@ -425,10 +426,9 @@ def main(config: dict = None):
         use_auth_token=True if model_args.use_auth_token else None,
     )
     
-    
     # helper to init and set hyperparams for Ray Tune search
     def model_init(hyperparams = None):
-        torch.manual_seed(training_args.seed)
+        set_seed(training_args.seed)
         model = RobertaForSequenceClassification.from_pretrained(
             pretrained_model_name_or_path=model_args.model_name_or_path,
             from_tf=bool(".ckpt" in model_args.model_name_or_path),
@@ -607,12 +607,14 @@ def main(config: dict = None):
         os.environ["WANDB_RUN_GROUP"] = get_run_group(data_args.task_name, do_tune, group)
         print("Wandb project: ", os.environ["WANDB_PROJECT"])
         print("Wandb run group: ", os.environ["WANDB_RUN_GROUP"])
-
+    else:
+        os.environ["WANDB_RUN_GROUP"] = os.environ["WANDB_PROJECT"] = "offline"
+        
     if not use_peft:
         peft_config["use_peft"] = False # Will not use merging adapter style
         
     
-    # Ray Tune hyperparameter search
+    ############################## Ray Tune HP search ##############################
     if do_tune:
         trainer = MyAwesomeTrainer(
             model_init=model_init,
@@ -622,7 +624,8 @@ def main(config: dict = None):
             compute_metrics=compute_metrics,
             tokenizer=tokenizer,
             data_collator=data_collator,
-            same_lr=peft_config["same_lr"],
+            large_lr=peft_config["large_lr"],
+            new_lr=peft_config["new_lr"],
             use_scaler=peft_config["scaler"],
         )
         
@@ -631,12 +634,13 @@ def main(config: dict = None):
             param_space = {
                 # "rank": tune.choice([1, 2, 3]),  # Tuning rank causes dim mismatch when merging
                 # "nblocks": tune.choice(['sqrt(n)', 4]),
-                "learning_rate": tune.quniform(8e-5, 2e-6, 1e-6),
+                "seed": training_args.seed,
+                "learning_rate": tune.quniform(4e-5, 6e-4, 2e-5),
                 "per_device_train_batch_size": tune.choice([16, 32]), # In Monarch-Mixer they mixed 32 and 16 
-                "weight_decay": tune.choice([0.01, 0.1, 1e-3]),
+                "weight_decay": tune.choice([0.1, 0.01, 1e-3]),
                 "lr_scheduler_type": tune.choice(["cosine", "linear"]), # mostly linear underperforms
             }
-            n_trials = 45
+            n_trials = 40
             
             if not use_peft:
                 del param_space["nblocks"]
@@ -654,10 +658,11 @@ def main(config: dict = None):
         
         direction = "max"
         scheduler = ASHAScheduler(
-            max_t=12, # max_t * eval_every(eval_steps in configs) = max training steps
+            time_attr="training_iteration",
+            max_t=16,
             metric = task_to_metric[data_args.task_name],
             mode = direction,
-            grace_period=5,
+            grace_period=2,
         )
         
         reporter = CLIReporter(
@@ -672,23 +677,43 @@ def main(config: dict = None):
             backend="ray",
             n_trials=n_trials, # under the hood it calls ray.tune.run(num_samples=n_trials, ...)
             scheduler=scheduler,
-            keep_checkpoints_num=0,
-            checkpoint_score_attr="training_iteration",
+            keep_checkpoints_num=1,
+            checkpoint_score_attr="min-" + task_to_metric[data_args.task_name], # rank in decreasing order
             progress_reporter=reporter,
             resources_per_trial={"cpu": 1, "gpu": 0.5},
             local_dir="ray_results",
             name=os.environ["WANDB_RUN_GROUP"],
             max_failures=100, # tolerate OOM
-            callbacks=[WandbLoggerCallback(project=os.environ["WANDB_PROJECT"], group=os.environ["WANDB_RUN_GROUP"])],
+            # callbacks=[WandbLoggerCallback(project=os.environ["WANDB_PROJECT"], group=os.environ["WANDB_RUN_GROUP"])],
             direction="maximize" if direction == "max" else "minimize",
         )
-    
-        # Use best hyperparams for full training 
+        
+        # Save the best hyperparams for full training 
         print("Best hyperparameters: ", best_run.hyperparameters)
         best_param_path = os.path.join(training_args.output_dir, "best_hyperparams.json")
         json.dump(best_run.hyperparameters, open(best_param_path, "w"))
         do_tune = False # enable torch.compile
-    
+        
+        # Keep the best ckpt only
+        summary = best_run.run_summary
+        summary.default_mode = "max"
+        summary.default_metric = task_to_metric[data_args.task_name]
+        ckpt = summary.get_best_checkpoint(summary.get_best_trial())
+        
+        # Disassemble the path
+        path = ckpt.path.split("/")
+        tune_dir = ("/").join(path[:-2]) # The dir for all trials in a tune search
+        trial_name = path[-2]
+        checkpoint_num = path[-1]
+        # Remove non-best checkpoints to save space
+        for name in os.listdir(tune_dir):
+            if name != trial_name:
+                file_path = os.path.join(tune_dir, name)
+                if os.path.isdir(file_path):
+                    shutil.rmtree(file_path)
+                else:
+                    os.remove(file_path)
+
     # load best hyperparams from last tune 
     best_param_path = os.path.join(training_args.output_dir, "best_hyperparams.json")
     if os.path.exists(best_param_path):
@@ -698,7 +723,8 @@ def main(config: dict = None):
         override_config([model_args, data_args, training_args], best_hyperparams)
     else:
         best_hyperparams = None
-        
+    
+    # NOTE: 60K steps for QNLI， 80K for SST-2
     if data_args.task_name == "qqp":
         training_args.eval_steps = 1000 # 110K total steps for QQP
         training_args.save_steps = 1000
@@ -711,12 +737,13 @@ def main(config: dict = None):
         compute_metrics=compute_metrics,
         tokenizer=tokenizer,
         data_collator=data_collator,
-        same_lr=peft_config["same_lr"],
+        large_lr=peft_config["large_lr"],
+        new_lr=peft_config["new_lr"],
         use_scaler=peft_config["scaler"],
     )
     
     # # Training
-    if training_args.do_train:
+    if training_args.do_train and not do_tune:
         checkpoint = None
         if training_args.resume_from_checkpoint is not None:
             checkpoint = training_args.resume_from_checkpoint
@@ -738,12 +765,10 @@ def main(config: dict = None):
     # Evaluation
     if training_args.do_eval:
         logger.info("*** Evaluate ***")
-        if training_args.resume_from_checkpoint:
-            last_checkpoint = os.path.join(get_last_checkpoint(training_args.output_dir),"pytorch_model.bin")
-            trainer.model.roberta.init_monarch_layers()
-            trainer.model.eval()
-            trainer.model.load_state_dict(torch.load(last_checkpoint))
-            # breakpoint()
+        last_checkpoint = os.path.join(get_last_checkpoint(training_args.output_dir),"pytorch_model.bin")
+        trainer.model.roberta.init_monarch_layers()
+        trainer.model.eval()
+        trainer.model.load_state_dict(torch.load(last_checkpoint))
             
         # Loop to handle MNLI double evaluation (matched, mis-matched)
         tasks = [data_args.task_name]
