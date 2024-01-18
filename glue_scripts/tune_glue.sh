@@ -21,15 +21,36 @@ else
 fi
 
 # Run Python scripts with correctly formatted flags
-# python run_glue.py /fly/task_configs/glue_peft_configs/cola.json --do_tune=True --project="monarch_glue_tune" "${FLAGS[@]}"   
-python run_glue.py /fly/task_configs/glue_peft_configs/mrpc.json --do_tune=True --project="monarch_glue_tune" "${FLAGS[@]}"   
-python run_glue.py /fly/task_configs/glue_peft_configs/qnli.json --do_tune=True --project="monarch_glue_tune" "${FLAGS[@]}"   
-python run_glue.py /fly/task_configs/glue_peft_configs/rte.json  --do_tune=True --project="monarch_glue_tune" "${FLAGS[@]}"   
-python run_glue.py /fly/task_configs/glue_peft_configs/sst-2.json --do_tune=True --project="monarch_glue_tune" "${FLAGS[@]}"  
-python run_glue.py /fly/task_configs/glue_peft_configs/stsb.json --do_tune=True --project="monarch_glue_tune" "${FLAGS[@]}"   
-python run_glue.py /fly/task_configs/glue_peft_configs/qqp.json  --do_tune=True --project="monarch_glue_tune" "${FLAGS[@]}"   
-python run_glue.py /fly/task_configs/glue_peft_configs/mnli.json --do_tune=True --project="monarch_glue_tune" "${FLAGS[@]}"   
-python run_glue.py /fly/task_configs/glue_peft_configs/wnli.json --do_tune=True --project="monarch_glue_tune" "${FLAGS[@]}"  
+# Run HP tuning in foreground while full training in background in parallel
+python run_glue.py /fly/task_configs/glue_peft_configs/cola.json --project="monarch_glue_tune" --do_tune=True  "${FLAGS[@]}"
+python run_glue.py /fly/task_configs/glue_peft_configs/cola.json --project="monarch_glue_tune"  &
+
+python run_glue.py /fly/task_configs/glue_peft_configs/mrpc.json --project="monarch_glue_tune" --do_tune=True  "${FLAGS[@]}"
+python run_glue.py /fly/task_configs/glue_peft_configs/mrpc.json --project="monarch_glue_tune"  &
+
+python run_glue.py /fly/task_configs/glue_peft_configs/qnli.json --project="monarch_glue_tune" --do_tune=True  "${FLAGS[@]}"
+python run_glue.py /fly/task_configs/glue_peft_configs/qnli.json --project="monarch_glue_tune"  &
+
+python run_glue.py /fly/task_configs/glue_peft_configs/rte.json  --project="monarch_glue_tune" --do_tune=True  "${FLAGS[@]}"
+python run_glue.py /fly/task_configs/glue_peft_configs/rte.json --project="monarch_glue_tune"  &
+
+python run_glue.py /fly/task_configs/glue_peft_configs/sst-2.json --project="monarch_glue_tune" --do_tune=True  "${FLAGS[@]}"
+python run_glue.py /fly/task_configs/glue_peft_configs/sst-2.json --project="monarch_glue_tune" &
+
+python run_glue.py /fly/task_configs/glue_peft_configs/stsb.json --project="monarch_glue_tune" --do_tune=True  "${FLAGS[@]}"
+python run_glue.py /fly/task_configs/glue_peft_configs/stsb.json --project="monarch_glue_tune"  &
+
+python run_glue.py /fly/task_configs/glue_peft_configs/qqp.json  --project="monarch_glue_tune" --do_tune=True  "${FLAGS[@]}"
+python run_glue.py /fly/task_configs/glue_peft_configs/qqp.json --project="monarch_glue_tune"  &
+
+python run_glue.py /fly/task_configs/glue_peft_configs/mnli.json --project="monarch_glue_tune" --do_tune=True  "${FLAGS[@]}"
+python run_glue.py /fly/task_configs/glue_peft_configs/mnli.json --project="monarch_glue_tune"  &
+
+
+# Most papers don't include WNLI
+# python run_glue.py /fly/task_configs/glue_peft_configs/wnli.json --project="monarch_glue_tune" --do_tune=True  "${FLAGS[@]}";
+python run_glue.py /fly/task_configs/glue_peft_configs/wnli.json --project="monarch_glue_tune"
 
 find . -name "*.tsv" | zip -j results/monarch_roberta_glue/glue_submit.zip -@
 echo "Zipped all .tsv files in $out_path to glue_submit.zip. Ready for submission."
+

@@ -259,15 +259,18 @@ def main(config: dict = None):
     training_args.metric_for_best_model = task_to_metric[data_args.task_name] # Do NOT use loss 
     training_args.greater_is_better = True 
     
-    # NOTE: Accept extra command line args
-    use_monarch = extra_args.get("monarch", True)
-    do_tune = extra_args.get("do_tune", False)
-    use_wandb = extra_args.get("use_wandb", True)
+    # NOTE: Accept extra command line args that can override all configs (best params, peft_config, etc.)
+    use_monarch = extra_args.pop("monarch", True)
+    do_tune = extra_args.pop("do_tune", False)
+    use_wandb = extra_args.pop("use_wandb", True)
     # For grouping runs in wandb
-    group = extra_args.get("group", None) 
-    project = extra_args.get("project", None) 
-    use_peft = extra_args.get("use_peft", True)
-    
+    group = extra_args.pop("group", None) 
+    project = extra_args.pop("project", None) 
+    use_peft = extra_args.pop("use_peft", True)
+    tune_limit = extra_args.pop("tune_limit", "time")
+    full_group = extra_args.pop("full_group", None)
+    if do_tune:
+        assert tune_limit in ["time", "iter"], "max_t (resources) must be either time or iter (eval iterations)"
     if not use_wandb:
         print("Disabling wandb")
         os.environ["WANDB_MODE"] = "disabled"
@@ -442,8 +445,8 @@ def main(config: dict = None):
         # Hyperparameter search
         if hyperparams is not None:
             for k in peft_config.keys():
-                if k in hyperparams.keys():
-                    print("Overriding {} with {}".format(k, peft_config[k]))
+                if k in hyperparams.keys() and hyperparams[k] != peft_config[k]:
+                    print("Overriding {} = {} from best HP".format(k, hyperparams[k]))
                     peft_config[k] = hyperparams[k]
 
         if use_monarch:
@@ -592,7 +595,6 @@ def main(config: dict = None):
 
     # @Wenxuan
     # Initialize Trainer
-    training_args.save_total_limit = 1 # avoid flooding the disk
     has_ckpt = any([file.startswith("checkpoint") for file in os.listdir(training_args.output_dir)])
     if training_args.resume_from_checkpoint is not None:
         training_args.resume_from_checkpoint &= has_ckpt
@@ -604,7 +606,7 @@ def main(config: dict = None):
         os.environ["WANDB_PROJECT"] = project if project else os.environ["WANDB_PROJECT"] # Override if provided
         
         # group runs within the same hour
-        os.environ["WANDB_RUN_GROUP"] = get_run_group(data_args.task_name, do_tune, group)
+        os.environ["WANDB_RUN_GROUP"] = get_run_group(data_args.task_name, do_tune, group) if not full_group else full_group
         print("Wandb project: ", os.environ["WANDB_PROJECT"])
         print("Wandb run group: ", os.environ["WANDB_RUN_GROUP"])
     else:
@@ -628,19 +630,20 @@ def main(config: dict = None):
             new_lr=peft_config["new_lr"],
             use_scaler=peft_config["scaler"],
         )
-        
+
         # PEFT monarch search space
         if use_monarch:
             param_space = {
                 # "rank": tune.choice([1, 2, 3]),  # Tuning rank causes dim mismatch when merging
                 # "nblocks": tune.choice(['sqrt(n)', 4]),
                 "seed": training_args.seed,
+                "large_lr": True,
                 "learning_rate": tune.quniform(4e-5, 6e-4, 2e-5),
                 "per_device_train_batch_size": tune.choice([16, 32]), # In Monarch-Mixer they mixed 32 and 16 
                 "weight_decay": tune.choice([0.1, 0.01, 1e-3]),
                 "lr_scheduler_type": tune.choice(["cosine", "linear"]), # mostly linear underperforms
             }
-            n_trials = 40
+            n_trials = 45
             
             if not use_peft:
                 del param_space["nblocks"]
@@ -657,12 +660,15 @@ def main(config: dict = None):
             n_trials = 1 # grid search will try all combinations by default
         
         direction = "max"
+        max_t = 40 * 60 if tune_limit == "time" else 12 # 50 mins or 12 eval iterations
+        grade_period = 3 * 60  if tune_limit == "time" else 2
+        time_attr = "time_total_s" if tune_limit == "time" else "training_iteration"
         scheduler = ASHAScheduler(
-            time_attr="training_iteration",
-            max_t=16,
+            time_attr=time_attr,
+            max_t=max_t,
             metric = task_to_metric[data_args.task_name],
             mode = direction,
-            grace_period=2,
+            grace_period=grade_period,
         )
         
         reporter = CLIReporter(
@@ -685,7 +691,7 @@ def main(config: dict = None):
             name=os.environ["WANDB_RUN_GROUP"],
             max_failures=100, # tolerate OOM
             # callbacks=[WandbLoggerCallback(project=os.environ["WANDB_PROJECT"], group=os.environ["WANDB_RUN_GROUP"])],
-            direction="maximize" if direction == "max" else "minimize",
+            direction="maximize" 
         )
         
         # Save the best hyperparams for full training 
@@ -726,9 +732,10 @@ def main(config: dict = None):
     
     # NOTE: 60K steps for QNLI， 80K for SST-2
     if data_args.task_name == "qqp":
-        training_args.eval_steps = 1000 # 110K total steps for QQP
-        training_args.save_steps = 1000
-
+        training_args.eval_steps = 1250 # 110K total steps for QQP
+        training_args.save_steps = 1250
+    training_args.per_device_eval_batch_size = 64
+    
     trainer = MyAwesomeTrainer(
         model=model_init(best_hyperparams),
         args=training_args,

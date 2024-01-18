@@ -172,7 +172,7 @@ def override_config(old_configs: List[Dict], new_args: List[str] or Dict):
             key, val = arg.split('=')
             key = key[2:]
         else:
-            raise ValueError("wrong format, extra command line argument must be --key=value")
+            raise ValueError(f"wrong format for {arg}, extra command line argument must be --key=value")
 
         try:
             # attempt to eval it it (e.g. if bool, number, or etc)
