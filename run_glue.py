@@ -127,7 +127,7 @@ def main(config: dict = None):
     if full_group:
         group = ("_").join(full_group.split("_")[1:-1])
     if do_tune:
-        assert tune_unit in ["time", "iter"], "max_t (resources) must be either time or iter (eval iterations)"
+        assert tune_unit in ["time", "eval_iter"], "max_t (resources) must be either time or eval iteration"
     if not use_wandb:
         print("Disabling wandb")
         os.environ["WANDB_MODE"] = "disabled"
@@ -500,7 +500,7 @@ def main(config: dict = None):
                 "weight_decay": 1e-3, #After 2nd HPO, all runs converged to 1e-3 #tune.choice([0.1, 0.01, 1e-3]),
                 "lr_scheduler_type": tune.choice(["cosine", "linear"]), # mostly linear underperforms
             }
-            n_trials = 20 # 45 -> 20 (w/o weighr decay)
+            n_trials = 30 # 45 -> 30 (w/o weighr decay)
             
             if not adapter:
                 # del param_space["nblocks"] 
@@ -517,8 +517,8 @@ def main(config: dict = None):
             n_trials = 1 # grid search will try all combinations by default
         
         direction = "max"
-        max_t = 40 * 60 if tune_unit == "time" else 12 # 50 mins or 12 eval iterations
-        grade_period = 3 * 60  if tune_unit == "time" else 2
+        max_t = 45 * 60 if tune_unit == "time" else 13 # 50 mins or 12 eval iterations
+        grade_period = 5 * 60  if tune_unit == "time" else 3
         time_attr = "time_total_s" if tune_unit == "time" else "training_iteration"
         scheduler = ASHAScheduler(
             time_attr=time_attr,
@@ -531,8 +531,8 @@ def main(config: dict = None):
         reporter = CLIReporter(
             parameter_columns=["learning_rate", "per_device_train_batch_size", "weight_decay"],
             metric_columns=["train_loss", "eval_loss", task_to_metric[data_args.task_name], "training_iteration"],
-            max_progress_rows=10,
-            max_report_frequency=10,
+            max_progress_rows=9,
+            max_report_frequency=9,
         )   
 
         best_run = trainer.hyperparameter_search(

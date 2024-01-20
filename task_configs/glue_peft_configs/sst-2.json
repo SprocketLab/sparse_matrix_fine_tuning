@@ -11,15 +11,15 @@
     "fp16": false,
     "overwrite_output_dir": true,
     "do_predict": true,
-    "logging_steps": 150,
+    "logging_steps": 800,
     "warmup_ratio": 0.06,
     "weight_decay": 0.1,
     "lr_scheduler_type": "cosine",
     "evaluation_strategy": "steps",
-    "eval_steps": 900,
+    "eval_steps": 800,
     "bf16": false,
     "save_total_limit": 1,
     "load_best_model_at_end": true,
-    "save_steps": 900,
+    "save_steps": 800,
     "report_to": "wandb"
 }

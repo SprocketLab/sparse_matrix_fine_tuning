@@ -26,6 +26,28 @@ from typing import Dict, List, Tuple
 from ray import tune
 from dataclasses import dataclass, field
 
+
+def parse_args():
+    # Create the parser
+    parser = argparse.ArgumentParser(description="Run GLUE with additional arguments", )
+
+    # Add the positional argument for the config path
+    parser.add_argument("config_path", help="path to the task config file under /fly/task_configs")
+
+    # Add optional arguments
+    parser.add_argument("--use_monarch", type=eval, default="True", help="Use monarch. Mostly you want this (default: True)")
+    parser.add_argument("--do_tune", type=eval, default="False", help="Whether to do Hyperparameter optimization (HPO) using ray tune.")
+    parser.add_argument("--use_wandb", type=eval, default="True", help="Use Weights & Biases for logging")
+    parser.add_argument("--adapter", type=eval, default="True", help="Use lora adapter style. If false will project dense to sparse ")
+    parser.add_argument("--tune_unit", default="eval_iter", help="Budget unit for HPO.", choices=["time", "eval_iter"])
+    parser.add_argument("--group", default="", help="For grouping wandb runs")
+    parser.add_argument("--project", default=None, help="For grouping wandb groups and runs")
+    parser.add_argument("--full_group", default=None, help="Full group name for resuming eval (with date and task)")
+
+    args, unknown = parser.parse_known_args()
+    return args
+
+
 def param_stats(model, training=False, print_trainable=False):
     param_count = 0
     param_trainable = 0
@@ -48,27 +70,6 @@ def param_stats(model, training=False, print_trainable=False):
     )
     if training:
         assert param_trainable != 0, "There's a bug in your code, your're training nothing!"
-
-
-def parse_args():
-    # Create the parser
-    parser = argparse.ArgumentParser(description="Run GLUE with additional arguments", )
-
-    # Add the positional argument for the config path
-    parser.add_argument("config_path", help="path to the task config file under /fly/task_configs")
-
-    # Add optional arguments
-    parser.add_argument("--use_monarch", type=bool, default=True, help="Use monarch. Mostly you want this (default: True)")
-    parser.add_argument("--do_tune", type=bool, default=False, help="Whether to do Hyperparameter optimization (HPO) using ray tune.")
-    parser.add_argument("--use_wandb", type=bool, default=True, help="Use Weights & Biases for logging")
-    parser.add_argument("--adapter", type=bool, default=True, help="Use lora adapter style. If false will project dense to sparse ")
-    parser.add_argument("--tune_unit", default="time", help="Budget unit for HPO ")
-    parser.add_argument("--group", default="", help="For grouping wandb runs")
-    parser.add_argument("--project", default=None, help="For grouping wandb groups and runs")
-    parser.add_argument("--full_group", default=None, help="Full group name for resuming eval (with date and task)")
-
-    args, unknown = parser.parse_known_args()
-    return args
 
 
 def select_gpu(exclude=[]):
