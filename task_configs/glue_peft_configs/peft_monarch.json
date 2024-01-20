@@ -8,6 +8,7 @@
         "value",
         "key"
     ],
+    "q_v": false,
     "adapter": true, 
     "precision": "fp16",
     "scaler": false,

@@ -14,8 +14,6 @@ import os
 import wandb
 import random
 import sys
-from dataclasses import dataclass, field
-from typing import Optional
 import datasets
 import numpy as np
 import shutil
@@ -31,15 +29,24 @@ from transformers import (
     TrainingArguments,
     default_data_collator,
     set_seed,
-    Trainer
+    Trainer,
+    get_cosine_with_hard_restarts_schedule_with_warmup
 )
 from fly_src.models.modeling_roberta import RobertaForSequenceClassification
 from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version, send_example_telemetry
 from transformers.utils.versions import require_version
-from train_utils import param_stats, override_config, MyAwesomeTrainer, get_run_group
+from train_utils import (
+    param_stats,
+    override_config,
+    MyAwesomeTrainer,
+    get_run_group,
+    parse_args,
+    DataTrainingArguments,
+    ModelArguments,
+    task_to_keys,
+)
 import torch
-
 from ray import train, tune
 from ray.tune.schedulers import ASHAScheduler
 import ray.train.huggingface.transformers as ray_hf
@@ -56,17 +63,7 @@ check_min_version("4.21.0.dev0")
 
 require_version("datasets>=1.8.0", "To fix: pip install -r examples/pytorch/text-classification/requirements.txt")
 
-task_to_keys = {
-    "cola": ("sentence", None),
-    "mnli": ("premise", "hypothesis"),
-    "mrpc": ("sentence1", "sentence2"),
-    "qnli": ("question", "sentence"),
-    "qqp": ("question1", "question2"),
-    "rte": ("sentence1", "sentence2"),
-    "sst2": ("sentence", None),
-    "stsb": ("sentence1", "sentence2"),
-    "wnli": ("sentence1", "sentence2"),
-}
+
 task_to_submit = {
     "cola": "CoLA",
     "mnli": "MNLI-m",
@@ -94,188 +91,49 @@ task_to_metric = {
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class DataTrainingArguments:
-    """
-    Arguments pertaining to what data we are going to input our model for training and eval.
-
-    Using `HfArgumentParser` we can turn this class
-    into argparse arguments to be able to specify them on
-    the command line.
-    """
-
-    task_name: Optional[str] = field(
-        default=None,
-        metadata={"help": "The name of the task to train on: " + ", ".join(task_to_keys.keys())},
-    )
-    dataset_name: Optional[str] = field(
-        default=None, metadata={"help": "The name of the dataset to use (via the datasets library)."}
-    )
-    dataset_config_name: Optional[str] = field(
-        default=None, metadata={"help": "The configuration name of the dataset to use (via the datasets library)."}
-    )
-    max_seq_length: int = field(
-        default=128,
-        metadata={
-            "help": (
-                "The maximum total input sequence length after tokenization. Sequences longer "
-                "than this will be truncated, sequences shorter will be padded."
-            )
-        },
-    )
-    overwrite_cache: bool = field(
-        default=False, metadata={"help": "Overwrite the cached preprocessed datasets or not."}
-    )
-    pad_to_max_length: bool = field(
-        default=True,
-        metadata={
-            "help": (
-                "Whether to pad all samples to `max_seq_length`. "
-                "If False, will pad the samples dynamically when batching to the maximum length in the batch."
-            )
-        },
-    )
-    max_train_samples: Optional[int] = field(
-        default=None,
-        metadata={
-            "help": (
-                "For debugging purposes or quicker training, truncate the number of training examples to this "
-                "value if set."
-            )
-        },
-    )
-    max_eval_samples: Optional[int] = field(
-        default=None,
-        metadata={
-            "help": (
-                "For debugging purposes or quicker training, truncate the number of evaluation examples to this "
-                "value if set."
-            )
-        },
-    )
-    max_predict_samples: Optional[int] = field(
-        default=None,
-        metadata={
-            "help": (
-                "For debugging purposes or quicker training, truncate the number of prediction examples to this "
-                "value if set."
-            )
-        },
-    )
-    train_file: Optional[str] = field(
-        default=None, metadata={"help": "A csv or a json file containing the training data."}
-    )
-    validation_file: Optional[str] = field(
-        default=None, metadata={"help": "A csv or a json file containing the validation data."}
-    )
-    test_file: Optional[str] = field(default=None, metadata={"help": "A csv or a json file containing the test data."})
-
-    def __post_init__(self):
-        if self.task_name is not None:
-            self.task_name = self.task_name.lower()
-            if self.task_name not in task_to_keys.keys():
-                raise ValueError("Unknown task, you should pick one in " + ",".join(task_to_keys.keys()))
-        elif self.dataset_name is not None:
-            pass
-        elif self.train_file is None or self.validation_file is None:
-            raise ValueError("Need either a GLUE task, a training/validation file or a dataset name.")
-        else:
-            train_extension = self.train_file.split(".")[-1]
-            assert train_extension in ["csv", "json"], "`train_file` should be a csv or a json file."
-            validation_extension = self.validation_file.split(".")[-1]
-            assert (
-                validation_extension == train_extension
-            ), "`validation_file` should have the same extension (csv or json) as `train_file`."
-
-
-@dataclass
-class ModelArguments:
-    """
-    Arguments pertaining to which model/config/tokenizer we are going to fine-tune from.
-    """
-
-    model_name_or_path: str = field(
-        metadata={"help": "Path to pretrained model or model identifier from huggingface.co/models"}
-    )
-    config_name: Optional[str] = field(
-        default=None, metadata={"help": "Pretrained config name or path if not the same as model_name"}
-    )
-    tokenizer_name: Optional[str] = field(
-        default=None, metadata={"help": "Pretrained tokenizer name or path if not the same as model_name"}
-    )
-    cache_dir: Optional[str] = field(
-        default=None,
-        metadata={"help": "Where do you want to store the pretrained models downloaded from huggingface.co"},
-    )
-    use_fast_tokenizer: bool = field(
-        default=True,
-        metadata={"help": "Whether to use one of the fast tokenizer (backed by the tokenizers library) or not."},
-    )
-    model_revision: str = field(
-        default="main",
-        metadata={"help": "The specific model version to use (can be a branch name, tag name or commit id)."},
-    )
-    use_auth_token: bool = field(
-        default=False,
-        metadata={
-            "help": (
-                "Will use the token generated when running `transformers-cli login` (necessary to use this script "
-                "with private models)."
-            )
-        },
-    )
-    ignore_mismatched_sizes: bool = field(
-        default=False,
-        metadata={"help": "Will enable to load a pretrained model whose head dimensions are different."},
-    )
-
 
 def main(config: dict = None):
-    # See all possible arguments in fly_src/transformers/training_args.py
-    # or by passing the --help flag to this script.
-    # We now keep distinct sets of args, for a cleaner separation of concerns.
     
+    ############################## Command line args ##############################
+    # Example usage: python run_glue_hf.py task_configs/cola.json 
+    args = parse_args()
     peft_config = json.load(open("task_configs/glue_peft_configs/peft_monarch.json", "r"))  # load monarch config
-    
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
     
-    # @Wenxuan
-    # Example CLA usage: python run_glue_hf.py task_configs/cola.json 
-    if sys.argv[1].endswith(".json"):
-        model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
-        extra_args = override_config([model_args, data_args, training_args, peft_config], sys.argv[2:])
-        
-    elif config is not None:
-        model_args, data_args, training_args = parser.parse_dict(config, allow_extra_keys=True)
-        
-        # allowing overriding peft config when passing in config with Ray Tune
-        for k, v in config.items():
-            if k in peft_config:
-                peft_config[k] = v
-    else:
-        # parse command line args
-        model_args, data_args, training_args = parser.parse_args_into_dataclasses()
+    model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(args.config_path))
+    # NOTE: All args apart from the 1st json path can override training &m model configs (best HPO params, peft_config, etc.)
+    extra_args = override_config([model_args, data_args, training_args, peft_config], sys.argv[2:])
+    use_monarch = args.use_monarch
+    do_tune = args.do_tune
+    use_wandb = args.use_wandb
+    adapter = args.adapter
+    tune_unit = args.tune_unit
+    # For grouping runs in wandb
+    group = args.group
+    project = args.project
+    full_group = args.full_group
     
-    training_args.metric_for_best_model = task_to_metric[data_args.task_name] # Do NOT use loss 
+    # Adapter settings
+    if peft_config["q_v"]:
+        peft_config["layers_to_adapt"] = ["query", "value"]
+    if peft_config["mlp"]:
+        peft_config["layers_to_adapt"] += ["dense"]
+            
+    # Do NOT use loss as saving metric, maximize eval metric instead
+    training_args.metric_for_best_model = task_to_metric[data_args.task_name] 
     training_args.greater_is_better = True 
     
-    # NOTE: Accept extra command line args that can override all configs (best params, peft_config, etc.)
-    use_monarch = extra_args.pop("monarch", True)
-    do_tune = extra_args.pop("do_tune", False)
-    use_wandb = extra_args.pop("use_wandb", True)
-    # For grouping runs in wandb
-    group = extra_args.pop("group", None) 
-    project = extra_args.pop("project", None) 
-    use_peft = extra_args.pop("use_peft", True)
-    tune_limit = extra_args.pop("tune_limit", "time")
-    full_group = extra_args.pop("full_group", None)
+    os.environ["WANDB_RUN_GROUP"] = get_run_group(data_args.task_name, do_tune, group) if not full_group else full_group
+    if full_group:
+        group = ("_").join(full_group.split("_")[1:-1])
     if do_tune:
-        assert tune_limit in ["time", "iter"], "max_t (resources) must be either time or iter (eval iterations)"
+        assert tune_unit in ["time", "iter"], "max_t (resources) must be either time or iter (eval iterations)"
     if not use_wandb:
         print("Disabling wandb")
         os.environ["WANDB_MODE"] = "disabled"
-            
-    training_args.output_dir = os.path.join(training_args.output_dir, data_args.task_name) 
+    
+    task_output_dir = os.path.join(training_args.output_dir, data_args.task_name)
+    training_args.output_dir = os.path.join(task_output_dir, group)
     os.makedirs(training_args.output_dir, exist_ok=True)
     
     # Sending telemetry. Tracking the example usage helps us better allocate resources to maintain them. The
@@ -606,14 +464,13 @@ def main(config: dict = None):
         os.environ["WANDB_PROJECT"] = project if project else os.environ["WANDB_PROJECT"] # Override if provided
         
         # group runs within the same hour
-        os.environ["WANDB_RUN_GROUP"] = get_run_group(data_args.task_name, do_tune, group) if not full_group else full_group
         print("Wandb project: ", os.environ["WANDB_PROJECT"])
         print("Wandb run group: ", os.environ["WANDB_RUN_GROUP"])
     else:
         os.environ["WANDB_RUN_GROUP"] = os.environ["WANDB_PROJECT"] = "offline"
         
-    if not use_peft:
-        peft_config["use_peft"] = False # Will not use merging adapter style
+    if not adapter:
+        peft_config["adapter"] = False # Will not use merging adapter style
         
     
     ############################## Ray Tune HP search ##############################
@@ -637,16 +494,16 @@ def main(config: dict = None):
                 # "rank": tune.choice([1, 2, 3]),  # Tuning rank causes dim mismatch when merging
                 # "nblocks": tune.choice(['sqrt(n)', 4]),
                 "seed": training_args.seed,
-                "large_lr": True,
-                "learning_rate": tune.quniform(4e-5, 6e-4, 2e-5),
+                "large_lr": False,
+                "learning_rate": tune.quniform(2e-5, 6e-4, 2e-5),
                 "per_device_train_batch_size": tune.choice([16, 32]), # In Monarch-Mixer they mixed 32 and 16 
-                "weight_decay": tune.choice([0.1, 0.01, 1e-3]),
+                "weight_decay": 1e-3, #After 2nd HPO, all runs converged to 1e-3 #tune.choice([0.1, 0.01, 1e-3]),
                 "lr_scheduler_type": tune.choice(["cosine", "linear"]), # mostly linear underperforms
             }
-            n_trials = 45
+            n_trials = 20 # 45 -> 20 (w/o weighr decay)
             
-            if not use_peft:
-                del param_space["nblocks"]
+            if not adapter:
+                # del param_space["nblocks"] 
                 n_trials = 36
                 
         else:
@@ -660,9 +517,9 @@ def main(config: dict = None):
             n_trials = 1 # grid search will try all combinations by default
         
         direction = "max"
-        max_t = 40 * 60 if tune_limit == "time" else 12 # 50 mins or 12 eval iterations
-        grade_period = 3 * 60  if tune_limit == "time" else 2
-        time_attr = "time_total_s" if tune_limit == "time" else "training_iteration"
+        max_t = 40 * 60 if tune_unit == "time" else 12 # 50 mins or 12 eval iterations
+        grade_period = 3 * 60  if tune_unit == "time" else 2
+        time_attr = "time_total_s" if tune_unit == "time" else "training_iteration"
         scheduler = ASHAScheduler(
             time_attr=time_attr,
             max_t=max_t,
@@ -696,7 +553,7 @@ def main(config: dict = None):
         
         # Save the best hyperparams for full training 
         print("Best hyperparameters: ", best_run.hyperparameters)
-        best_param_path = os.path.join(training_args.output_dir, "best_hyperparams.json")
+        best_param_path = os.path.join(task_output_dir, "best_hyperparams.json")
         json.dump(best_run.hyperparameters, open(best_param_path, "w"))
         do_tune = False # enable torch.compile
         
@@ -721,7 +578,7 @@ def main(config: dict = None):
                     os.remove(file_path)
 
     # load best hyperparams from last tune 
-    best_param_path = os.path.join(training_args.output_dir, "best_hyperparams.json")
+    best_param_path = os.path.join(task_output_dir, "best_hyperparams.json")
     if os.path.exists(best_param_path):
         best_hyperparams = json.load(open(best_param_path, "r"))  
         print("Loading best hyperparams: ", best_hyperparams)
@@ -729,13 +586,15 @@ def main(config: dict = None):
         override_config([model_args, data_args, training_args], best_hyperparams)
     else:
         best_hyperparams = None
+        logging.warning("No best hyperparams from HPO found. Using default configs.")
     
-    # NOTE: 60K steps for QNLI， 80K for SST-2
+    # NOTE: 60K steps for QNLI， 80K for SST-2, 50K for MNLI
     if data_args.task_name == "qqp":
         training_args.eval_steps = 1250 # 110K total steps for QQP
         training_args.save_steps = 1250
-    training_args.per_device_eval_batch_size = 64
-    
+    training_args.per_device_eval_batch_size = 64 
+
+
     trainer = MyAwesomeTrainer(
         model=model_init(best_hyperparams),
         args=training_args,
@@ -817,7 +676,7 @@ def main(config: dict = None):
             predictions = trainer.predict(predict_dataset, metric_key_prefix="predict").predictions
             predictions = np.squeeze(predictions) if is_regression else np.argmax(predictions, axis=1)
 
-            output_predict_file = os.path.join(training_args.output_dir, f"{task_to_submit[task]}.tsv")
+            output_predict_file = os.path.join(task_output_dir, f"{task_to_submit[task]}.tsv")
             if trainer.is_world_process_zero():
                 with open(output_predict_file, "w") as writer:
                     logger.info(f"***** Predict results {task} *****")

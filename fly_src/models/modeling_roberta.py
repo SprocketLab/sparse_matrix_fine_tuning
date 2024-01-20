@@ -1020,8 +1020,6 @@ class RobertaModel(RobertaPreTrainedModel):
         print("PEFT config set. Will init layers when entering training mode.")
         self.monarch_param_set = False
         
-        if peft_config["mlp"]:
-            self.peft_config["layers_to_adapt"] += ["dense"]
         for name, module in self.named_modules():
             if any([isinstance(module, layer) for layer in self.layers_to_adapt]):
                 module.set_peft_config(peft_config)
