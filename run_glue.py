@@ -123,7 +123,15 @@ def main(config: dict = None):
     training_args.metric_for_best_model = task_to_metric[data_args.task_name] 
     training_args.greater_is_better = True 
     
+    # Set up wandb 
     os.environ["WANDB_RUN_GROUP"] = get_run_group(data_args.task_name, do_tune, group) if not full_group else full_group
+    # If hostname.txt exists, upload to wandb
+    if os.path.exists("hostname.txt"):
+        hostname = open("hostname.txt", "r").readline().strip()
+        os.environ["WANDB_HOST"] = hostname
+    elif use_wandb:
+        logging.warning("Try adding a hostname.txt (hostname > hostname.txt), or wandb will use random id from docker.")
+        
     if full_group:
         group = ("_").join(full_group.split("_")[1:-1])
     if do_tune:
@@ -691,6 +699,6 @@ def main(config: dict = None):
 
     print("Best hyperparameters: ", best_hyperparams)
     print("peft_config: ", peft_config)
-
+        
 if __name__ == "__main__":
     main()

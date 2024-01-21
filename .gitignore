@@ -10,5 +10,5 @@ glue_data/**
 *.pyc
 ray_results/**
 fly_src/models/__pycache__/**
-mlp_mnist.ipynb
+hostname.txt
 ```
