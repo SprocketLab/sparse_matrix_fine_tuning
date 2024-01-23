@@ -1,8 +1,8 @@
 Before running anything, set up env by running 
 ```
 docker compose build; docker compose up -d
-docker attach peft 
-python monarch_roberta.py --peft
+hostname > hostname.txt # to not confuse machines in wandb
+docker attach peft
 ```
 Full training configs and logs will be stored in wandb. (You can also use your key)
 
@@ -30,8 +30,8 @@ python monarch_roberta.py  --peft
 For GLUE tasks 
 Training hyperparams are in task_configs/[task].json
 Tune block size, rank, etc. in task_configs/peft_monarch.json.
-Or try run_glue_hf.py (Default args provided below)
+Or try run_glue_hf.py with default args below
 ```
 export WANDB_API_KEY="YOUR_KEY"
-pyton run_glue.py task_configs/cola.json --do_tune=False --use_wandb=True 
+python run_glue.py task_configs/glue_peft_configs/cola.json --do_tune=False --use_wandb=True 
 ```

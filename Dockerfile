@@ -95,7 +95,7 @@ RUN python -m pip install -U pydantic spacy==3.4.4
 RUN pip install accelerate -U
 RUN pip install jupyterlab==4.0.3
 RUN pip install datasets==2.16.1
-
+RUN pip install tensorboardX
 # ENV PATH $CONDA_DIR/bin:$PATH
 # RUN wget --quiet https://repo.continuum.io/miniconda/Miniconda$CONDA_PYTHON_VERSION-latest-Linux-x86_64.sh -O /tmp/miniconda.sh && \
 #     echo 'export PATH=$CONDA_DIR/bin:$PATH' > /etc/profile.d/conda.sh && \

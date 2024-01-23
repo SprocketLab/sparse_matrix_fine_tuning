@@ -11,4 +11,6 @@ glue_data/**
 ray_results/**
 fly_src/models/__pycache__/**
 hostname.txt
+rllab/**
+req.txt
 ```

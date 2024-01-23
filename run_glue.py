@@ -101,7 +101,7 @@ def main(config: dict = None):
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
     
     model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(args.config_path))
-    # NOTE: All args apart from the 1st json path can override training &m model configs (best HPO params, peft_config, etc.)
+    # NOTE: All extra args can override training configs (best HP, peft_config, etc.)
     extra_args = override_config([model_args, data_args, training_args, peft_config], sys.argv[2:])
     use_monarch = args.use_monarch
     do_tune = args.do_tune
@@ -254,7 +254,6 @@ def main(config: dict = None):
             )
     # See more about loading any type of standard or custom dataset at
     # https://huggingface.co/docs/datasets/loading_datasets.html.
-
     # Labels
     if data_args.task_name is not None:
         is_regression = data_args.task_name == "stsb"
@@ -561,11 +560,14 @@ def main(config: dict = None):
         
         # Save the best hyperparams for full training 
         print("Best hyperparameters: ", best_run.hyperparameters)
+        # Save in the task dir
         best_param_path = os.path.join(task_output_dir, "best_hyperparams.json")
         json.dump(best_run.hyperparameters, open(best_param_path, "w"))
-        do_tune = False # enable torch.compile
+        # An extra copy in the "tune round" dir
+        cur_tune_path = os.path.join(training_args.output_dir, "best_hyperparams.json")
+        json.dump(best_run.hyperparameters, open(cur_tune_path, "w"))
         
-        # Keep the best ckpt only
+        # Remove all but the best tune ckpt only
         summary = best_run.run_summary
         summary.default_mode = "max"
         summary.default_metric = task_to_metric[data_args.task_name]
