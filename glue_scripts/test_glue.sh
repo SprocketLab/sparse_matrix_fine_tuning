@@ -18,5 +18,5 @@ python run_glue.py task_configs/glue_peft_configs/mnli.json  --do_train=False --
 python run_glue.py task_configs/glue_peft_configs/wnli.json  --do_train=False --use_wandb=False --resume_from_checkpoint=True
 
 # find all .tsv files in results/monarch_roberta_glue and zip them
-find . -name "*.tsv" | zip -j results/monarch_roberta_glue/glue_submit.zip -@
+find results/monarch_roberta_glue -maxdepth 2 -name "*.tsv" | zip -j results/monarch_roberta_glue/glue_submit.zip -@
 echo "Zipped all .tsv files in results/monarch_roberta_glue to glue_submit.zip. Ready for submission."

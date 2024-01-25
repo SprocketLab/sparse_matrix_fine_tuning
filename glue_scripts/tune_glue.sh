@@ -51,6 +51,6 @@ python run_glue.py /fly/task_configs/glue_peft_configs/mnli.json --project="mona
 # python run_glue.py /fly/task_configs/glue_peft_configs/wnli.json --project="monarch_glue_tune" --do_tune=True  "${FLAGS[@]}";
 python run_glue.py /fly/task_configs/glue_peft_configs/wnli.json --project="monarch_glue_tune"
 
-find . -name "*.tsv" | zip -j results/monarch_roberta_glue/glue_submit.zip -@
+find results/monarch_roberta_glue -maxdepth 2 -name "*.tsv" | zip -j results/monarch_roberta_glue/glue_submit.zip -@
 echo "Zipped all .tsv files in $out_path to glue_submit.zip. Ready for submission."
 

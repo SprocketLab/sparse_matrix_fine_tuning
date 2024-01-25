@@ -20,5 +20,5 @@ CUDA_VISIBLE_DEVICES=1 python run_glue.py task_configs/glue_peft_configs/stsb.js
 
 $out_path = "results/monarch_roberta_glue"
 # find all .tsv files in results/monarch_roberta_glue and zip them
-find . -name "*.tsv" | zip -j results/monarch_roberta_glue/glue_submit.zip -@
+find results/monarch_roberta_glue -maxdepth 2 -name "*.tsv" | zip -j results/monarch_roberta_glue/glue_submit.zip -@
 echo "Zipped all .tsv files in $out_path to glue_submit.zip. Ready for submission."

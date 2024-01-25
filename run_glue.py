@@ -133,7 +133,7 @@ def main(config: dict = None):
         logging.warning("Try adding a hostname.txt (hostname > hostname.txt), or wandb will use random id from docker.")
         
     if full_group:
-        group = ("_").join(full_group.split("_")[1:-1])
+        group = ("_").join(full_group.split("_")[1:-1] if not full_group.startswith("tune") else full_group.split("_")[2:-1])
     if do_tune:
         assert tune_unit in ["time", "eval_iter"], "max_t (resources) must be either time or eval iteration"
     if not use_wandb:
@@ -502,12 +502,13 @@ def main(config: dict = None):
                 # "nblocks": tune.choice(['sqrt(n)', 4]),
                 "seed": training_args.seed,
                 "large_lr": False,
+                "num_train_epochs": tune.choice([20, 30]),
                 "learning_rate": tune.quniform(2e-5, 6e-4, 2e-5),
                 "per_device_train_batch_size": tune.choice([16, 32]), # In Monarch-Mixer they mixed 32 and 16 
                 "weight_decay": 1e-3, #After 2nd HPO, all runs converged to 1e-3 #tune.choice([0.1, 0.01, 1e-3]),
                 "lr_scheduler_type": tune.choice(["cosine", "linear"]), # mostly linear underperforms
             }
-            n_trials = 30 # 45 -> 30 (w/o weighr decay)
+            n_trials = 40
             
             if not adapter:
                 # del param_space["nblocks"] 
@@ -524,8 +525,8 @@ def main(config: dict = None):
             n_trials = 1 # grid search will try all combinations by default
         
         direction = "max"
-        max_t = 45 * 60 if tune_unit == "time" else 13 # 50 mins or 12 eval iterations
-        grade_period = 5 * 60  if tune_unit == "time" else 3
+        max_t = 45 * 60 if tune_unit == "time" else 15 # 50 mins or 12 eval iterations
+        grade_period = 5 * 60  if tune_unit == "time" else 4
         time_attr = "time_total_s" if tune_unit == "time" else "training_iteration"
         scheduler = ASHAScheduler(
             time_attr=time_attr,

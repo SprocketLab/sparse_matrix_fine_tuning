@@ -22,5 +22,5 @@ python run_glue.py /fly/task_configs/qqp.json  --do_tune=True --group="$GROUP_NA
 python run_glue.py /fly/task_configs/mnli.json --do_tune=True --group="$GROUP_NAME" --monarch=False
 python run_glue.py /fly/task_configs/wnli.json --do_tune=True --group="$GROUP_NAME" --monarch=False
 
-find . -name "*.tsv" | zip -j results/monarch_roberta_glue/glue_submit.zip -@
+find results/monarch_roberta_glue -maxdepth 2 -name "*.tsv" | zip -j results/monarch_roberta_glue/glue_submit.zip -@
 echo "Zipped all .tsv files in $out_path to glue_submit.zip. Ready for submission."
