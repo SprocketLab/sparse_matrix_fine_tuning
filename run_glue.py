@@ -55,8 +55,8 @@ from ray.air.integrations.wandb import WandbLoggerCallback
 
 # NOTE: Given the same GPU (A100) results are mostly reproducible without this.
 # Besides it does NOT gurarantee deterministic results across different GPUs
-# torch.use_deterministic_algorithms(True)
-# torch.backends.cudnn.deterministic = True
+torch.use_deterministic_algorithms(True)
+torch.backends.cudnn.deterministic = True
 
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
 check_min_version("4.21.0.dev0")

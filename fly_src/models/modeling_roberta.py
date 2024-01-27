@@ -930,7 +930,7 @@ class RobertaModel(RobertaPreTrainedModel):
 
         self.pooler = RobertaPooler(config) if add_pooling_layer else None
         self.monarch_param_set = False
-        self.log_param_steps = 600
+        self.log_param_steps = 800
         self.train_mode_count = 0
         self.layers_to_adapt = [RobertaSelfAttention, RobertaIntermediate]
         self.watch_count = defaultdict(int)
