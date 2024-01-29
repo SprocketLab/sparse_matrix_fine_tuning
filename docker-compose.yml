@@ -6,7 +6,6 @@ services:
       context: .
       dockerfile: Dockerfile
     image: fly:latest
-    hostname: $(hostname)
     volumes:
       - .:/fly
     working_dir: /fly
@@ -28,7 +27,7 @@ services:
             count: all
             capabilities: [gpu]
     ipc: host
-    shm_size: '2g'
+    shm_size: '6g'
     container_name: peft
     ports:
       - "5050:5050"

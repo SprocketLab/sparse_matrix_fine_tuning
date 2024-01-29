@@ -13,4 +13,5 @@ fly_src/models/__pycache__/**
 hostname.txt
 rllab/**
 req.txt
+*.pt
 ```

@@ -317,6 +317,7 @@ def main(config: dict = None):
         if use_monarch:
             model.roberta.set_peft_config(peft_config)
             # model.roberta.init_monarch_layers()
+            
         # NOTE: Ray doesn't support torch.compile and it also causes a bug with trainer...
         # if torch.__version__.startswith("2") and not do_tune:
         #     model = torch.compile(model)
@@ -458,7 +459,13 @@ def main(config: dict = None):
     else:
         data_collator = None
 
-    # @Wenxuan
+    """ @Wenxuan """
+    # NOTE: 60K steps for QNLI， 80K for SST-2, 50K for MNLI
+    if data_args.task_name == "qqp":
+        training_args.eval_steps = 1250 # 110K total steps for QQP
+        training_args.save_steps = 1250
+    training_args.per_device_eval_batch_size = 64 
+    
     # Initialize Trainer
     has_ckpt = any([file.startswith("checkpoint") for file in os.listdir(training_args.output_dir)])
     if training_args.resume_from_checkpoint is not None:
@@ -498,16 +505,17 @@ def main(config: dict = None):
         # PEFT monarch search space
         if use_monarch:
             param_space = {
-                # "rank": tune.choice([1, 2, 3]),  # Tuning rank causes dim mismatch when merging
                 # "nblocks": tune.choice(['sqrt(n)', 4]),
                 "seed": training_args.seed,
+                # "large_lr": tune.sample_from(lambda _: np.random.uniform() > 0.4),
                 "large_lr": False,
-                "num_train_epochs": tune.choice([20, 30]),
+                # "num_train_epochs": tune.choice([20, 25]),
                 "learning_rate": tune.quniform(2e-5, 6e-4, 2e-5),
                 "per_device_train_batch_size": tune.choice([16, 32]), # In Monarch-Mixer they mixed 32 and 16 
                 "weight_decay": 1e-3, #After 2nd HPO, all runs converged to 1e-3 #tune.choice([0.1, 0.01, 1e-3]),
                 "lr_scheduler_type": tune.choice(["cosine", "linear"]), # mostly linear underperforms
             }
+            # n_trials = 50
             n_trials = 40
             
             if not adapter:
@@ -568,18 +576,29 @@ def main(config: dict = None):
         cur_tune_path = os.path.join(training_args.output_dir, "best_hyperparams.json")
         json.dump(best_run.hyperparameters, open(cur_tune_path, "w"))
         
-        # Remove all but the best tune ckpt only
+        # Save in a specialized directory for track all best HPs in a round
+        try:
+            hp_dir = "/fly/best_HPs/monarch_roberta_glue"
+            groups = group.split(",")
+            round = groups[0] if "round" in groups[0] else group
+            hp_dir = os.path.join(hp_dir, round, data_args.task_name + ".json")
+            os.makedirs(hp_dir, exist_ok=True)
+            json.dump(best_run.hyperparameters, open(hp_dir, "w"))
+        except Exception as e:
+            print("Oops! Failed to save best HPs to /fly/best_HPs/monarch_roberta_glue. Error: ", e)
+        
+        # Remove all but the best tune ckpt 
         summary = best_run.run_summary
         summary.default_mode = "max"
         summary.default_metric = task_to_metric[data_args.task_name]
         ckpt = summary.get_best_checkpoint(summary.get_best_trial())
         
+        # Remove non-best checkpoints to save space
         # Disassemble the path
         path = ckpt.path.split("/")
         tune_dir = ("/").join(path[:-2]) # The dir for all trials in a tune search
         trial_name = path[-2]
         checkpoint_num = path[-1]
-        # Remove non-best checkpoints to save space
         for name in os.listdir(tune_dir):
             if name != trial_name:
                 file_path = os.path.join(tune_dir, name)
@@ -587,7 +606,9 @@ def main(config: dict = None):
                     shutil.rmtree(file_path)
                 else:
                     os.remove(file_path)
-
+        return # NOTE: Do NOT do training; use a separate command for this (in parrallel with next tune)
+    
+    ############################## Full training ##############################
     # load best hyperparams from last tune 
     best_param_path = os.path.join(task_output_dir, "best_hyperparams.json")
     if os.path.exists(best_param_path):
@@ -598,12 +619,6 @@ def main(config: dict = None):
     else:
         best_hyperparams = None
         logging.warning("No best hyperparams from HPO found. Using default configs.")
-    
-    # NOTE: 60K steps for QNLI， 80K for SST-2, 50K for MNLI
-    if data_args.task_name == "qqp":
-        training_args.eval_steps = 1250 # 110K total steps for QQP
-        training_args.save_steps = 1250
-    training_args.per_device_eval_batch_size = 64 
 
 
     trainer = MyAwesomeTrainer(
@@ -620,7 +635,7 @@ def main(config: dict = None):
     )
     
     # # Training
-    if training_args.do_train and not do_tune:
+    if training_args.do_train:
         checkpoint = None
         if training_args.resume_from_checkpoint is not None:
             checkpoint = training_args.resume_from_checkpoint

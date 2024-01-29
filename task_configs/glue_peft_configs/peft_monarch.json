@@ -1,7 +1,8 @@
 {
     "lora": false,
     "monarch": true,
-    "rank": 1,
+    "blk_rank": 4,
+    "blk_size": 256,
     "nblocks": 4,
     "layers_to_adapt": [
         "query",

@@ -113,9 +113,6 @@ class PEFT_adapter():
                 continue
             
             layer = getattr(self, name)
-            # if isinstance(layer, MonarchLinear):
-            #     continue
-            
             weights = layer.weight 
             m, n = weights.shape
             
@@ -129,11 +126,13 @@ class PEFT_adapter():
                     self.nblocks = nblocks
 
             bias = layer.bias != None
+            blk_full_dim = self.peft_config["nblocks"] * self.peft_config["blk_size"]
             new_layer = MonarchLinear(
                 in_features=n,
                 out_features=m,
                 nblocks=nblocks,
-                rank=self.peft_config["rank"],
+                blk_rank=self.peft_config["blk_rank"],
+                blk_full_dim=blk_full_dim,
                 weights=weights,
                 bias=bias,
                 peft_config=self.peft_config
@@ -169,7 +168,7 @@ class PEFT_adapter():
                 self.config.hidden_size, self.all_head_size, rank, alpha, dropout, bias=bias
             )
         elif peft_config["monarch"]:
-            self.rank = peft_config["rank"]
+            self.rank = peft_config["blk_rank"]
             self.nblocks = peft_config["nblocks"]
 
             
@@ -573,7 +572,7 @@ class RobertaLayer(nn.Module):
         super().__init__()
         self.chunk_size_feed_forward = config.chunk_size_feed_forward
         self.seq_len_dim = 1
-        self.attention = RobertaAttention(config, peft_config)
+        self.attention = RobertaAttention(config, peft_config) # skip-connect self-attention
         self.is_decoder = config.is_decoder
         self.add_cross_attention = config.add_cross_attention
         if self.add_cross_attention:
@@ -585,7 +584,7 @@ class RobertaLayer(nn.Module):
                 config, position_embedding_type="absolute"
             )
         self.intermediate = RobertaIntermediate(config)
-        self.output = RobertaOutput(config)
+        self.output = RobertaOutput(config) # skip-connect FFN 
 
     def forward(
         self,
@@ -965,6 +964,7 @@ class RobertaModel(RobertaPreTrainedModel):
             else:
                 module.requires_grad_(False)
         self.monarch_param_set = True
+
         
         global adapted_layers
         for name, old_shape, shape_1, shape_2 in adapted_layers:

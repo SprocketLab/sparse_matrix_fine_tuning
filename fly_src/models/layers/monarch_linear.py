@@ -83,7 +83,7 @@ class MonarchLinear(StructuredLinear):
         peft_config,
         nblocks=4,
         weights=None,
-        rank=1,
+        blk_rank=1,
         device="cuda",
         **kwargs,
     ):
@@ -91,20 +91,25 @@ class MonarchLinear(StructuredLinear):
         Args:
             nblocks (int, optional): Number of blocks in block-diag monarch factor. More blocks -> less precision loss in SVD
             weights (torch.Tensor, optional): The dense weight matrix for projection. If none will init with Kaiming
-            rank (int, optional): SVD rank for decomposing each block
+            blk_rank (int, optional): SVD rank for decomposing each block
         """
         super().__init__(*args, **kwargs)
         self.nblocks = nblocks
-        self.in_blksz = int(math.ceil(self.in_features / nblocks))
-        self.mid_blksz = self.nblocks * rank
-        self.out_blksz = int(math.ceil(self.out_features / nblocks)) 
+        self.blk_rank = blk_rank
+        self.blk_full_dim_in = kwargs.get("blk_full_dim", self.in_features)
+        self.in_blksz = int(math.ceil(self.blk_full_dim_in / nblocks))
+        
+        self.mid_blksz = self.blk_rank
+        # self.blk_full_dim_out = kwargs.get("blk_full_dim", self.out_features)
+        align_factor = self.out_features / self.in_features # Useful when you want the correponding blocks
+        self.blk_full_dim_out = kwargs["blk_full_dim"] * align_factor if hasattr(kwargs, "blk_full_dim") else self.out_features
+        self.out_blksz = int(math.ceil(self.blk_full_dim_out / nblocks))
         
         # Get peft configs
         self.device = device
         self.peft_config = peft_config
         self.use_adapter = peft_config["adapter"]
         self.use_scaler = peft_config.get("scaler", False)
-        self.rank = rank
         self.lora_style_init = peft_config.get("lora_style_init", False)
         self.scaler_type = peft_config.get("scaler_type", "scaler")
         
@@ -113,7 +118,7 @@ class MonarchLinear(StructuredLinear):
         assert self.scaler_type in ["scaler", "diag"]
         
         self.merged = False
-        assert self.rank <= min(
+        assert self.blk_rank <= min(
             self.in_blksz, self.out_blksz
         ), "rank must be smaller than the smaller block size"
         
@@ -138,7 +143,6 @@ class MonarchLinear(StructuredLinear):
                 self.dense = nn.Parameter(weights, requires_grad=False)
             else:
                 self.set_weights_from_dense_init(weights, rank)
-
         self.to(device)
         
         # Set a scaling matrix
@@ -151,7 +155,6 @@ class MonarchLinear(StructuredLinear):
         else:
             self.scaler = nn.Identity()
         self.scaler.to(self.device)
-        
         logger.info(f"Linear class {self.__class__}: saving={self.saving}")
 
 
@@ -163,7 +166,7 @@ class MonarchLinear(StructuredLinear):
         if self.lora_style_init:
             lora_rank = 4
             lora_A = torch.zeros(lora_rank, self.in_features)
-            self.set_weights_from_dense_init(lora_A, rank=self.rank)
+            self.set_weights_from_dense_init(lora_A, rank=self.blk_rank)
             # zero out 2nd monarch factor to start training from checkpoint
             self.blkdiag2.data.zero_()
         else:
@@ -261,4 +264,9 @@ class MonarchLinear(StructuredLinear):
             f"{self.__class__.__name__}(in_features={self.in_features}, out_features={self.out_features}, "
             f"nblocks={self.nblocks}, requires_grad={list(self.parameters())[0].requires_grad})"
         )
-    
+        
+    def preprocess(self, x):
+        in_features = x.shape[-1]
+        if in_features < self.blk_full_dim_in:
+            x = F.pad(x, (0, self.blk_full_dim_in - in_features))
+        return x

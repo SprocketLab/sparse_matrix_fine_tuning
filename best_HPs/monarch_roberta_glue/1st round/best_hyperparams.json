@@ -1,0 +1,1 @@
+{"seed": 42, "large_lr": true, "num_train_epochs": 30, "learning_rate": 0.0004100000000000001, "per_device_train_batch_size": 32, "weight_decay": 0.01, "lr_scheduler_type": "cosine"}
