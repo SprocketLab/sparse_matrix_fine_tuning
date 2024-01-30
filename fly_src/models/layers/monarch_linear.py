@@ -83,7 +83,7 @@ class MonarchLinear(StructuredLinear):
         peft_config,
         nblocks=4,
         weights=None,
-        blk_rank=1,
+        blk_r=1,
         device="cuda",
         **kwargs,
     ):
@@ -91,15 +91,15 @@ class MonarchLinear(StructuredLinear):
         Args:
             nblocks (int, optional): Number of blocks in block-diag monarch factor. More blocks -> less precision loss in SVD
             weights (torch.Tensor, optional): The dense weight matrix for projection. If none will init with Kaiming
-            blk_rank (int, optional): SVD rank for decomposing each block
+            blk_r (int, optional): SVD rank for decomposing each block
         """
         super().__init__(*args, **kwargs)
         self.nblocks = nblocks
-        self.blk_rank = blk_rank
+        self.blk_r = blk_r
         self.blk_full_dim_in = kwargs.get("blk_full_dim", self.in_features)
         self.in_blksz = int(math.ceil(self.blk_full_dim_in / nblocks))
         
-        self.mid_blksz = self.blk_rank
+        self.mid_blksz = self.blk_r
         # self.blk_full_dim_out = kwargs.get("blk_full_dim", self.out_features)
         align_factor = self.out_features / self.in_features # Useful when you want the correponding blocks
         self.blk_full_dim_out = kwargs["blk_full_dim"] * align_factor if hasattr(kwargs, "blk_full_dim") else self.out_features
@@ -118,7 +118,7 @@ class MonarchLinear(StructuredLinear):
         assert self.scaler_type in ["scaler", "diag"]
         
         self.merged = False
-        assert self.blk_rank <= min(
+        assert self.blk_r <= min(
             self.in_blksz, self.out_blksz
         ), "rank must be smaller than the smaller block size"
         
@@ -166,7 +166,7 @@ class MonarchLinear(StructuredLinear):
         if self.lora_style_init:
             lora_rank = 4
             lora_A = torch.zeros(lora_rank, self.in_features)
-            self.set_weights_from_dense_init(lora_A, rank=self.blk_rank)
+            self.set_weights_from_dense_init(lora_A, rank=self.blk_r)
             # zero out 2nd monarch factor to start training from checkpoint
             self.blkdiag2.data.zero_()
         else:

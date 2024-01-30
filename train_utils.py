@@ -43,7 +43,7 @@ def parse_args():
     parser.add_argument("--group", default="", help="For grouping wandb runs")
     parser.add_argument("--project", default=None, help="For grouping wandb groups and runs")
     parser.add_argument("--full_group", default=None, help="Full group name for resuming eval (with date and task)")
-
+    parser.add_argument("--time", default=None, help="For grouping wandb groups and runs. If not provided will use current time")
     args, unknown = parser.parse_known_args()
     return args
 
@@ -227,14 +227,16 @@ def override_config(old_configs: List[Dict], new_args: List[str] or Dict):
             extra_args[key] = attempt
     return extra_args
         
-def get_run_group(task_name: str, do_tune: bool=False, group: str=None):
+def get_run_group(task_name: str, do_tune: bool=False, group: str=None, time: str=None):
     """
-    Get wandb run group
+    Get wandb run group. If time is provided, will group all tasks under the same time group
     """
     run_group = "tune" + "_" if do_tune else "" # if hyperapram tuning, add tune to group name
-    run_group += task_name + "_"
+    if time is None:
+        run_group += task_name + "_"
+        
     run_group += group + "_" if group not in [None, ""] else ""
-    run_group += time.strftime("%m-%d-%H", time.localtime())
+    run_group += time.strftime("%m-%d-%H", time.localtime()) if time is None else time 
     return run_group
 
 

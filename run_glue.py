@@ -124,7 +124,7 @@ def main(config: dict = None):
     training_args.greater_is_better = True 
     
     # Set up wandb 
-    os.environ["WANDB_RUN_GROUP"] = get_run_group(data_args.task_name, do_tune, group) if not full_group else full_group
+    os.environ["WANDB_RUN_GROUP"] = get_run_group(data_args.task_name, do_tune, group, args.time) if not full_group else full_group
     # If hostname.txt exists, upload to wandb
     if os.path.exists("hostname.txt"):
         hostname = open("hostname.txt", "r").readline().strip()

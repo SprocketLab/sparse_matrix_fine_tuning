@@ -1,7 +1,13 @@
+# Ignore everything in results
 results/**
-!results
-!results/monarch_roberta_glue
+
+# But do not ignore HPs searched 
+!results/monarch_roberta_glue/
 !results/monarch_roberta_glue/AX.tsv
+!results/monarch_roberta_glue/*
+!results/monarch_roberta_glue/*/best_hyperparams.json
+
+# Ignore other directories and file patterns
 wandb/**
 __pycache__/**
 glue_data/**
@@ -14,4 +20,3 @@ hostname.txt
 rllab/**
 req.txt
 *.pt
-```

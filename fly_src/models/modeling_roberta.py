@@ -126,12 +126,12 @@ class PEFT_adapter():
                     self.nblocks = nblocks
 
             bias = layer.bias != None
-            blk_full_dim = self.peft_config["nblocks"] * self.peft_config["blk_size"]
+            blk_full_dim = self.peft_config["nblocks"] * self.peft_config["blk_sz"]
             new_layer = MonarchLinear(
                 in_features=n,
                 out_features=m,
                 nblocks=nblocks,
-                blk_rank=self.peft_config["blk_rank"],
+                blk_r=self.peft_config["blk_r"],
                 blk_full_dim=blk_full_dim,
                 weights=weights,
                 bias=bias,
@@ -168,7 +168,7 @@ class PEFT_adapter():
                 self.config.hidden_size, self.all_head_size, rank, alpha, dropout, bias=bias
             )
         elif peft_config["monarch"]:
-            self.rank = peft_config["blk_rank"]
+            self.rank = peft_config["blk_r"]
             self.nblocks = peft_config["nblocks"]
 
             
