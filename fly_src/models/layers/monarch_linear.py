@@ -102,7 +102,7 @@ class MonarchLinear(StructuredLinear):
         self.mid_blksz = self.blk_r
         # self.blk_full_dim_out = kwargs.get("blk_full_dim", self.out_features)
         align_factor = self.out_features / self.in_features # Useful when you want the correponding blocks
-        self.blk_full_dim_out = kwargs["blk_full_dim"] * align_factor if hasattr(kwargs, "blk_full_dim") else self.out_features
+        self.blk_full_dim_out = kwargs["blk_full_dim"] * align_factor if "blk_full_dim" in kwargs else self.out_features
         self.out_blksz = int(math.ceil(self.blk_full_dim_out / nblocks))
         
         # Get peft configs
