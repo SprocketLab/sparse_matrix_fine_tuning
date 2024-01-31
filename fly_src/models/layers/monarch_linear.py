@@ -98,7 +98,9 @@ class MonarchLinear(StructuredLinear):
         self.blk_r = blk_r
         self.blk_full_dim_in = kwargs.get("blk_full_dim", self.in_features)
         self.in_blksz = int(math.ceil(self.blk_full_dim_in / nblocks))
-        
+        if self.blk_full_dim_in < self.in_features:
+            self.nblocks = (self.in_features + self.in_blksz - 1) // self.in_blksz # Make sure the blocks are enough to cover the input
+
         self.mid_blksz = self.blk_r
         # self.blk_full_dim_out = kwargs.get("blk_full_dim", self.out_features)
         align_factor = self.out_features / self.in_features # Useful when you want the correponding blocks
@@ -124,10 +126,10 @@ class MonarchLinear(StructuredLinear):
         
         # Init weights
         self.blkdiag1 = nn.Parameter(
-                torch.zeros(nblocks, self.mid_blksz, self.in_blksz, device=self.device) # (nblocks, r * nblocks , in_features / nblocks)
+                torch.zeros(self.nblocks, self.mid_blksz, self.in_blksz, device=self.device) # (nblocks, r * nblocks , in_features / nblocks)
         )  
         self.blkdiag2 = nn.Parameter(
-                torch.zeros(nblocks, self.out_blksz, self.mid_blksz, device=self.device) # (nblocks, out_features / nblocks, r * nblocks)
+                torch.zeros(self.nblocks, self.out_blksz, self.mid_blksz, device=self.device) # (nblocks, out_features / nblocks, r * nblocks)
         )
         
         if self.use_mult_factor:
