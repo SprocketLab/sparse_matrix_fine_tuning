@@ -227,16 +227,16 @@ def override_config(old_configs: List[Dict], new_args: List[str] or Dict):
             extra_args[key] = attempt
     return extra_args
         
-def get_run_group(task_name: str, do_tune: bool=False, group: str=None, time: str=None):
+def get_run_group(task_name: str, do_tune: bool=False, group: str=None, cur_time: str=None):
     """
     Get wandb run group. If time is provided, will group all tasks under the same time group
     """
     run_group = "tune" + "_" if do_tune else "" # if hyperapram tuning, add tune to group name
-    if time is None:
+    if cur_time is None:
         run_group += task_name + "_"
         
     run_group += group + "_" if group not in [None, ""] else ""
-    run_group += time.strftime("%m-%d-%H", time.localtime()) if time is None else time 
+    run_group += time.strftime("%m-%d-%H", time.localtime()) if cur_time is None else cur_time 
     return run_group
 
 

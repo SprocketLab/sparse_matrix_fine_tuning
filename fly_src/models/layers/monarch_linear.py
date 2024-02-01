@@ -80,10 +80,11 @@ class MonarchLinear(StructuredLinear):
     def __init__(
         self,
         *args,
-        peft_config,
-        nblocks=4,
-        weights=None,
-        blk_r=1,
+        peft_config: dict,
+        nblocks: int = 4,
+        weights: torch.Tensor = None,
+        blk_r: int = 1,
+        blk_sz: int = None,
         device="cuda",
         **kwargs,
     ):
@@ -91,21 +92,20 @@ class MonarchLinear(StructuredLinear):
         Args:
             nblocks (int, optional): Number of blocks in block-diag monarch factor. More blocks -> less precision loss in SVD
             weights (torch.Tensor, optional): The dense weight matrix for projection. If none will init with Kaiming
-            blk_r (int, optional): SVD rank for decomposing each block
+            blk_r (int, optional): the block-wise rank (output dim). Used also in SVD projection
+            blk_sz (int, optional): Size of each block. If None, will be calculated from in_features
+            (nb, r,)
         """
         super().__init__(*args, **kwargs)
         self.nblocks = nblocks
         self.blk_r = blk_r
-        self.blk_full_dim_in = kwargs.get("blk_full_dim", self.in_features)
-        self.in_blksz = int(math.ceil(self.blk_full_dim_in / nblocks))
-        if self.blk_full_dim_in < self.in_features:
-            self.nblocks = (self.in_features + self.in_blksz - 1) // self.in_blksz # Make sure the blocks are enough to cover the input
-
+        if blk_sz is None:
+            blk_sz = int(math.ceil(self.in_features / nblocks))
+        self.in_blksz = blk_sz
+                    
         self.mid_blksz = self.blk_r
-        # self.blk_full_dim_out = kwargs.get("blk_full_dim", self.out_features)
-        align_factor = self.out_features / self.in_features # Useful when you want the correponding blocks
-        self.blk_full_dim_out = kwargs["blk_full_dim"] * align_factor if "blk_full_dim" in kwargs else self.out_features
-        self.out_blksz = int(math.ceil(self.blk_full_dim_out / nblocks))
+        align_factor = int(math.ceil(self.out_features / self.in_features)) # Useful when you want the blocks in the two monarch factors to match exactly in bmm 
+        self.out_blksz = self.in_blksz * align_factor
         
         # Get peft configs
         self.device = device
@@ -114,8 +114,8 @@ class MonarchLinear(StructuredLinear):
         self.use_scaler = peft_config.get("scaler", False)
         self.lora_style_init = peft_config.get("lora_style_init", False)
         self.scaler_type = peft_config.get("scaler_type", "scaler")
+        self.use_mult_factor = peft_config.get("use_mult_factor", False)
         
-        self.use_mult_factor = peft_config.get("use_mult_factor", False) # X @ W @ M_mult + X @ M1 @ M2 * scaler
         self.use_scaler = self.use_scaler or self.use_mult_factor
         assert self.scaler_type in ["scaler", "diag"]
         
@@ -134,6 +134,7 @@ class MonarchLinear(StructuredLinear):
         
         if self.use_mult_factor:
             # init a batch of identity matrices as a multiplicative factor
+            # X @ W @ M_mult + X @ M1 @ M2 * scaler
             # (nblocks, out_features / nblocks, in_features / nblocks)
             self.blkdiag_mult = nn.Parameter(
                 torch.eye(self.out_blksz, self.in_blksz, device=self.device).repeat(nblocks, 1, 1)
@@ -186,6 +187,7 @@ class MonarchLinear(StructuredLinear):
                 ## Calculate uniform bounds from standard deviation
                 with torch.no_grad():
                     blkdiag.uniform_(-bound, bound)
+                breakpoint()
         self.reset_parameters_bias()
 
 
@@ -225,13 +227,12 @@ class MonarchLinear(StructuredLinear):
         """
         super().train(mode)
         if mode:
-            if self.use_adapter:
-                if self.merged:
-                    # split out monarch for separate training
-                    # (out, in) - (in, out).T
-                    merged_weights = self.monarch_forward(torch.eye(self.in_features, device=self.device)).T
-                    self.dense.data -= merged_weights
-                    self.merged = False
+            if self.use_adapter and self.merged:
+                # split out monarch for separate training
+                # (out, in) - (in, out).T
+                merged_weights = self.monarch_forward(torch.eye(self.in_features, device=self.device)).T
+                self.dense.data -= merged_weights
+                self.merged = False
                 self.dense.requires_grad_(False) # freeze dense, train monarch adapter
             
         else:
@@ -269,6 +270,6 @@ class MonarchLinear(StructuredLinear):
         
     def preprocess(self, x):
         in_features = x.shape[-1]
-        if in_features < self.blk_full_dim_in:
-            x = F.pad(x, (0, self.blk_full_dim_in - in_features))
+        if in_features < self.nblocks * self.in_blksz:
+            x = F.pad(x, (0, self.nblocks * self.in_blksz - in_features))
         return x

@@ -126,13 +126,14 @@ class PEFT_adapter():
                     self.nblocks = nblocks
 
             bias = layer.bias != None
-            blk_full_dim = self.peft_config["nblocks"] * self.peft_config["blk_sz"]
+            # blk_full_dim = self.peft_config["nblocks"] * self.peft_config["blk_sz"]
             new_layer = MonarchLinear(
                 in_features=n,
                 out_features=m,
                 nblocks=nblocks,
                 blk_r=self.peft_config["blk_r"],
-                blk_full_dim=blk_full_dim,
+                blk_sz=self.peft_config["blk_sz"],
+                # blk_full_dim=blk_full_dim,
                 weights=weights,
                 bias=bias,
                 peft_config=self.peft_config

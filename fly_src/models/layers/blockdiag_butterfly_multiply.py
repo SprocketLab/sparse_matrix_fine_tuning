@@ -26,9 +26,9 @@ class BlockdiagMultiply(torch.autograd.Function):
         batch_dim = np.prod(batch_shape)
         nblocks, q, p = weight.shape
         assert nblocks * p == n
-        x_reshaped = x.reshape(batch_dim, nblocks, p).transpose(0, 1)
+        x_reshaped = x.reshape(batch_dim, nblocks, p).transpose(0, 1) # (nblocks, batch_dim, p)
         out = torch.empty(batch_dim, nblocks, q, device=x.device, dtype=x.dtype).transpose(0, 1)
-        out = torch.bmm(x_reshaped, weight.transpose(-1, -2), out=out).transpose(0, 1)
+        out = torch.bmm(x_reshaped, weight.transpose(-1, -2), out=out).transpose(0, 1) # (nblocks, batch_dim, blk_sz) @ (nblocks, blk_sz, blk_r) -> (nblocks, batch_dim, q)
         return out.reshape(*batch_shape, nblocks * q)
 
     @staticmethod
