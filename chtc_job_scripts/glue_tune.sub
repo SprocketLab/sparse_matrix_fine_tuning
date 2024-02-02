@@ -1,0 +1,44 @@
+JobBatchName            = "glue_peft"
+# update this every time
+arguments               = --group="dense rank 32" --blk_r=8
+
+universe                = docker
+docker_image            = ghcr.io/edenzzzz/peft:latest
+docker_network_type     = host
+
+# Artefact
+Requirements            = (Target.HasCHTCStaging == true)
+initialdir              = fly
+executable              = ../glue_scripts/tune_glue.sh
+transfer_input_files    = ..
+should_transfer_files   = YES
+when_to_transfer_output = ON_EXIT
+output_destination      = /staging/wtan45/sparse_matrix_finetuning
+
+# Checkpoint
+checkpoint_exit_code    = 85
++is_resumable           = false
+
+# Logging
+stream_output           = true
+output                  = condor_log/output.$(Cluster)-$(Process).txt
+error                   = condor_log/error.$(Cluster)-$(Process).txt
+log                     = condor_log/log.$(Cluster)-$(Process).txt
+notification            = Always
+notify_user             = wtan45@wisc.edu
+# Compute resources
+request_cpus            = 16
+request_memory          = 32GB
+request_disk            = 120GB
+
+# Extra GPU settings
+request_gpus            = 4
+require_gpus            = (Capability == 8.0)
++WantGPULab             = true
+# change to true if *not* using staging for checkpoints and interested in accessing GPUs beyond CHTC
++WantFlocking           = false
++WantGlidein            = false
++GPUJobLength           = "medium"
+
+# Runs
+queue 1

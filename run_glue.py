@@ -323,7 +323,6 @@ def main(config: dict = None):
         #     model = torch.compile(model)
         return model
     
-    
     # Preprocessing the raw_datasets
     if data_args.task_name is not None:
         sentence1_key, sentence2_key = task_to_keys[data_args.task_name]
@@ -512,16 +511,11 @@ def main(config: dict = None):
                 # "num_train_epochs": tune.choice([20, 25]),
                 "learning_rate": tune.quniform(2e-5, 6e-4, 2e-5),
                 "per_device_train_batch_size": tune.choice([16, 32]), # In Monarch-Mixer they mixed 32 and 16 
-                "weight_decay": 1e-3, #After 2nd HPO, all runs converged to 1e-3 #tune.choice([0.1, 0.01, 1e-3]),
+                "weight_decay": 1e-3, # After 2nd HPO, all runs converged to 1e-3 #tune.choice([0.1, 0.01, 1e-3]),
                 "lr_scheduler_type": tune.choice(["cosine", "linear"]), # mostly linear underperforms
             }
-            # n_trials = 50
-            n_trials = 40
+            n_trials = 36
             
-            if not adapter:
-                # del param_space["nblocks"] 
-                n_trials = 36
-                
         else:
             # Raw finetuning
             param_space = {
@@ -532,8 +526,10 @@ def main(config: dict = None):
             }
             n_trials = 1 # grid search will try all combinations by default
         
+        
+        # Set up scheduler and reporter etc.
         direction = "max"
-        max_t = 45 * 60 if tune_unit == "time" else 15 # 50 mins or 12 eval iterations
+        max_t = 45 * 60 if tune_unit == "time" else 16 # 45 mins or 16 eval iterations
         grade_period = 5 * 60  if tune_unit == "time" else 4
         time_attr = "time_total_s" if tune_unit == "time" else "training_iteration"
         scheduler = ASHAScheduler(
@@ -543,14 +539,14 @@ def main(config: dict = None):
             mode = direction,
             grace_period=grade_period,
         )
-        
         reporter = CLIReporter(
             parameter_columns=["learning_rate", "per_device_train_batch_size", "weight_decay"],
             metric_columns=["train_loss", "eval_loss", task_to_metric[data_args.task_name], "training_iteration"],
             max_progress_rows=9,
             max_report_frequency=9,
         )   
-
+        
+        # Do hyperparam optimization with Ray Tune
         best_run = trainer.hyperparameter_search(
             hp_space=lambda _: param_space,
             backend="ray",
@@ -562,30 +558,48 @@ def main(config: dict = None):
             resources_per_trial={"cpu": 1, "gpu": 0.5},
             local_dir="ray_results",
             name=os.environ["WANDB_RUN_GROUP"],
-            max_failures=100, # tolerate OOM
+            max_failures=50, # tolerate OOM
             # callbacks=[WandbLoggerCallback(project=os.environ["WANDB_PROJECT"], group=os.environ["WANDB_RUN_GROUP"])],
             direction="maximize" 
         )
+        best_hp = best_run.hyperparameters
         
+        
+        # Tune weight decay separately to save time. It should be indepdent of other HPs and most papers don't even tune it.
+        if args.tune_decay:
+            param_space = best_hp
+            param_space["weight_decay"] = tune.grid_search([0.01, 1e-3])
+            best_run = trainer.hyperparameter_search(
+                hp_space=lambda _: param_space,
+                backend="ray",
+                n_trials=1,
+                scheduler=scheduler,
+                keep_checkpoints_num=1,
+                checkpoint_score_attr="min-" + task_to_metric[data_args.task_name], # rank in decreasing order
+                progress_reporter=reporter,
+                resources_per_trial={"cpu": 1, "gpu": 0.5},
+                local_dir="ray_results",
+                name=os.environ["WANDB_RUN_GROUP"],
+                max_failures=50, # tolerate OOM
+                # callbacks=[WandbLoggerCallback(project=os.environ["WANDB_PROJECT"], group=os.environ["WANDB_RUN_GROUP"])],
+                direction="maximize" 
+            )
+            best_hp = best_run.hyperparameters
+            
         # Save the best hyperparams for full training 
-        print("Best hyperparameters: ", best_run.hyperparameters)
-        # Save in the task dir
-        best_param_path = os.path.join(task_output_dir, "best_hyperparams.json")
-        json.dump(best_run.hyperparameters, open(best_param_path, "w"))
-        # An extra copy in the "tune round" dir
+        print("Best hyperparameters: ", best_hp)
+        # Save in the specific tune run dir
         cur_tune_path = os.path.join(training_args.output_dir, "best_hyperparams.json")
-        json.dump(best_run.hyperparameters, open(cur_tune_path, "w"))
+        json.dump(best_hp, open(cur_tune_path, "w"))
         
-        # Save in a specialized directory for track all best HPs in a round
-        try:
-            hp_dir = "/fly/best_HPs/monarch_roberta_glue"
-            groups = group.split(",")
-            round = groups[0] if "round" in groups[0] else group
-            hp_dir = os.path.join(hp_dir, round, data_args.task_name + ".json")
-            os.makedirs(hp_dir, exist_ok=True)
-            json.dump(best_run.hyperparameters, open(hp_dir, "w"))
-        except Exception as e:
-            print("Oops! Failed to save best HPs to /fly/best_HPs/monarch_roberta_glue. Error: ", e)
+        # Save in the specialized directory for tracking all best HPs
+        hp_dir = "/fly/best_HPs/monarch_roberta_glue"
+        groups = group.split(",")
+        tune_round = groups[0] if "round" in groups[0] else group
+        hp_dir = os.path.join(hp_dir, tune_round)
+        os.makedirs(hp_dir, exist_ok=True)
+        hp_dir = os.path.join(hp_dir, data_args.task_name + ".json")
+        json.dump(best_hp, open(hp_dir, "w"))
         
         # Remove all but the best tune ckpt 
         summary = best_run.run_summary

@@ -19,13 +19,18 @@ if [ ${#FLAGS[@]} -ne 0 ]; then
 else
     echo "Using no additional flags."
 fi
+
+# For moving copied inputs to cwd in CHTC jobs
+if [ -d "./sparse_matrix_finetuning" ]; then
+    mv ./sparse_matrix_finetuning/* .
+
 time=$(date "+%m-%d-%H")
-CUDA_VISIBLE_DEVICES=1 python run_glue.py /fly/task_configs/glue_peft_configs/cola.json   --time=$time "${FLAGS[@]}" &
-CUDA_VISIBLE_DEVICES=2 python run_glue.py /fly/task_configs/glue_peft_configs/qnli.json   --time=$time "${FLAGS[@]}" &
+CUDA_VISIBLE_DEVICES=0 python run_glue.py /fly/task_configs/glue_peft_configs/cola.json   --time=$time "${FLAGS[@]}" &
+CUDA_VISIBLE_DEVICES=1 python run_glue.py /fly/task_configs/glue_peft_configs/qnli.json   --time=$time "${FLAGS[@]}" &
 # CUDA_VISIBLE_DEVICES=3 python run_glue.py /fly/task_configs/glue_peft_configs/rte.json    --time=$time "${FLAGS[@]}" &
-CUDA_VISIBLE_DEVICES=5 python run_glue.py /fly/task_configs/glue_peft_configs/sst-2.json  --time=$time "${FLAGS[@]}" 
-CUDA_VISIBLE_DEVICES=5 python run_glue.py /fly/task_configs/glue_peft_configs/stsb.json   --time=$time "${FLAGS[@]}" 
-CUDA_VISIBLE_DEVICES=5 python run_glue.py /fly/task_configs/glue_peft_configs/mrpc.json   --time=$time "${FLAGS[@]}" 
+CUDA_VISIBLE_DEVICES=2 python run_glue.py /fly/task_configs/glue_peft_configs/sst-2.json  --time=$time "${FLAGS[@]}" 
+CUDA_VISIBLE_DEVICES=3 python run_glue.py /fly/task_configs/glue_peft_configs/stsb.json   --time=$time "${FLAGS[@]}" 
+CUDA_VISIBLE_DEVICES=3 python run_glue.py /fly/task_configs/glue_peft_configs/mrpc.json   --time=$time "${FLAGS[@]}" 
 # CUDA_VISIBLE_DEVICES=4 python run_glue.py /fly/task_configs/glue_peft_configs/qqp.json    --time=$time "${FLAGS[@]}" 
 # CUDA_VISIBLE_DEVICES=1 python run_glue.py /fly/task_configs/glue_peft_configs/mnli.json   --time=$time "${FLAGS[@]}" 
 # CUDA_VISIBLE_DEVICES=3  python run_glue.py /fly/task_configs/glue_peft_configs/wnli.json  --time=$time "${FLAGS[@]}"

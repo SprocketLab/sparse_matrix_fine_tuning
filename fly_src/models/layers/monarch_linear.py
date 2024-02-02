@@ -145,7 +145,7 @@ class MonarchLinear(StructuredLinear):
             if self.use_adapter:
                 self.dense = nn.Parameter(weights, requires_grad=False)
             else:
-                self.set_weights_from_dense_init(weights, rank)
+                self.set_weights_from_dense_init(weights, self.blk_r)
         self.to(device)
         
         # Set a scaling matrix
@@ -226,12 +226,13 @@ class MonarchLinear(StructuredLinear):
         """
         super().train(mode)
         if mode:
-            if self.use_adapter and self.merged:
-                # split out monarch for separate training
-                # (out, in) - (in, out).T
-                merged_weights = self.monarch_forward(torch.eye(self.in_features, device=self.device)).T
-                self.dense.data -= merged_weights
-                self.merged = False
+            if self.use_adapter:
+                if self.merged:
+                    # split out monarch for separate training
+                    # (out, in) - (in, out).T
+                    merged_weights = self.monarch_forward(torch.eye(self.in_features, device=self.device)).T
+                    self.dense.data -= merged_weights
+                    self.merged = False
                 self.dense.requires_grad_(False) # freeze dense, train monarch adapter
             
         else:
