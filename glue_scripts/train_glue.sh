@@ -1,6 +1,6 @@
 #!/bin/bash
-
 # Initialize an array for flags
+source chtc_job_scripts/.env
 FLAGS=()
 
 # Loop through all the arguments

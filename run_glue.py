@@ -593,7 +593,7 @@ def main(config: dict = None):
         json.dump(best_hp, open(cur_tune_path, "w"))
         
         # Save in the specialized directory for tracking all best HPs
-        hp_dir = "/fly/best_HPs/monarch_roberta_glue"
+        hp_dir = "best_HPs/monarch_roberta_glue"
         groups = group.split(",")
         tune_round = groups[0] if "round" in groups[0] else group
         hp_dir = os.path.join(hp_dir, tune_round)
