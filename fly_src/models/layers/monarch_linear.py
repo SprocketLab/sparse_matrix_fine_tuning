@@ -187,7 +187,6 @@ class MonarchLinear(StructuredLinear):
                 ## Calculate uniform bounds from standard deviation
                 with torch.no_grad():
                     blkdiag.uniform_(-bound, bound)
-                breakpoint()
         self.reset_parameters_bias()
 
 
