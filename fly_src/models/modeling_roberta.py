@@ -482,7 +482,7 @@ class RobertaAttention(nn.Module):
             position_embedding_type=position_embedding_type,
             peft_config=peft_config,
         )
-        self.output = RobertaSelfOutput(config)
+        self.output = RobertaSelfOutput(config) # linear layer w/ skip connection w/o activation
         self.pruned_heads = set()
 
     def prune_heads(self, heads):
@@ -573,7 +573,7 @@ class RobertaLayer(nn.Module):
         super().__init__()
         self.chunk_size_feed_forward = config.chunk_size_feed_forward
         self.seq_len_dim = 1
-        self.attention = RobertaAttention(config, peft_config) # skip-connect self-attention
+        self.attention = RobertaAttention(config, peft_config) #  Multi-head self-attention + output matrix + skip-connect
         self.is_decoder = config.is_decoder
         self.add_cross_attention = config.add_cross_attention
         if self.add_cross_attention:
@@ -586,7 +586,7 @@ class RobertaLayer(nn.Module):
             )
         self.intermediate = RobertaIntermediate(config)
         self.output = RobertaOutput(config) # skip-connect FFN 
-
+        
     def forward(
         self,
         hidden_states: torch.Tensor,
@@ -664,8 +664,8 @@ class RobertaLayer(nn.Module):
         return outputs
 
     def feed_forward_chunk(self, attention_output):
-        intermediate_output = self.intermediate(attention_output)
-        layer_output = self.output(intermediate_output, attention_output)
+        intermediate_output = self.intermediate(attention_output) # (d, 4d) + GELU
+        layer_output = self.output(intermediate_output, attention_output) # (4d, d) + skip-connect + LayerNorm
         return layer_output
 
 
@@ -932,7 +932,7 @@ class RobertaModel(RobertaPreTrainedModel):
         self.monarch_param_set = False
         self.log_param_steps = 800
         self.train_mode_count = 0
-        self.layers_to_adapt = [RobertaSelfAttention, RobertaIntermediate]
+        self.layers_to_adapt = [RobertaSelfAttention, RobertaIntermediate] # @Wenxuan
         self.watch_count = defaultdict(int)
         self.wandb_watch_enabled = False
         # Initialize weights and apply final processing

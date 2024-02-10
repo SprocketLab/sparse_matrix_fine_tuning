@@ -101,7 +101,7 @@ def main(config: dict = None):
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
     
     model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(args.config_path))
-    # NOTE: All extra args can override training configs (best HP, peft_config, etc.)
+    # NOTE: Extra args can override all training configs (best HP, peft_config, etc.)
     extra_args = override_config([model_args, data_args, training_args, peft_config], sys.argv[2:])
     use_monarch = args.use_monarch
     do_tune = args.do_tune
@@ -510,11 +510,11 @@ def main(config: dict = None):
                 "large_lr": False,
                 # "num_train_epochs": tune.choice([20, 25]),
                 "learning_rate": tune.quniform(2e-5, 6e-4, 2e-5),
-                "per_device_train_batch_size": tune.choice([16, 32]), # In Monarch-Mixer they mixed 32 and 16 
+                "per_device_train_batch_size": tune.choice([8, 16, 32]), # In Monarch-Mixer they mixed 32 and 16 
                 "weight_decay": 1e-3, # After 2nd HPO, all runs converged to 1e-3 #tune.choice([0.1, 0.01, 1e-3]),
                 "lr_scheduler_type": tune.choice(["cosine", "linear"]), # mostly linear underperforms
             }
-            n_trials = 36
+            n_trials = 40
             
         else:
             # Raw finetuning
@@ -529,7 +529,7 @@ def main(config: dict = None):
         
         # Set up scheduler and reporter etc.
         direction = "max"
-        max_t = 45 * 60 if tune_unit == "time" else 16 # 45 mins or 16 eval iterations
+        max_t = 45 * 60 if tune_unit == "time" else 15 # mins or eval iterations
         grade_period = 5 * 60  if tune_unit == "time" else 4
         time_attr = "time_total_s" if tune_unit == "time" else "training_iteration"
         scheduler = ASHAScheduler(
@@ -565,26 +565,26 @@ def main(config: dict = None):
         best_hp = best_run.hyperparameters
         
         
-        # Tune weight decay separately to save time. It should be indepdent of other HPs and most papers don't even tune it.
-        if args.tune_decay:
-            param_space = best_hp
-            param_space["weight_decay"] = tune.grid_search([0.01, 1e-3])
-            best_run = trainer.hyperparameter_search(
-                hp_space=lambda _: param_space,
-                backend="ray",
-                n_trials=1,
-                scheduler=scheduler,
-                keep_checkpoints_num=1,
-                checkpoint_score_attr="min-" + task_to_metric[data_args.task_name], # rank in decreasing order
-                progress_reporter=reporter,
-                resources_per_trial={"cpu": 1, "gpu": 0.5},
-                local_dir="ray_results",
-                name=os.environ["WANDB_RUN_GROUP"],
-                max_failures=50, # tolerate OOM
-                # callbacks=[WandbLoggerCallback(project=os.environ["WANDB_PROJECT"], group=os.environ["WANDB_RUN_GROUP"])],
-                direction="maximize" 
-            )
-            best_hp = best_run.hyperparameters
+        # NOTE:Do NOT tune weight decay as they all converge to 0.1
+        # if args.tune_decay:
+        #     param_space = best_hp
+        #     param_space["weight_decay"] = tune.grid_search([0.01, 1e-3])
+        #     best_run = trainer.hyperparameter_search(
+        #         hp_space=lambda _: param_space,
+        #         backend="ray",
+        #         n_trials=1,
+        #         scheduler=scheduler,
+        #         keep_checkpoints_num=1,
+        #         checkpoint_score_attr="min-" + task_to_metric[data_args.task_name], # rank in decreasing order
+        #         progress_reporter=reporter,
+        #         resources_per_trial={"cpu": 1, "gpu": 0.5},
+        #         local_dir="ray_results",
+        #         name=os.environ["WANDB_RUN_GROUP"],
+        #         max_failures=50, # tolerate OOM
+        #         # callbacks=[WandbLoggerCallback(project=os.environ["WANDB_PROJECT"], group=os.environ["WANDB_RUN_GROUP"])],
+        #         direction="maximize" 
+        #     )
+        #     best_hp = best_run.hyperparameters
             
         # Save the best hyperparams for full training 
         print("Best hyperparameters: ", best_hp)
@@ -593,7 +593,7 @@ def main(config: dict = None):
         json.dump(best_hp, open(cur_tune_path, "w"))
         
         # Save in the specialized directory for tracking all best HPs
-        hp_dir = "best_HPs/monarch_roberta_glue"
+        hp_dir = "/fly/best_HPs/monarch_roberta_glue"
         groups = group.split(",")
         tune_round = groups[0] if "round" in groups[0] else group
         hp_dir = os.path.join(hp_dir, tune_round)
@@ -623,20 +623,19 @@ def main(config: dict = None):
         return # NOTE: Do NOT do training; use a separate command for this (in parrallel with next tune)
     
     ############################## Full training ##############################
-    # load best hyperparams from last tune 
-    best_param_path = os.path.join(task_output_dir, "best_hyperparams.json")
+    # NOTE: load best hyperparams from the group dir
+    best_param_path = os.path.join(training_args.output_dir, "best_hyperparams.json")
     if os.path.exists(best_param_path):
         best_hyperparams = json.load(open(best_param_path, "r"))  
-        print("Loading best hyperparams: ", best_hyperparams)
+        print(f"Loading best hyperparams from {best_param_path}: ", best_hyperparams)
         override_config([best_hyperparams], sys.argv[2:])
         override_config([model_args, data_args, training_args], best_hyperparams)
     else:
         best_hyperparams = None
         logging.warning("No best hyperparams from HPO found. Using default configs.")
 
-
     trainer = MyAwesomeTrainer(
-        model=model_init(best_hyperparams),
+        model_init=model_init,
         args=training_args,
         train_dataset=train_dataset if training_args.do_train else None,
         eval_dataset=eval_dataset if training_args.do_eval else None,

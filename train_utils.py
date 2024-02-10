@@ -32,7 +32,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Run GLUE with additional arguments", )
 
     # Add the positional argument for the config path
-    parser.add_argument("config_path", help="path to the task config file under /fly/task_configs")
+    parser.add_argument("config_path", help="path to the GLUE task config file under task_configs/glue_peft_configs")
 
     # Add optional arguments
     parser.add_argument("--use_monarch", type=eval, default="True", help="Use monarch. Mostly you want this (default: True)")
@@ -44,7 +44,7 @@ def parse_args():
     parser.add_argument("--project", default=None, help="For grouping wandb groups and runs")
     parser.add_argument("--full_group", default=None, help="Full group name for resuming eval (with date and task)")
     parser.add_argument("--time", default=None, help="For grouping wandb groups and runs. If not provided will use current time")
-    parser.add_argument("--tune_decay", default=True, help="Whether to tune weight decay in ASHA")
+    parser.add_argument("--tune_decay", type=eval, default=True, help="Whether to tune weight decay in ASHA")
     args, unknown = parser.parse_known_args()
     return args
 
@@ -228,6 +228,7 @@ def override_config(old_configs: List[Dict], new_args: List[str] or Dict):
             extra_args[key] = attempt
     return extra_args
         
+        
 def get_run_group(task_name: str, do_tune: bool=False, group: str=None, cur_time: str=None):
     """
     Get wandb run group. If time is provided, will group all tasks under the same time group
@@ -341,6 +342,8 @@ class MyAwesomeTrainer(Trainer):
     #     self.num_training_steps = num_training_steps
     
     
+##################################### Task configs #####################################
+
 task_to_keys = {
     "cola": ("sentence", None),
     "mnli": ("premise", "hypothesis"),
@@ -489,3 +492,4 @@ class ModelArguments:
         metadata={"help": "Will enable to load a pretrained model whose head dimensions are different."},
     )
 
+    

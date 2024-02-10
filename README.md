@@ -18,8 +18,7 @@ Full finetuning:
 ```
 python finetune_roberta.py 
 ```
-(change peft_config inside each script for ranks, etc.)
-LoRA PEFT: 
+LoRA PEFT (modify peft_config for ranks, etc.): 
 ```
 python lora_roberta.py 
 ```
