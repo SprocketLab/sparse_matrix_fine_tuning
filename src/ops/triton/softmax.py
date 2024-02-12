@@ -15,7 +15,7 @@ from torch.cuda.amp import custom_bwd, custom_fwd
 
 from einops import rearrange, repeat
 
-from fly_src.ops.triton.k_softmax import _softmax, _softmax_backward
+from src.ops.triton.k_softmax import _softmax, _softmax_backward
 
 # CREDITS: This is adapted from the vanilla Triton example. See https://openai.com/blog/triton/
 # and https://triton-lang.org/getting-started/tutorials/02-fused-softmax.html

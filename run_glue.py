@@ -32,7 +32,7 @@ from transformers import (
     Trainer,
     get_cosine_with_hard_restarts_schedule_with_warmup
 )
-from fly_src.models.modeling_roberta import RobertaForSequenceClassification
+from src.models.modeling_roberta import RobertaForSequenceClassification
 from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version, send_example_telemetry
 from transformers.utils.versions import require_version

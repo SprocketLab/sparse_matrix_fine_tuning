@@ -53,7 +53,7 @@ from collections import defaultdict
 import sys, os
 import ray
 sys.path.insert(0, "/fly")  # docker working dir
-from fly_src.models.layers.monarch_linear import MonarchLinear, Scaler
+from src.models.layers.monarch_linear import MonarchLinear, Scaler
 import loralib as lora
 
 def param_stats(model, training=False, print_trainable=False):

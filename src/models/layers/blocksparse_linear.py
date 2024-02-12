@@ -10,17 +10,17 @@ from einops import rearrange, repeat
 
 import hydra
 
-from fly_src.utils.utils import get_logger
+from src.utils.utils import get_logger
 logger = get_logger()
 
-from fly_src.utils.padding import pad_to_multiple
+from src.utils.padding import pad_to_multiple
 try:
-    from fly_src.models.attention.blocksparse_matmul import matmul
+    from src.models.attention.blocksparse_matmul import matmul
 except ImportError:
     logger.info('triton is not installed')
     matmul = None
-from fly_src.ops.butterfly_factor import butterfly_factor_to_matrix
-from fly_src.models.attention.blocksparse_utils import sparsify_tensor, densify_tensor
+from src.ops.butterfly_factor import butterfly_factor_to_matrix
+from src.models.attention.blocksparse_utils import sparsify_tensor, densify_tensor
 
 
 try:

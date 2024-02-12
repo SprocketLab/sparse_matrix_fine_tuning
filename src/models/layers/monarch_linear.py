@@ -6,15 +6,15 @@ from torch.nn import init
 
 from einops import rearrange
 import torch.nn.functional as F
-from fly_src.models.layers.structured_linear import StructuredLinear
-from fly_src.models.layers.blockdiag_butterfly_multiply import blockdiag_butterfly_multiply, single_monarch_mult
-from fly_src.utils.utils import get_logger
+from src.models.layers.structured_linear import StructuredLinear
+from src.models.layers.blockdiag_butterfly_multiply import blockdiag_butterfly_multiply, single_monarch_mult
+from src.utils.utils import get_logger
 
 # NOTE converting weights to monarch matrices
-from fly_src.ops.blockdiag_butterfly_projection import (
+from src.ops.blockdiag_butterfly_projection import (
     blockdiag_butterfly_project,
 )  # square weights, rank 1
-from fly_src.ops.blockdiag_butterfly_einsum import (
+from src.ops.blockdiag_butterfly_einsum import (
     blockdiag_butterfly_project_einsum_rank,  # for rectangular, custom rank
     blockdiag_butterfly_project_einsum_simple,  # for rectangular, rank 1
 )
@@ -92,7 +92,7 @@ class MonarchLinear(StructuredLinear):
         Args:
             nblocks (int, optional): Number of blocks in block-diag monarch factor. More blocks -> less precision loss in SVD
             weights (torch.Tensor, optional): The dense weight matrix for projection. If none will init with Kaiming
-            blk_r (int, optional): the block-wise rank (output dim). Used also in SVD projection
+            blk_r (int, optional): The per block rank (output dim). Used also in SVD projection and param definition
             blk_sz (int, optional): Size of each block. If None, will be calculated from in_features
             (nb, r,)
         """
@@ -104,7 +104,11 @@ class MonarchLinear(StructuredLinear):
         self.in_blksz = blk_sz
                     
         self.mid_blksz = self.blk_r
-        align_factor = int(math.ceil(self.out_features / self.in_features)) # Useful when you want the blocks in the two monarch factors to match exactly in bmm 
+        # Use square blocks if testing block size trade-offs
+        if peft_config["square"]:
+            self.mid_blksz = self.in_blksz
+            
+        align_factor = int(math.ceil(self.out_features / self.in_features)) # Useful for the blocks in the two monarch factors to exactly match  
         self.out_blksz = self.in_blksz * align_factor
         
         # Get peft configs
@@ -125,6 +129,7 @@ class MonarchLinear(StructuredLinear):
         ), "rank must be smaller than the smaller block size"
         
         # Init weights
+        self.nblocks = (self.in_features + self.in_blksz - 1) // self.in_blksz # effectively throw away blocks that are fully padded 
         self.blkdiag1 = nn.Parameter(
                 torch.zeros(self.nblocks, self.mid_blksz, self.in_blksz, device=self.device) # (nblocks, r * nblocks , in_features / nblocks)
         )  

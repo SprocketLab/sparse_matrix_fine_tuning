@@ -5,7 +5,7 @@ from torch.nn import functional as F
 
 from einops import rearrange
 
-from fly_src.ops.low_rank import low_rank_project
+from src.ops.low_rank import low_rank_project
 
 
 def blockdiag_weight_to_dense_weight(weight):

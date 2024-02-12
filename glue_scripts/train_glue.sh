@@ -23,6 +23,7 @@ fi
 # For moving copied inputs to cwd in CHTC jobs
 if [ -d "./sparse_matrix_finetuning" ]; then
     mv ./sparse_matrix_finetuning/* .
+fi
 
 time=$(date "+%m-%d-%H")
 CUDA_VISIBLE_DEVICES=0 python run_glue.py /fly/task_configs/glue_peft_configs/cola.json   --time=$time "${FLAGS[@]}" &
@@ -35,7 +36,7 @@ CUDA_VISIBLE_DEVICES=3 python run_glue.py /fly/task_configs/glue_peft_configs/mr
 # CUDA_VISIBLE_DEVICES=1 python run_glue.py /fly/task_configs/glue_peft_configs/mnli.json   --time=$time "${FLAGS[@]}" 
 # CUDA_VISIBLE_DEVICES=3  python run_glue.py /fly/task_configs/glue_peft_configs/wnli.json  --time=$time "${FLAGS[@]}"
 
-$out_path = "results/monarch_roberta_glue"
+out_path="results/monarch_roberta_glue"
 # find all .tsv files in results/monarch_roberta_glue and zip them
 find results/monarch_roberta_glue -maxdepth 2 -name "*.tsv" | zip -j results/monarch_roberta_glue/glue_submit.zip -@
 echo "Zipped all .tsv files in $out_path to glue_submit.zip. Ready for submission."

@@ -15,7 +15,7 @@ glue_data/**
 *.tar
 *.pyc
 ray_results/**
-fly_src/models/__pycache__/**
+src/models/__pycache__/**
 hostname.txt
 rllab/**
 req.txt

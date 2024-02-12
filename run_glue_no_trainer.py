@@ -55,7 +55,7 @@ from transformers import (
 )
 from transformers.utils import get_full_repo_name, send_example_telemetry
 from transformers.utils.versions import require_version
-from fly_src.models.modeling_roberta import RobertaForSequenceClassification
+from src.models.modeling_roberta import RobertaForSequenceClassification
 
 
 logger = get_logger(__name__)

@@ -9,10 +9,10 @@ Full training configs and logs will be stored in wandb. (You can use your key or
 ## Repo guide
 Search for @Wenxuan in the comments for my code or important functions.\
 
-Check `fly_src/models/layers/blockdiag_butterfly_multiply.py` to ***understand Monarch matmul.***\
-Check `fly_src/models/layers/monarch_linear.py` for a basic setup of Monarch.\
-Check `fly_src/ops/blockdiag_butterfly_einsum`.py to understand D2S projection.\
-See `fly_src/models/modeling_roberta.py` for my modified Roberta supporting Monarch adapter.
+Check src/models/layers/blockdiag_butterfly_multiply.py to ***fully understand Monarch matmul.***\
+Check src/models/layers/monarch_linear.py for a basic setup of Monarch.\
+Check src/ops/blockdiag_butterfly_einsum.py to understand D2S projection.\
+See src/models/modeling_roberta.py for my modified Roberta supporting LoRA and Monarch.
 
 Full finetuning: 
 ```

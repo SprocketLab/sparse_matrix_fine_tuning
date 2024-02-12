@@ -14,7 +14,7 @@ from pytorch_lightning import (
 )
 from pytorch_lightning.loggers import LightningLoggerBase
 
-from fly_src.utils import utils
+from src.utils import utils
 
 log = utils.get_logger(__name__)
 
