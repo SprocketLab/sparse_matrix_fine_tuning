@@ -5,8 +5,12 @@ results/**
 !results/monarch_roberta_glue/
 !results/monarch_roberta_glue/AX.tsv
 !results/monarch_roberta_glue/*
+results/monarch_roberta_glue/*.zip
+results/monarch_roberta_glue/*.tsv
 !results/monarch_roberta_glue/*/best_hyperparams.json
-
+!results/monarch_roberta_glue/*/*
+results/monarch_roberta_glue/*/*.tsv
+!results/monarch_roberta_glue/*/*/best_hyperparams.json
 # Ignore other directories and file patterns
 wandb/**
 __pycache__/**

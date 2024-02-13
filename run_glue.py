@@ -588,11 +588,13 @@ def main(config: dict = None):
             
         # Save the best hyperparams for full training 
         print("Best hyperparameters: ", best_hp)
-        # Save in the specific tune run dir
+        # Save in the specific run dir
         cur_tune_path = os.path.join(training_args.output_dir, "best_hyperparams.json")
         json.dump(best_hp, open(cur_tune_path, "w"))
+        if args.save_hp_as_base:
+            json.dump(best_hp, open(task_output_dir, "w"))
         
-        # Save in the specialized directory for tracking all best HPs
+        # Save in another directory to track rounds
         hp_dir = "/fly/best_HPs/monarch_roberta_glue"
         groups = group.split(",")
         tune_round = groups[0] if "round" in groups[0] else group
@@ -625,11 +627,13 @@ def main(config: dict = None):
     ############################## Full training ##############################
     # NOTE: load best hyperparams from the group dir
     best_param_path = os.path.join(training_args.output_dir, "best_hyperparams.json")
+    base_param_path = os.path.join(task_output_dir, "best_hyperparams.json")
+    best_param_path = best_param_path if os.path.exists(best_param_path) else base_param_path
     if os.path.exists(best_param_path):
         best_hyperparams = json.load(open(best_param_path, "r"))  
         print(f"Loading best hyperparams from {best_param_path}: ", best_hyperparams)
         override_config([best_hyperparams], sys.argv[2:])
-        override_config([model_args, data_args, training_args], best_hyperparams)
+        override_config([model_args, data_args, training_args], best_hyperparams)        
     else:
         best_hyperparams = None
         logging.warning("No best hyperparams from HPO found. Using default configs.")
@@ -728,7 +732,7 @@ def main(config: dict = None):
                             writer.write(f"{index}\t{item}\n")
         print("Inferece time on test set: ", time.time() - t1)
 
-    print("Best hyperparameters: ", best_hyperparams)
+    print(f"Used best hyperparameters from {best_param_path}: ", best_hyperparams)
     print("peft_config: ", peft_config)
         
 if __name__ == "__main__":

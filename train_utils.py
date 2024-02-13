@@ -44,7 +44,8 @@ def parse_args():
     parser.add_argument("--project", default=None, help="For grouping wandb groups and runs")
     parser.add_argument("--full_group", default=None, help="Full group name for resuming eval (with date and task)")
     parser.add_argument("--time", default=None, help="For grouping wandb groups and runs. If not provided will use current time")
-    parser.add_argument("--tune_decay", type=eval, default=True, help="Whether to tune weight decay in ASHA")
+    parser.add_argument("--save_hp_as_base", default=False, type=eval, help="For HP tuning only. \
+                                Whether to save an extra copy in the dataset folder, which will be used by default")
     args, unknown = parser.parse_known_args()
     return args
 
