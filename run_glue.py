@@ -15,6 +15,7 @@ import wandb
 import random
 import sys
 import datasets
+import copy
 import numpy as np
 import shutil
 from datasets import load_dataset, load_metric
@@ -124,7 +125,7 @@ def main(config: dict = None):
     training_args.greater_is_better = True 
     
     # Set up wandb 
-    os.environ["WANDB_RUN_GROUP"] = get_run_group(data_args.task_name, do_tune, group, args.time) if not full_group else full_group
+    os.environ["WANDB_RUN_GROUP"] = get_run_group(data_args.task_name, do_tune, group, args.time, args.notes) if not full_group else full_group
     # If hostname.txt exists, upload to wandb
     if os.path.exists("hostname.txt"):
         hostname = open("hostname.txt", "r").readline().strip()
@@ -399,7 +400,7 @@ def main(config: dict = None):
             load_from_cache_file=not data_args.overwrite_cache,
             desc="Running tokenizer on dataset",
         )
-    if training_args.do_train:
+    if training_args.do_train or args.do_tune:
         if "train" not in raw_datasets:
             raise ValueError("--do_train requires a train dataset")
         train_dataset = raw_datasets["train"]
@@ -407,7 +408,7 @@ def main(config: dict = None):
             max_train_samples = min(len(train_dataset), data_args.max_train_samples)
             train_dataset = train_dataset.select(range(max_train_samples))
 
-    if training_args.do_eval:
+    if training_args.do_eval or args.do_tune:
         if "validation" not in raw_datasets and "validation_matched" not in raw_datasets:
             raise ValueError("--do_eval requires a validation dataset")
         eval_dataset = raw_datasets["validation_matched" if data_args.task_name == "mnli" else "validation"]
@@ -486,13 +487,20 @@ def main(config: dict = None):
         peft_config["adapter"] = False # Will not use merging adapter style
         
     
-    ############################## Ray Tune HP search ##############################
+    ############################ Ray Tune Hyperparameter optimization ############################
     if do_tune:
+        # clone args
+        # Avoid flooding the disk during HPO
+        tune_args = copy.deepcopy(training_args)
+        tune_args.save_total_limit = 0 
+        tune_args.load_best_model_at_end = False
+        tune_args.save_strategy = "no"
+        
         trainer = MyAwesomeTrainer(
             model_init=model_init,
-            args=training_args,
-            train_dataset=train_dataset if training_args.do_train else None,
-            eval_dataset=eval_dataset if training_args.do_eval else None,
+            args=tune_args,
+            train_dataset=train_dataset,
+            eval_dataset=eval_dataset,
             compute_metrics=compute_metrics,
             tokenizer=tokenizer,
             data_collator=data_collator,
@@ -500,7 +508,7 @@ def main(config: dict = None):
             new_lr=peft_config["new_lr"],
             use_scaler=peft_config["scaler"],
         )
-
+        
         # PEFT monarch search space
         if use_monarch:
             param_space = {
@@ -552,7 +560,7 @@ def main(config: dict = None):
             backend="ray",
             n_trials=n_trials, # under the hood it calls ray.tune.run(num_samples=n_trials, ...)
             scheduler=scheduler,
-            keep_checkpoints_num=1,
+            keep_checkpoints_num=0,
             checkpoint_score_attr="min-" + task_to_metric[data_args.task_name], # rank in decreasing order
             progress_reporter=reporter,
             resources_per_trial={"cpu": 1, "gpu": 0.5},
@@ -622,7 +630,8 @@ def main(config: dict = None):
                     shutil.rmtree(file_path)
                 else:
                     os.remove(file_path)
-        return # NOTE: Do NOT do training; use a separate command for this (in parrallel with next tune)
+        return
+    
     
     ############################## Full training ##############################
     # NOTE: load best hyperparams from the group dir
