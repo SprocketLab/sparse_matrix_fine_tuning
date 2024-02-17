@@ -40,6 +40,7 @@ def parse_args():
     parser.add_argument("--use_wandb", default=True, type=eval, help="Use Weights & Biases for logging")
     parser.add_argument("--adapter", default=True, type=eval, help="Use lora adapter style. If false will project dense to sparse ")
     parser.add_argument("--tune_unit", default="eval_iter", help="Budget unit for HPO.", choices=["time", "eval_iter"])
+    parser.add_argument("--n_trials", default=36, type=int, help="Number of trials for HPO")
     # Wandb grouping args
     parser.add_argument("--group", default="", help="For grouping wandb runs")
     parser.add_argument("--notes", default="", help="Notes to add to wandb run name" )
@@ -49,6 +50,7 @@ def parse_args():
     parser.add_argument("--as_base_hp", default=False, type=eval, help="For HP tuning only. \
                                 Whether to save an extra copy in the dataset folder, which will be used by other un-tuned runs default")
     parser.add_argument("--resume_tune", default=False, type=eval, help="Whether to resume Ray Tune from error")
+    parser.add_argument("--load_group", default=False, type=eval, help="Whether to load the full group name from group dir's full_group.txt")
     args, unknown = parser.parse_known_args()
     return args
 

@@ -23,28 +23,28 @@ fi
 # Run Python scripts with correctly formatted flags
 # Run HP tuning in foreground while full training in background in parallel
 python run_glue.py /fly/task_configs/glue_peft_configs/cola.json --project="monarch_glue_tune" --do_tune=True --do_train=False  "${FLAGS[@]}"
-CUDA_VISIBLE_DEVICES=1 python run_glue.py /fly/task_configs/glue_peft_configs/cola.json --project="monarch_glue_tune"  "${FLAGS[@]}" &
+CUDA_VISIBLE_DEVICES=1 python run_glue.py /fly/task_configs/glue_peft_configs/cola.json --project="monarch_glue_tune" --load_group=True  "${FLAGS[@]}" &
 
 python run_glue.py /fly/task_configs/glue_peft_configs/mrpc.json --project="monarch_glue_tune" --do_tune=True --do_train=False  "${FLAGS[@]}"
-CUDA_VISIBLE_DEVICES=1 python run_glue.py /fly/task_configs/glue_peft_configs/mrpc.json --project="monarch_glue_tune"  "${FLAGS[@]}" &
+CUDA_VISIBLE_DEVICES=1 python run_glue.py /fly/task_configs/glue_peft_configs/mrpc.json --project="monarch_glue_tune" --load_group=True  "${FLAGS[@]}" &
 
 python run_glue.py /fly/task_configs/glue_peft_configs/qnli.json --project="monarch_glue_tune" --do_tune=True --do_train=False  "${FLAGS[@]}"
-CUDA_VISIBLE_DEVICES=1 python run_glue.py /fly/task_configs/glue_peft_configs/qnli.json --project="monarch_glue_tune"  "${FLAGS[@]}" &
+CUDA_VISIBLE_DEVICES=1 python run_glue.py /fly/task_configs/glue_peft_configs/qnli.json --project="monarch_glue_tune" --load_group=True  "${FLAGS[@]}" &
 
 # python run_glue.py /fly/task_configs/glue_peft_configs/rte.json --project="monarch_glue_tune" --do_tune=True --do_train=False  "${FLAGS[@]}"
-# CUDA_VISIBLE_DEVICES=1 python run_glue.py /fly/task_configs/glue_peft_configs/rte.json --project="monarch_glue_tune"  "${FLAGS[@]}" &
+# CUDA_VISIBLE_DEVICES=1 python run_glue.py /fly/task_configs/glue_peft_configs/rte.json --project="monarch_glue_tune" --load_group=True  "${FLAGS[@]}" &
 
 python run_glue.py /fly/task_configs/glue_peft_configs/stsb.json --project="monarch_glue_tune" --do_tune=True --do_train=False  "${FLAGS[@]}"
-CUDA_VISIBLE_DEVICES=1 python run_glue.py /fly/task_configs/glue_peft_configs/stsb.json --project="monarch_glue_tune"  "${FLAGS[@]}" &
+CUDA_VISIBLE_DEVICES=1 python run_glue.py /fly/task_configs/glue_peft_configs/stsb.json --project="monarch_glue_tune" --load_group=True  "${FLAGS[@]}" &
 
 python run_glue.py /fly/task_configs/glue_peft_configs/sst-2.json --project="monarch_glue_tune" --do_tune=True --do_train=False  "${FLAGS[@]}"
-CUDA_VISIBLE_DEVICES=1 python run_glue.py /fly/task_configs/glue_peft_configs/sst-2.json --project="monarch_glue_tune"  "${FLAGS[@]}" &
+CUDA_VISIBLE_DEVICES=1 python run_glue.py /fly/task_configs/glue_peft_configs/sst-2.json --project="monarch_glue_tune --load_group=True"  "${FLAGS[@]}" &
 
 # python run_glue.py /fly/task_configs/glue_peft_configs/qqp.json  --project="monarch_glue_tune" --do_tune=True --do_train=False  "${FLAGS[@]}"
-# CUDA_VISIBLE_DEVICES=1 python run_glue.py /fly/task_configs/glue_peft_configs/qqp.json --project="monarch_glue_tune"  "${FLAGS[@]}" &
+# CUDA_VISIBLE_DEVICES=1 python run_glue.py /fly/task_configs/glue_peft_configs/qqp.json --project="monarch_glue_tune" --load_group=True  "${FLAGS[@]}" &
 
 # python run_glue.py /fly/task_configs/glue_peft_configs/mnli.json --project="monarch_glue_tune" --do_tune=True --do_train=False  "${FLAGS[@]}"
-# CUDA_VISIBLE_DEVICES=1 python run_glue.py /fly/task_configs/glue_peft_configs/mnli.json --project="monarch_glue_tune"  "${FLAGS[@]}" &
+# CUDA_VISIBLE_DEVICES=1 python run_glue.py /fly/task_configs/glue_peft_configs/mnli.json --project="monarch_glue_tune" --load_group=True  "${FLAGS[@]}" &
 
 
 # Most papers don't include WNLI

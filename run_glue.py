@@ -123,6 +123,7 @@ def main(config: dict = None):
     # Do NOT use loss as saving metric, maximize eval metric instead
     training_args.metric_for_best_model = task_to_metric[data_args.task_name] 
     training_args.greater_is_better = True 
+    training_args.optim = "adamw_torch" # forward compatibility
     
     # Set up wandb 
     os.environ["WANDB_RUN_GROUP"] = get_run_group(data_args.task_name, do_tune, group, args.time, args.notes) if not full_group else full_group
@@ -145,11 +146,15 @@ def main(config: dict = None):
     training_args.output_dir = os.path.join(task_output_dir, group)
     os.makedirs(training_args.output_dir, exist_ok=True)
     # For resuming HPO    
-    if training_args.do_train and args.resume_tune:
-        os.environ["WANDB_RUN_GROUP"] = open(os.path.join(training_args.output_dir, "full_group.txt"), "r").readline().strip()
+    if training_args.do_train and (args.resume_tune or args.load_group):
+        path = os.path.join(training_args.output_dir, "full_group.txt")
+        if os.path.exists(path):
+            os.environ["WANDB_RUN_GROUP"] = open(path, "r").readline().strip()
+        else:
+            logging.warning("No full_group.txt found in the output dir. Won't resume HPO/put this training run in the same wandb group.")
     
     # Logging and checkpointing
-    setup_logging_ckpt(training_args, logger)
+    last_checkpoint = setup_logging_ckpt(training_args, logger)
     # Get the datasets: you can either provide your own CSV/JSON training and evaluation files (see below)
     # or specify a GLUE benchmark task (the dataset will be downloaded automatically from the datasets Hub).
     #
@@ -485,7 +490,7 @@ def main(config: dict = None):
                 "weight_decay": 1e-3, # After 2nd HPO, all runs converged to 1e-3 #tune.choice([0.1, 0.01, 1e-3]),
                 "lr_scheduler_type": tune.choice(["cosine", "linear"]), # mostly linear underperforms
             }
-            n_trials = 36
+            n_trials = args.n_trials
             
         else:
             # Raw finetuning
@@ -500,11 +505,11 @@ def main(config: dict = None):
         
         # Set up scheduler and reporter etc.
         direction = "max"
-        max_t = 40 * 60 if tune_unit == "time" else 15 # mins or eval iterations
+        max_t = 40 * 60 if tune_unit == "time" else 0.5 # mins or eval iterations
         if data_args.task_name == "mrpc":
             max_t = 30 * 60 if tune_unit == "time" else 12
             
-        grade_period = 5 * 60  if tune_unit == "time" else 4
+        grade_period = 5 * 60  if tune_unit == "time" else 0.5
         time_attr = "time_total_s" if tune_unit == "time" else "training_iteration"
         scheduler = ASHAScheduler(
             time_attr=time_attr,
@@ -579,24 +584,24 @@ def main(config: dict = None):
         json.dump(best_hp, open(hp_dir, "w"))
         
         # Remove all but the best tune ckpt 
-        summary = best_run.run_summary
-        summary.default_mode = "max"
-        summary.default_metric = task_to_metric[data_args.task_name]
-        ckpt = summary.get_best_checkpoint(summary.get_best_trial())
+        # summary = best_run.run_summary
+        # summary.default_mode = "max"
+        # summary.default_metric = task_to_metric[data_args.task_name]
+        # ckpt = summary.get_best_checkpoint(summary.get_best_trial())
         
-        # Remove non-best checkpoints to save space
-        # Disassemble the path
-        path = ckpt.path.split("/")
-        tune_dir = ("/").join(path[:-2]) # The dir for all trials in a tune search
-        trial_name = path[-2]
-        checkpoint_num = path[-1]
-        for name in os.listdir(tune_dir):
-            if name != trial_name:
-                file_path = os.path.join(tune_dir, name)
-                if os.path.isdir(file_path):
-                    shutil.rmtree(file_path)
-                else:
-                    os.remove(file_path)
+        # # Remove non-best checkpoints to save space
+        # # Disassemble the path
+        # path = ckpt.path.split("/")
+        # tune_dir = ("/").join(path[:-2]) # The dir for all trials in a tune search
+        # trial_name = path[-2]
+        # checkpoint_num = path[-1]
+        # for name in os.listdir(tune_dir):
+        #     if name != trial_name:
+        #         file_path = os.path.join(tune_dir, name)
+        #         if os.path.isdir(file_path):
+        #             shutil.rmtree(file_path)
+        #         else:
+        #             os.remove(file_path)
         
         # Save full tune group name for resuming
         with open(os.path.join(training_args.output_dir, "full_group.txt"), "w") as f:
