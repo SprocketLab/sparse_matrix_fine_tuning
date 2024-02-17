@@ -35,18 +35,20 @@ def parse_args():
     parser.add_argument("config_path", help="path to the GLUE task config file under task_configs/glue_peft_configs")
 
     # Add optional arguments
-    parser.add_argument("--use_monarch", type=eval, default="True", help="Use monarch. Mostly you want this (default: True)")
-    parser.add_argument("--do_tune", type=eval, default="False", help="Whether to do Hyperparameter optimization (HPO) using ray tune.")
-    parser.add_argument("--use_wandb", type=eval, default="True", help="Use Weights & Biases for logging")
-    parser.add_argument("--adapter", type=eval, default="True", help="Use lora adapter style. If false will project dense to sparse ")
+    parser.add_argument("--use_monarch", default=True, type=eval, help="Use monarch. Mostly you want this (default: True)")
+    parser.add_argument("--do_tune", default=False, type=eval, help="Whether to do Hyperparameter optimization (HPO) using ray tune.")
+    parser.add_argument("--use_wandb", default=True, type=eval, help="Use Weights & Biases for logging")
+    parser.add_argument("--adapter", default=True, type=eval, help="Use lora adapter style. If false will project dense to sparse ")
     parser.add_argument("--tune_unit", default="eval_iter", help="Budget unit for HPO.", choices=["time", "eval_iter"])
+    # Wandb grouping args
     parser.add_argument("--group", default="", help="For grouping wandb runs")
     parser.add_argument("--notes", default="", help="Notes to add to wandb run name" )
     parser.add_argument("--project", default=None, help="For grouping wandb groups and runs")
     parser.add_argument("--full_group", default=None, help="Full group name for resuming eval (with date and task)")
     parser.add_argument("--time", default=None, help="For grouping wandb groups and runs. If not provided will use current time")
-    parser.add_argument("--save_hp_as_base", default=False, type=eval, help="For HP tuning only. \
-                                Whether to save an extra copy in the dataset folder, which will be used by default")
+    parser.add_argument("--as_base_hp", default=False, type=eval, help="For HP tuning only. \
+                                Whether to save an extra copy in the dataset folder, which will be used by other un-tuned runs default")
+    parser.add_argument("--resume_tune", default=False, type=eval, help="Whether to resume Ray Tune from error")
     args, unknown = parser.parse_known_args()
     return args
 

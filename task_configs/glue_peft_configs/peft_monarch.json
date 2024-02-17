@@ -5,7 +5,7 @@
     "square": false,
     "nblocks": 4,
     "blk_r": 4,
-    "blk_sz": 256,
+    "blk_sz": null,
 
     "layers_to_adapt": [
         "query",

@@ -34,8 +34,9 @@ from transformers import (
     get_cosine_with_hard_restarts_schedule_with_warmup
 )
 from src.models.modeling_roberta import RobertaForSequenceClassification
+from src.hf_setup import setup_logging_ckpt
 from transformers.trainer_utils import get_last_checkpoint
-from transformers.utils import check_min_version, send_example_telemetry
+from transformers.utils import check_min_version
 from transformers.utils.versions import require_version
 from train_utils import (
     param_stats,
@@ -119,14 +120,13 @@ def main(config: dict = None):
         peft_config["layers_to_adapt"] = ["query", "value"]
     if peft_config["mlp"]:
         peft_config["layers_to_adapt"] += ["dense"]
-            
     # Do NOT use loss as saving metric, maximize eval metric instead
     training_args.metric_for_best_model = task_to_metric[data_args.task_name] 
     training_args.greater_is_better = True 
     
     # Set up wandb 
     os.environ["WANDB_RUN_GROUP"] = get_run_group(data_args.task_name, do_tune, group, args.time, args.notes) if not full_group else full_group
-    # If hostname.txt exists, upload to wandb
+    # Upload host machine to wandb for locating ckpts
     if os.path.exists("hostname.txt"):
         hostname = open("hostname.txt", "r").readline().strip()
         os.environ["WANDB_HOST"] = hostname
@@ -144,50 +144,12 @@ def main(config: dict = None):
     task_output_dir = os.path.join(training_args.output_dir, data_args.task_name)
     training_args.output_dir = os.path.join(task_output_dir, group)
     os.makedirs(training_args.output_dir, exist_ok=True)
+    # For resuming HPO    
+    if training_args.do_train and args.resume_tune:
+        os.environ["WANDB_RUN_GROUP"] = open(os.path.join(training_args.output_dir, "full_group.txt"), "r").readline().strip()
     
-    # Sending telemetry. Tracking the example usage helps us better allocate resources to maintain them. The
-    # information sent is the one passed as arguments along with your Python/PyTorch versions.
-    send_example_telemetry("run_glue", model_args, data_args)
-
-    # Setup logging
-    logging.basicConfig(
-        format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
-        datefmt="%m/%d/%Y %H:%M:%S",
-        handlers=[logging.StreamHandler(sys.stdout)],
-    )
-
-    log_level = training_args.get_process_log_level()
-    logger.setLevel(log_level)
-    datasets.utils.logging.set_verbosity(log_level)
-    transformers.utils.logging.set_verbosity(log_level)
-    transformers.utils.logging.enable_default_handler()
-    transformers.utils.logging.enable_explicit_format()
-
-    # Log on each process the small summary:
-    logger.warning(
-        f"Process rank: {training_args.local_rank}, device: {training_args.device}, n_gpu: {training_args.n_gpu}"
-        + f"distributed training: {bool(training_args.local_rank != -1)}, 16-bits training: {training_args.fp16}"
-    )
-    logger.info(f"Training/evaluation parameters {training_args}")
-
-    # Detecting last checkpoint.
-    last_checkpoint = None
-    if os.path.isdir(training_args.output_dir) and training_args.do_train and not training_args.overwrite_output_dir:
-        last_checkpoint = get_last_checkpoint(training_args.output_dir)
-        if last_checkpoint is None and len(os.listdir(training_args.output_dir)) > 0:
-            raise ValueError(
-                f"Output directory ({training_args.output_dir}) already exists and is not empty. "
-                "Use --overwrite_output_dir to overcome."
-            )
-        elif last_checkpoint is not None and training_args.resume_from_checkpoint is None:
-            logger.info(
-                f"Checkpoint detected, resuming training at {last_checkpoint}. To avoid this behavior, change "
-                "the `--output_dir` or add `--overwrite_output_dir` to train from scratch."
-            )
-
-    # Set seed before initializing model.
-    set_seed(training_args.seed)
-
+    # Logging and checkpointing
+    setup_logging_ckpt(training_args, logger)
     # Get the datasets: you can either provide your own CSV/JSON training and evaluation files (see below)
     # or specify a GLUE benchmark task (the dataset will be downloaded automatically from the datasets Hub).
     #
@@ -294,6 +256,7 @@ def main(config: dict = None):
         revision=model_args.model_revision,
         use_auth_token=True if model_args.use_auth_token else None,
     )
+    
     
     # helper to init and set hyperparams for Ray Tune search
     def model_init(hyperparams = None):
@@ -517,12 +480,12 @@ def main(config: dict = None):
                 # "large_lr": tune.sample_from(lambda _: np.random.uniform() > 0.4),
                 "large_lr": False,
                 # "num_train_epochs": tune.choice([20, 25]),
-                "learning_rate": tune.quniform(2e-5, 6e-4, 2e-5),
-                "per_device_train_batch_size": tune.choice([8, 16, 32]), # In Monarch-Mixer they mixed 32 and 16 
+                "learning_rate": tune.quniform(2e-5, 6e-4, 2e-5), # 29 choices
+                "per_device_train_batch_size": tune.choice([16, 32]), # In Monarch-Mixer they mixed 32 and 16 
                 "weight_decay": 1e-3, # After 2nd HPO, all runs converged to 1e-3 #tune.choice([0.1, 0.01, 1e-3]),
                 "lr_scheduler_type": tune.choice(["cosine", "linear"]), # mostly linear underperforms
             }
-            n_trials = 40
+            n_trials = 36
             
         else:
             # Raw finetuning
@@ -537,7 +500,10 @@ def main(config: dict = None):
         
         # Set up scheduler and reporter etc.
         direction = "max"
-        max_t = 45 * 60 if tune_unit == "time" else 15 # mins or eval iterations
+        max_t = 40 * 60 if tune_unit == "time" else 15 # mins or eval iterations
+        if data_args.task_name == "mrpc":
+            max_t = 30 * 60 if tune_unit == "time" else 12
+            
         grade_period = 5 * 60  if tune_unit == "time" else 4
         time_attr = "time_total_s" if tune_unit == "time" else "training_iteration"
         scheduler = ASHAScheduler(
@@ -568,7 +534,8 @@ def main(config: dict = None):
             name=os.environ["WANDB_RUN_GROUP"],
             max_failures=50, # tolerate OOM
             # callbacks=[WandbLoggerCallback(project=os.environ["WANDB_PROJECT"], group=os.environ["WANDB_RUN_GROUP"])],
-            direction="maximize" 
+            direction="maximize",
+            resume=args.resume_tune 
         )
         best_hp = best_run.hyperparameters
         
@@ -596,10 +563,10 @@ def main(config: dict = None):
             
         # Save the best hyperparams for full training 
         print("Best hyperparameters: ", best_hp)
-        # Save in the specific run dir
+        # Save in the run dir
         cur_tune_path = os.path.join(training_args.output_dir, "best_hyperparams.json")
         json.dump(best_hp, open(cur_tune_path, "w"))
-        if args.save_hp_as_base:
+        if args.as_base_hp:
             json.dump(best_hp, open(task_output_dir, "w"))
         
         # Save in another directory to track rounds
@@ -630,14 +597,21 @@ def main(config: dict = None):
                     shutil.rmtree(file_path)
                 else:
                     os.remove(file_path)
-        return
+        
+        # Save full tune group name for resuming
+        with open(os.path.join(training_args.output_dir, "full_group.txt"), "w") as f:
+            f.write(os.environ["WANDB_RUN_GROUP"])
     
     
     ############################## Full training ##############################
-    # NOTE: load best hyperparams from the group dir
+    # load best hyperparams for the group
     best_param_path = os.path.join(training_args.output_dir, "best_hyperparams.json")
     base_param_path = os.path.join(task_output_dir, "best_hyperparams.json")
-    best_param_path = best_param_path if os.path.exists(best_param_path) else base_param_path
+    if not os.path.exists(best_param_path):
+        logging.warning("No hyperparams for this group found. Using best HP for the default configuration for this dataset.\
+                        This may be unintended due to a typo. (Check group name carefully)")
+        best_param_path = base_param_path
+        
     if os.path.exists(best_param_path):
         best_hyperparams = json.load(open(best_param_path, "r"))  
         print(f"Loading best hyperparams from {best_param_path}: ", best_hyperparams)

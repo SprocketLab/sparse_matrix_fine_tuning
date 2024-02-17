@@ -119,17 +119,19 @@ class MonarchLinear(StructuredLinear):
         self.lora_style_init = peft_config.get("lora_style_init", False)
         self.scaler_type = peft_config.get("scaler_type", "scaler")
         self.use_mult_factor = peft_config.get("use_mult_factor", False)
-        
-        self.use_scaler = self.use_scaler or self.use_mult_factor
-        assert self.scaler_type in ["scaler", "diag"]
-        
         self.merged = False
+        self.use_scaler = self.use_scaler or self.use_mult_factor
+        
+        assert self.scaler_type in ["scaler", "diag"]
         assert self.blk_r <= min(
             self.in_blksz, self.out_blksz
         ), "rank must be smaller than the smaller block size"
         
-        # Init weights
-        self.nblocks = (self.in_features + self.in_blksz - 1) // self.in_blksz # effectively throw away blocks that are fully padded 
+        
+        # Init block-diagonal monarch factors 
+        if self.nblocks * self.in_blksz > self.in_features:
+            # effectively throw away blocks that are fully padded 
+            self.nblocks = (self.in_features + self.in_blksz - 1) // self.in_blksz 
         self.blkdiag1 = nn.Parameter(
                 torch.zeros(self.nblocks, self.mid_blksz, self.in_blksz, device=self.device) # (nblocks, r * nblocks , in_features / nblocks)
         )  
@@ -137,14 +139,15 @@ class MonarchLinear(StructuredLinear):
                 torch.zeros(self.nblocks, self.out_blksz, self.mid_blksz, device=self.device) # (nblocks, out_features / nblocks, r * nblocks)
         )
         
+        # init a batch of identity matrices as a multiplicative factor
+        # X @ W @ M_mult + X @ M1 @ M2 * scaler
+        # (nblocks, out_features / nblocks, in_features / nblocks)
         if self.use_mult_factor:
-            # init a batch of identity matrices as a multiplicative factor
-            # X @ W @ M_mult + X @ M1 @ M2 * scaler
-            # (nblocks, out_features / nblocks, in_features / nblocks)
             self.blkdiag_mult = nn.Parameter(
                 torch.eye(self.out_blksz, self.in_blksz, device=self.device).repeat(nblocks, 1, 1)
             )
-            
+        
+        # initialize frozen dense weights
         self.reset_parameters()
         if weights is not None:
             if self.use_adapter:
@@ -153,7 +156,7 @@ class MonarchLinear(StructuredLinear):
                 self.set_weights_from_dense_init(weights, self.blk_r)
         self.to(device)
         
-        # Set a scaling matrix
+        # Initialize scaling (vector or a scaler)
         if self.use_scaler: 
             if self.lora_style_init:
                 raise ValueError("LoRA init already zeroed out; no need for scaler")
@@ -167,6 +170,9 @@ class MonarchLinear(StructuredLinear):
 
 
     def reset_parameters(self) -> None:
+        """
+        Initialize block-diagonal weights and biases
+        """
         monarch_factors = [self.blkdiag1]
         if self.use_scaler:
             monarch_factors.append(self.blkdiag2) # zero init the scaler only
@@ -195,13 +201,10 @@ class MonarchLinear(StructuredLinear):
         self.reset_parameters_bias()
 
 
-    @property
-    def saving(self):
-        return (self.blkdiag1.numel() + self.blkdiag2.numel()) / (
-            self.in_features * self.out_features
-        )
-
     def monarch_forward(self, x):
+        """
+        Forward using monarch factors only
+        """
         output = blockdiag_butterfly_multiply(
             self.preprocess(x), self.blkdiag1, self.blkdiag2
         )
@@ -224,6 +227,7 @@ class MonarchLinear(StructuredLinear):
         assert blkdiag1.shape == self.blkdiag1.shape and blkdiag2.shape == self.blkdiag2.shape, "Projected monarch shapes do not match original shapes"
         self.blkdiag1 = nn.Parameter(blkdiag1)
         self.blkdiag2 = nn.Parameter(blkdiag2)
+        
         
     def train(self, mode: bool = True):
         """
@@ -278,3 +282,9 @@ class MonarchLinear(StructuredLinear):
         if in_features < self.nblocks * self.in_blksz:
             x = F.pad(x, (0, self.nblocks * self.in_blksz - in_features))
         return x
+    
+    @property
+    def saving(self):
+        return (self.blkdiag1.numel() + self.blkdiag2.numel()) / (
+            self.in_features * self.out_features
+        )
