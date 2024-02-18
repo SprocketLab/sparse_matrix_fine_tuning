@@ -145,14 +145,16 @@ def main(config: dict = None):
     task_output_dir = os.path.join(training_args.output_dir, data_args.task_name)
     training_args.output_dir = os.path.join(task_output_dir, group)
     os.makedirs(training_args.output_dir, exist_ok=True)
+    
     # For resuming HPO    
-    if training_args.do_train and (args.resume_tune or args.load_group):
+    if args.resume_tune or args.load_group:
         path = os.path.join(training_args.output_dir, "full_group.txt")
         if os.path.exists(path):
             os.environ["WANDB_RUN_GROUP"] = open(path, "r").readline().strip()
+            logging.info("Loading wandb run group: ", os.environ["WANDB_RUN_GROUP"])
         else:
             logging.warning("No full_group.txt found in the output dir. Won't resume HPO/put this training run in the same wandb group.")
-    
+            args.resume_tune = args.load_group = False
     # Logging and checkpointing
     last_checkpoint = setup_logging_ckpt(training_args, logger)
     # Get the datasets: you can either provide your own CSV/JSON training and evaluation files (see below)
