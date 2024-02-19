@@ -95,7 +95,6 @@ logger = logging.getLogger(__name__)
 
 
 def main(config: dict = None):
-    
     ############################## Command line args ##############################
     # Example usage: python run_glue_hf.py task_configs/cola.json 
     args = parse_args()
@@ -136,16 +135,21 @@ def main(config: dict = None):
         
     if full_group:
         group = ("_").join(full_group.split("_")[1:-1] if not full_group.startswith("tune") else full_group.split("_")[2:-1])
+        
     if do_tune:
         assert tune_unit in ["time", "eval_iter"], "max_t (resources) must be either time or eval iteration"
+        print("Tuning hyperparameters for", data_args.task_name)
+    else:
+        print("Full training for", data_args.task_name)
+        
     if not use_wandb:
         print("Disabling wandb")
         os.environ["WANDB_MODE"] = "disabled"
-    
+        
     task_output_dir = os.path.join(training_args.output_dir, data_args.task_name)
     training_args.output_dir = os.path.join(task_output_dir, group)
     os.makedirs(training_args.output_dir, exist_ok=True)
-    
+
     # For resuming HPO    
     if args.resume_tune or args.load_group:
         path = os.path.join(training_args.output_dir, "full_group.txt")
