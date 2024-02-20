@@ -41,6 +41,7 @@ def parse_args():
     parser.add_argument("--adapter", default=True, type=eval, help="Use lora adapter style. If false will project dense to sparse ")
     parser.add_argument("--tune_unit", default="eval_iter", help="Budget unit for HPO.", choices=["time", "eval_iter"])
     parser.add_argument("--n_trials", default=36, type=int, help="Number of trials for HPO")
+    parser.add_argument("--gpus_per_trial", default=0.5, type=float, help="Number of GPUs to use per HPO trial")
     # Wandb grouping args
     parser.add_argument("--group", default="", help="For grouping wandb runs")
     parser.add_argument("--notes", default="", help="Notes to add to wandb run name" )
