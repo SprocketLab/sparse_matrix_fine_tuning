@@ -511,11 +511,11 @@ def main(config: dict = None):
         
         # Set up scheduler and reporter etc.
         direction = "max"
-        max_t = 40 * 60 if tune_unit == "time" else 0.5 # mins or eval iterations
+        max_t = 40 * 60 if tune_unit == "time" else 15 # mins or eval iterations
         if data_args.task_name == "mrpc":
             max_t = 30 * 60 if tune_unit == "time" else 12
             
-        grade_period = 5 * 60  if tune_unit == "time" else 0.5
+        grade_period = 5 * 60  if tune_unit == "time" else 4
         time_attr = "time_total_s" if tune_unit == "time" else "training_iteration"
         scheduler = ASHAScheduler(
             time_attr=time_attr,

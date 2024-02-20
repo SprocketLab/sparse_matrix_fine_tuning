@@ -28,24 +28,25 @@ def setup_logging_ckpt(training_args: TrainingArguments, logger: Logger, do_tune
     transformers.utils.logging.enable_default_handler()
     transformers.utils.logging.enable_explicit_format()
     
-    if do_tune:
-        # Set Ray Tune object spilling (memory offloading) 
-        ray.init(
-            _system_config={
-                # Allow spilling until the local disk is 99% utilized.
-                # This only affects spilling to the local file system.
-                "local_fs_capacity_threshold": 0.99,
-                "max_io_workers": 6,
-                "object_spilling_config": json.dumps(
-                    {
-                    "type": "filesystem",
-                    "params": {
-                        "directory_path": "/tmp/spill",
-                    }
-                    },
-                )
-            },
-        )
+    # NOTE: This seem to be blocking wandb upload
+    # if do_tune:
+    #     # Set Ray Tune object spilling (memory offloading) 
+    #     ray.init(
+    #         _system_config={
+    #             # Allow spilling until the local disk is 99% utilized.
+    #             # This only affects spilling to the local file system.
+    #             "local_fs_capacity_threshold": 0.99,
+    #             "max_io_workers": 6,
+    #             "object_spilling_config": json.dumps(
+    #                 {
+    #                 "type": "filesystem",
+    #                 "params": {
+    #                     "directory_path": "/tmp/spill",
+    #                 }
+    #                 },
+    #             )
+    #         },
+    #     )
     
     # Log on each process the small summary:
     logger.warning(
