@@ -30,8 +30,6 @@ from transformers import (
     TrainingArguments,
     default_data_collator,
     set_seed,
-    Trainer,
-    get_cosine_with_hard_restarts_schedule_with_warmup
 )
 from src.models.modeling_roberta import RobertaForSequenceClassification
 from src.hf_setup import setup_logging_ckpt
@@ -160,7 +158,7 @@ def main(config: dict = None):
             logging.warning("No full_group.txt found in the output dir. Won't resume HPO/put this training run in the same wandb group.")
             args.resume_tune = args.load_group = False
     # Logging and checkpointing
-    last_checkpoint = setup_logging_ckpt(training_args, logger)
+    last_checkpoint = setup_logging_ckpt(training_args, logger, do_tune)
     # Get the datasets: you can either provide your own CSV/JSON training and evaluation files (see below)
     # or specify a GLUE benchmark task (the dataset will be downloaded automatically from the datasets Hub).
     #
@@ -495,6 +493,8 @@ def main(config: dict = None):
                 "per_device_train_batch_size": tune.choice([16, 32]), # In Monarch-Mixer they mixed 32 and 16 
                 "weight_decay": 1e-3, # After 2nd HPO, all runs converged to 1e-3 #tune.choice([0.1, 0.01, 1e-3]),
                 "lr_scheduler_type": tune.choice(["cosine", "linear"]), # mostly linear underperforms
+                "blk_r": peft_config["blk_r"],
+                "nblocks": peft_config["nblocks"],
             }
             n_trials = args.n_trials
             

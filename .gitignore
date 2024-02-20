@@ -24,3 +24,5 @@ hostname.txt
 rllab/**
 req.txt
 *.pt
+log.txt
+logs.txt
