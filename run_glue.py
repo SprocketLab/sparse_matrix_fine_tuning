@@ -131,6 +131,7 @@ def main(config: dict = None):
     elif use_wandb:
         logging.warning("Try adding a hostname.txt (hostname > hostname.txt), or wandb will use random id from docker.")
         
+        
     if full_group:
         group = ("_").join(full_group.split("_")[1:-1] if not full_group.startswith("tune") else full_group.split("_")[2:-1])
         
@@ -152,11 +153,12 @@ def main(config: dict = None):
     if args.resume_tune or args.load_group:
         path = os.path.join(training_args.output_dir, "full_group.txt")
         if os.path.exists(path):
-            os.environ["WANDB_RUN_GROUP"] = open(path, "r").readline().strip()
+            full_group = os.environ["WANDB_RUN_GROUP"] = open(path, "r").readline().strip()
             logging.info("Loading wandb run group: ", os.environ["WANDB_RUN_GROUP"])
         else:
             logging.warning("No full_group.txt found in the output dir. Won't resume HPO/put this training run in the same wandb group.")
             args.resume_tune = args.load_group = False
+
     # Logging and checkpointing
     last_checkpoint = setup_logging_ckpt(training_args, logger, do_tune)
     # Get the datasets: you can either provide your own CSV/JSON training and evaluation files (see below)
@@ -461,6 +463,10 @@ def main(config: dict = None):
     
     ############################ Ray Tune Hyperparameter optimization ############################
     if do_tune:
+        # Save full tune group name for resuming
+        with open(os.path.join(training_args.output_dir, "full_group.txt"), "w") as f:
+            f.write(os.environ["WANDB_RUN_GROUP"])
+            
         # clone args
         # Avoid flooding the disk during HPO
         tune_args = copy.deepcopy(training_args)
@@ -496,8 +502,10 @@ def main(config: dict = None):
                 "blk_r": peft_config["blk_r"],
                 "nblocks": peft_config["nblocks"],
             }
-            n_trials = args.n_trials
-            
+            n_trials = args.n_trials # 36 by default
+                # block size = {256, 128, 64}
+                # block rank = {4, 2, 8}
+                # n_trials = 40
         else:
             # Raw finetuning
             param_space = {
@@ -514,8 +522,9 @@ def main(config: dict = None):
         max_t = 40 * 60 if tune_unit == "time" else 15 # mins or eval iterations
         if data_args.task_name == "mrpc":
             max_t = 30 * 60 if tune_unit == "time" else 12
-            
-        grade_period = 5 * 60  if tune_unit == "time" else 4
+        elif data_args.task_name == "stsb":
+            max_t = 25 * 60 if tune_unit == "time" else 11
+        grade_period = 4 * 60  if tune_unit == "time" else 3
         time_attr = "time_total_s" if tune_unit == "time" else "training_iteration"
         scheduler = ASHAScheduler(
             time_attr=time_attr,
@@ -608,10 +617,6 @@ def main(config: dict = None):
         #             shutil.rmtree(file_path)
         #         else:
         #             os.remove(file_path)
-        
-        # Save full tune group name for resuming
-        with open(os.path.join(training_args.output_dir, "full_group.txt"), "w") as f:
-            f.write(os.environ["WANDB_RUN_GROUP"])
     
     
     ############################## Full training ##############################
