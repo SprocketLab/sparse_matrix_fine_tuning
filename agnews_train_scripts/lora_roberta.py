@@ -17,7 +17,7 @@ from transformers import (
 )
 import json
 import loralib
-from train_utils import *
+from agnews_utils import *
 import time
 
 device = "cuda" if torch.cuda.is_available() else "cpu"

@@ -7,17 +7,14 @@ import warnings
 warnings.warn = warn
 
 import json
-import transformers
 import time
 import logging
 import os
-import wandb
 import random
 import sys
-import datasets
+import glob
 import copy
 import numpy as np
-import shutil
 from datasets import load_dataset, load_metric
 from transformers import (
     AutoConfig,
@@ -37,7 +34,6 @@ from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version
 from transformers.utils.versions import require_version
 from train_utils import (
-    param_stats,
     override_config,
     MyAwesomeTrainer,
     get_run_group,
@@ -45,6 +41,7 @@ from train_utils import (
     DataTrainingArguments,
     ModelArguments,
     task_to_keys,
+    replace_with_symlink
 )
 import torch
 from ray import train, tune
@@ -60,10 +57,9 @@ torch.backends.cudnn.deterministic = True
 
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
 check_min_version("4.21.0.dev0")
-
 require_version("datasets>=1.8.0", "To fix: pip install -r examples/pytorch/text-classification/requirements.txt")
 
-
+best_hyperparams: dict = None
 task_to_submit = {
     "cola": "CoLA",
     "mnli": "MNLI-m",
@@ -154,7 +150,9 @@ def main(config: dict = None):
         path = os.path.join(training_args.output_dir, "full_group.txt")
         if os.path.exists(path):
             full_group = os.environ["WANDB_RUN_GROUP"] = open(path, "r").readline().strip()
-            logging.info("Loading wandb run group: ", os.environ["WANDB_RUN_GROUP"])
+            if "tune" in full_group:
+                project = "monarch_glue_tune" 
+            print("Loading wandb run group: ", os.environ["WANDB_RUN_GROUP"])
         else:
             logging.warning("No full_group.txt found in the output dir. Won't resume HPO/put this training run in the same wandb group.")
             args.resume_tune = args.load_group = False
@@ -270,8 +268,13 @@ def main(config: dict = None):
     
     
     # helper to init and set hyperparams for Ray Tune search
-    def model_init(hyperparams = None):
+    def model_init(hyperparams: dict = None):
         set_seed(training_args.seed)
+        if hyperparams is None:
+            global best_hyperparams
+        else:
+            best_hyperparams = hyperparams
+            
         model = RobertaForSequenceClassification.from_pretrained(
             pretrained_model_name_or_path=model_args.model_name_or_path,
             from_tf=bool(".ckpt" in model_args.model_name_or_path),
@@ -283,11 +286,11 @@ def main(config: dict = None):
         )
         
         # Hyperparameter search
-        if hyperparams is not None:
+        if best_hyperparams is not None:
             for k in peft_config.keys():
-                if k in hyperparams.keys() and hyperparams[k] != peft_config[k]:
-                    print("Overriding {} = {} from best HP".format(k, hyperparams[k]))
-                    peft_config[k] = hyperparams[k]
+                if k in best_hyperparams.keys() and best_hyperparams[k] != peft_config[k]:
+                    print("Overriding {} = {} from best HP".format(k, best_hyperparams[k]))
+                    peft_config[k] = best_hyperparams[k]
 
         if use_monarch:
             model.roberta.set_peft_config(peft_config)
@@ -506,8 +509,13 @@ def main(config: dict = None):
                 # block size = {256, 128, 64}
                 # block rank = {4, 2, 8}
                 # n_trials = 40
+            if args.tune_blk_config:
+                param_space["blk_r"] = tune.choice([1, 2, 4, 8])
+                param_space["blk_sz"] = tune.choice([64, 128, 512])
+                param_space["lr_scheduler_type"] = "cosine"
+                n_trials += 10
         else:
-            # Raw finetuning
+            # Vanilla finetuning
             param_space = {
                 "learning_rate": tune.grid_search([1e-5, 2e-5, 3e-5]),
                 "per_device_train_batch_size": tune.grid_search([16, 32]),
@@ -522,8 +530,9 @@ def main(config: dict = None):
         max_t = 40 * 60 if tune_unit == "time" else 15 # mins or eval iterations
         if data_args.task_name == "mrpc":
             max_t = 30 * 60 if tune_unit == "time" else 12
-        elif data_args.task_name == "stsb":
+        elif data_args.task_name == "stsb" or data_args.task_name == "cola":
             max_t = 25 * 60 if tune_unit == "time" else 11
+            
         grade_period = 4 * 60  if tune_unit == "time" else 3
         time_attr = "time_total_s" if tune_unit == "time" else "training_iteration"
         scheduler = ASHAScheduler(
@@ -558,65 +567,14 @@ def main(config: dict = None):
             resume=args.resume_tune 
         )
         best_hp = best_run.hyperparameters
-        
-        
-        # NOTE:Do NOT tune weight decay as they all converge to 0.1
-        # if args.tune_decay:
-        #     param_space = best_hp
-        #     param_space["weight_decay"] = tune.grid_search([0.01, 1e-3])
-        #     best_run = trainer.hyperparameter_search(
-        #         hp_space=lambda _: param_space,
-        #         backend="ray",
-        #         n_trials=1,
-        #         scheduler=scheduler,
-        #         keep_checkpoints_num=1,
-        #         checkpoint_score_attr="min-" + task_to_metric[data_args.task_name], # rank in decreasing order
-        #         progress_reporter=reporter,
-        #         resources_per_trial={"cpu": 1, "gpu": 0.5},
-        #         local_dir="ray_results",
-        #         name=os.environ["WANDB_RUN_GROUP"],
-        #         max_failures=50, # tolerate OOM
-        #         # callbacks=[WandbLoggerCallback(project=os.environ["WANDB_PROJECT"], group=os.environ["WANDB_RUN_GROUP"])],
-        #         direction="maximize" 
-        #     )
-        #     best_hp = best_run.hyperparameters
             
-        # Save the best hyperparams for full training 
+        # Save the best HP for full training 
         print("Best hyperparameters: ", best_hp)
         # Save in the run dir
         cur_tune_path = os.path.join(training_args.output_dir, "best_hyperparams.json")
         json.dump(best_hp, open(cur_tune_path, "w"))
         if args.as_base_hp:
             json.dump(best_hp, open(task_output_dir, "w"))
-        
-        # Save in another directory to track rounds
-        hp_dir = "/fly/best_HPs/monarch_roberta_glue"
-        groups = group.split(",")
-        tune_round = groups[0] if "round" in groups[0] else group
-        hp_dir = os.path.join(hp_dir, tune_round)
-        os.makedirs(hp_dir, exist_ok=True)
-        hp_dir = os.path.join(hp_dir, data_args.task_name + ".json")
-        json.dump(best_hp, open(hp_dir, "w"))
-        
-        # Remove all but the best tune ckpt 
-        # summary = best_run.run_summary
-        # summary.default_mode = "max"
-        # summary.default_metric = task_to_metric[data_args.task_name]
-        # ckpt = summary.get_best_checkpoint(summary.get_best_trial())
-        
-        # # Remove non-best checkpoints to save space
-        # # Disassemble the path
-        # path = ckpt.path.split("/")
-        # tune_dir = ("/").join(path[:-2]) # The dir for all trials in a tune search
-        # trial_name = path[-2]
-        # checkpoint_num = path[-1]
-        # for name in os.listdir(tune_dir):
-        #     if name != trial_name:
-        #         file_path = os.path.join(tune_dir, name)
-        #         if os.path.isdir(file_path):
-        #             shutil.rmtree(file_path)
-        #         else:
-        #             os.remove(file_path)
     
     
     ############################## Full training ##############################
@@ -629,6 +587,7 @@ def main(config: dict = None):
         best_param_path = base_param_path
         
     if os.path.exists(best_param_path):
+        global best_hyperparams
         best_hyperparams = json.load(open(best_param_path, "r"))  
         print(f"Loading best hyperparams from {best_param_path}: ", best_hyperparams)
         override_config([best_hyperparams], sys.argv[2:])
@@ -651,7 +610,7 @@ def main(config: dict = None):
     )
     
     # # Training
-    if training_args.do_train:
+    if training_args.do_train and not do_tune:
         checkpoint = None
         if training_args.resume_from_checkpoint is not None:
             checkpoint = training_args.resume_from_checkpoint
@@ -665,13 +624,17 @@ def main(config: dict = None):
         metrics["train_samples"] = min(max_train_samples, len(train_dataset))
 
         trainer.save_model()  # Saves the tokenizer too for easy upload
-
         trainer.log_metrics("train", metrics)
         trainer.save_metrics("train", metrics)
         trainer.save_state()
+        
+        # attempt moving checkpoints to a more spacious disk
+        target_disk = "/data"
+        for ckpt in glob.glob(training_args.output_dir + "/**/pytorch_model.bin", recursive=True):
+            replace_with_symlink(ckpt, target_disk)
 
     # Evaluation
-    if training_args.do_eval:
+    if training_args.do_eval and not do_tune:
         logger.info("*** Evaluate ***")
         last_checkpoint = os.path.join(get_last_checkpoint(training_args.output_dir),"pytorch_model.bin")
         trainer.model.roberta.init_monarch_layers()
@@ -730,7 +693,7 @@ def main(config: dict = None):
                             item = label_list[item]
                             writer.write(f"{index}\t{item}\n")
         print("Inferece time on test set: ", time.time() - t1)
-
+    
     print(f"Used best hyperparameters from {best_param_path}: ", best_hyperparams)
     print("peft_config: ", peft_config)
         

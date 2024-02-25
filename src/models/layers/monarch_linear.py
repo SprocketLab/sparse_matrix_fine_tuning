@@ -102,12 +102,17 @@ class MonarchLinear(StructuredLinear):
         if blk_sz is None:
             blk_sz = int(math.ceil(self.in_features / nblocks))
         self.in_blksz = blk_sz
-                    
         self.mid_blksz = self.blk_r
         # Use square blocks if testing block size trade-offs
         if peft_config["square"]:
             self.mid_blksz = self.in_blksz
             
+        # Throw away blocks that are fully padded 
+        if self.nblocks * self.in_blksz > self.in_features:
+            self.nblocks = (self.in_features + self.in_blksz - 1) // self.in_blksz 
+        elif self.nblocks * self.in_blksz < self.in_features:
+            self.nblocks = (self.in_features + self.in_blksz - 1) // self.in_blksz
+                
         align_factor = int(math.ceil(self.out_features / self.in_features)) # Useful for the blocks in the two monarch factors to exactly match  
         self.out_blksz = self.in_blksz * align_factor
         
@@ -127,11 +132,7 @@ class MonarchLinear(StructuredLinear):
             self.in_blksz, self.out_blksz
         ), "rank must be smaller than the smaller block size"
         
-        
         # Init block-diagonal monarch factors 
-        if self.nblocks * self.in_blksz > self.in_features:
-            # effectively throw away blocks that are fully padded 
-            self.nblocks = (self.in_features + self.in_blksz - 1) // self.in_blksz 
         self.blkdiag1 = nn.Parameter(
                 torch.zeros(self.nblocks, self.mid_blksz, self.in_blksz, device=self.device) # (nblocks, r * nblocks , in_features / nblocks)
         )  

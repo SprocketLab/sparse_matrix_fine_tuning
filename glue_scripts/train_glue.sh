@@ -1,6 +1,5 @@
 #!/bin/bash
 # Initialize an array for flags
-source chtc_job_scripts/.env
 FLAGS=()
 
 # Loop through all the arguments
@@ -26,17 +25,18 @@ if [ -d "./sparse_matrix_finetuning" ]; then
 fi
 
 time=$(date "+%m-%d-%H")
-CUDA_VISIBLE_DEVICES=4 python run_glue.py /fly/task_configs/glue_peft_configs/cola.json   --time=$time --load_group=True "${FLAGS[@]}" &
-CUDA_VISIBLE_DEVICES=3 python run_glue.py /fly/task_configs/glue_peft_configs/qnli.json   --time=$time --load_group=True "${FLAGS[@]}" &
-# CUDA_VISIBLE_DEVICES=3 python run_glue.py /fly/task_configs/glue_peft_configs/rte.json    --time=$time --load_group=True "${FLAGS[@]}" &
-# CUDA_VISIBLE_DEVICES=3 python run_glue.py /fly/task_configs/glue_peft_configs/sst-2.json  --time=$time --load_group=True "${FLAGS[@]}" 
-# CUDA_VISIBLE_DEVICES=6 python run_glue.py /fly/task_configs/glue_peft_configs/stsb.json   --time=$time --load_group=True "${FLAGS[@]}"&
-CUDA_VISIBLE_DEVICES=7 python run_glue.py /fly/task_configs/glue_peft_configs/mrpc.json   --time=$time --load_group=True "${FLAGS[@]}" 
-# CUDA_VISIBLE_DEVICES=4 python run_glue.py /fly/task_configs/glue_peft_configs/qqp.json    --time=$time --load_group=True "${FLAGS[@]}" 
-# CUDA_VISIBLE_DEVICES=1 python run_glue.py /fly/task_configs/glue_peft_configs/mnli.json   --time=$time --load_group=True "${FLAGS[@]}" 
-# CUDA_VISIBLE_DEVICES=3  python run_glue.py /fly/task_configs/glue_peft_configs/wnli.json  --time=$time --load_group=True "${FLAGS[@]}"
+CUDA_VISIBLE_DEVICES=4 python run_glue.py /fly/task_configs/glue_peft_configs/cola.json   --time=$time "${FLAGS[@]}" 
+CUDA_VISIBLE_DEVICES=3 python run_glue.py /fly/task_configs/glue_peft_configs/qnli.json   --time=$time "${FLAGS[@]}" &
+# CUDA_VISIBLE_DEVICES=3 python run_glue.py /fly/task_configs/glue_peft_configs/rte.json    --time=$time "${FLAGS[@]}" &
+# CUDA_VISIBLE_DEVICES=3 python run_glue.py /fly/task_configs/glue_peft_configs/sst-2.json  --time=$time "${FLAGS[@]}" 
+# CUDA_VISIBLE_DEVICES=6 python run_glue.py /fly/task_configs/glue_peft_configs/stsb.json   --time=$time "${FLAGS[@]}"&
+CUDA_VISIBLE_DEVICES=7 python run_glue.py /fly/task_configs/glue_peft_configs/mrpc.json   --time=$time "${FLAGS[@]}" 
+# CUDA_VISIBLE_DEVICES=4 python run_glue.py /fly/task_configs/glue_peft_configs/qqp.json    --time=$time "${FLAGS[@]}" 
+# CUDA_VISIBLE_DEVICES=1 python run_glue.py /fly/task_configs/glue_peft_configs/mnli.json   --time=$time "${FLAGS[@]}" 
+# CUDA_VISIBLE_DEVICES=3  python run_glue.py /fly/task_configs/glue_peft_configs/wnli.json  --time=$time "${FLAGS[@]}"
 
 out_path="results/monarch_roberta_glue"
 # find all .tsv files in results/monarch_roberta_glue and zip them
 find results/monarch_roberta_glue -maxdepth 2 -name "*.tsv" | zip -j results/monarch_roberta_glue/glue_submit.zip -@
 echo "Zipped all .tsv files in $out_path to glue_submit.zip. Ready for submission."
+mrpc_test w/ blk_sz 16 HPs_block size 64_02-20-15

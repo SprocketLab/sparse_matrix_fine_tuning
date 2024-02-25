@@ -1,13 +1,5 @@
 import torch
-from datasets import load_dataset
-from transformers import (
-    RobertaTokenizerFast,
-    TrainingArguments,
-    Trainer,
-    AutoModel,
-    AutoConfig,
-    get_scheduler
-) 
+from transformers import Trainer
 import argparse
 from typing import Optional
 from transformers.utils.import_utils import is_sagemaker_mp_enabled
@@ -15,10 +7,15 @@ import warnings
 import loralib
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__))) # add current directory to path
+import glob
+import shutil
+
 from src.models.modeling_roberta import RobertaForSequenceClassification
 import math
 import json
 import time
+import logging
+import torch.nn as nn
 from tqdm import tqdm
 from sklearn.metrics import accuracy_score
 from ast import literal_eval
@@ -42,6 +39,7 @@ def parse_args():
     parser.add_argument("--tune_unit", default="eval_iter", help="Budget unit for HPO.", choices=["time", "eval_iter"])
     parser.add_argument("--n_trials", default=36, type=int, help="Number of trials for HPO")
     parser.add_argument("--gpus_per_trial", default=0.5, type=float, help="Number of GPUs to use per HPO trial")
+    parser.add_argument("--tune_blk_config", default=False, type=eval, help="Whether to tune block sizes & rank ")
     # Wandb grouping args
     parser.add_argument("--group", default="", help="For grouping wandb runs")
     parser.add_argument("--notes", default="", help="Notes to add to wandb run name" )
@@ -98,98 +96,26 @@ def select_gpu(exclude=[]):
     print("Selected GPU: %d" % max_gpu, "with max memory %.2f GB" % (max_mem / 1024 ** 3))
     return max_gpu
     
+
+def replace_with_symlink(path: str, target_disk: str):
+    if not os.path.exists(target_disk):
+        print(f"{target_disk} does not exist, skipping replacement")
+        return 
     
-def prep_data(dataset_id, tokenizer):
-    """
-    Load dataset from huggingface and map to tensor ids
-    """
-    if dataset_id == "ag_news":
-        dataset = load_dataset(dataset_id)
-        input_key = "text"
-    elif dataset_id in ["cola"]: # other datasets are complicated; use run_glue.py 
-        dataset = load_dataset('glue', dataset_id)
-        input_key = "sentence"
-    else:
-        raise ValueError("dataset not supported")
+    # replace the first two levels
+    new_path = path.replace(path.split("/")[0], target_disk)
+    # check if they link to the same file 
+    if os.path.exists(new_path) and os.path.samefile(path, new_path):
+        print(f"{path} and {new_path} are the same file, skipping replacement")
+        return
     
-    train_dataset = dataset['train']
-    test_dataset = dataset["test"].shard(num_shards=2, index=0)
-    val_dataset = dataset["test"].shard(num_shards=2, index=1)
-
-    tokenize = lambda batch : tokenizer(batch[input_key], padding=True, truncation=True, max_length=256, return_tensors="pt")
-    train_dataset = train_dataset.map(tokenize, batched=True, batch_size=len(train_dataset))
-    val_dataset = val_dataset.map(tokenize, batched=True, batch_size=len(val_dataset))
-    test_dataset = test_dataset.map(tokenize, batched=True, batch_size=len(test_dataset))
-
-    train_dataset.set_format("torch", columns=["input_ids", "attention_mask", "label"])
-    val_dataset.set_format("torch", columns=["input_ids", "attention_mask", "label"])
-    test_dataset.set_format("torch", columns=["input_ids", "attention_mask", "label"])
+    # move to new disk to clear space
+    new_dir = os.path.dirname(new_path)
+    os.makedirs(new_dir, exist_ok=True)
+    shutil.move(path, new_path)
+    os.symlink(new_path, path)
     
-    return dataset, train_dataset, val_dataset, test_dataset
     
-
-def setup_trainer(model_id, dataset_id, save_dir, train_config, peft_config={}, device="cuda"):
-    """
-    Setup trainer for finetuning on ag_news dataset
-    Args:
-        train_config: training hyperparams
-        peft_config: model configs setting PEFT (lora, monarch)
-    """
-    tokenizer = RobertaTokenizerFast.from_pretrained(model_id)
-    dataset, train_dataset, val_dataset, test_dataset = prep_data(dataset_id, tokenizer)
-    num_labels = dataset['train'].features['label'].num_classes
-    class_names = dataset["train"].features["label"].names
-    print(f"number of labels: {num_labels}")
-    print(f"the labels: {class_names}")
-
-    # update labels 
-    id2label = {i: label for i, label in enumerate(class_names)}
-    config = AutoConfig.from_pretrained(model_id)
-    config.update({"id2label": id2label})
-    config.update(peft_config)
-    json.dump(peft_config, open(save_dir + "/peft_config.json", "w")) # save peft config for record
-
-    # load model and init peft layers
-    roberta_model = RobertaForSequenceClassification.from_pretrained(model_id, config=config).to(device)
-    if peft_config['monarch']:
-        roberta_model.roberta.set_peft_config(peft_config) 
-    elif peft_config['lora']:
-        loralib.mark_only_lora_as_trainable(roberta_model)
-
-    # Set up hyperparams for finetuning
-    train_config["output_dir"] = save_dir
-    training_args = TrainingArguments(
-        **train_config
-    )
-
-    trainer = Trainer(
-        model=roberta_model,
-        args=training_args,
-        train_dataset=train_dataset,
-        eval_dataset=val_dataset,
-    )
-    return roberta_model, trainer, test_dataset, config
-
-
-def run_trainer(trainer, test_dataset, precision="fp16", device="cuda"):
-    dtype = {"fp16": torch.float16, "bf16": torch.bfloat16, "fp32": torch.float32}
-    assert precision in dtype.keys(), "precision must be one of fp16, bf16, fp32"
-    dtype = dtype[precision]
-    
-    with torch.autocast(device, cache_enabled=False, dtype=dtype):
-        trainer.train() # can disable some dense layers 
-        
-        trainer.evaluate()
-        
-        # test set eval
-        t1 = time.time()
-        finetuned_roberta_outputs = trainer.predict(test_dataset)
-        print("Inferece time: ", time.time() - t1)
-        
-        finetuned_roberta_predictions = finetuned_roberta_outputs[1]
-        print("fine-tuned roberta accuracy: ", round(accuracy_score(test_dataset["label"], finetuned_roberta_predictions), 3))
-
-
 def override_config(old_configs: List[Dict], new_args: List[str] or Dict):
     """Scan through the old configs and update them with new args if they exist
     """
@@ -319,10 +245,10 @@ class MyAwesomeTrainer(Trainer):
             for module in opt_model.modules():
                 if isinstance(module, nn.Embedding):
                     skipped += sum({p.data_ptr(): p.numel() for p in module.parameters()}.values())
-                    logger.info(f"skipped {module}: {skipped/2**20}M params")
+                    logging.info(f"skipped {module}: {skipped/2**20}M params")
                     manager.register_module_override(module, "weight", {"optim_bits": 32})
-                    logger.debug(f"bitsandbytes: will optimize {module} in fp32")
-            logger.info(f"skipped: {skipped / 2**20}M params")
+                    logging.debug(f"bitsandbytes: will optimize {module} in fp32")
+            logging.info(f"skipped: {skipped / 2**20}M params")
 
         if is_sagemaker_mp_enabled():
             import smdistributed.modelparallel.torch as smp
@@ -349,7 +275,7 @@ class MyAwesomeTrainer(Trainer):
     #     self.num_training_steps = num_training_steps
     
     
-##################################### Task configs #####################################
+################################### GLUE Task configs ###################################
 
 task_to_keys = {
     "cola": ("sentence", None),
