@@ -4,23 +4,17 @@ import argparse
 from typing import Optional
 from transformers.utils.import_utils import is_sagemaker_mp_enabled
 import warnings 
-import loralib
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__))) # add current directory to path
-import glob
 import shutil
-
-from src.models.modeling_roberta import RobertaForSequenceClassification
 import math
-import json
 import time
 import logging
 import torch.nn as nn
 from tqdm import tqdm
 from sklearn.metrics import accuracy_score
 from ast import literal_eval
-from typing import Dict, List, Tuple
-from ray import tune
+from typing import Dict, List
 from dataclasses import dataclass, field
 
 
@@ -55,6 +49,9 @@ def parse_args():
 
 
 def param_stats(model, training=False, print_trainable=False):
+    """
+    Do a param count and optionally print the trainable layers
+    """
     param_count = 0
     param_trainable = 0
     model_size = 0
@@ -65,7 +62,7 @@ def param_stats(model, training=False, print_trainable=False):
         if param.requires_grad:
             param_trainable += torch.numel(param) 
             if print_trainable:
-                print("trainable:", name)            
+                print(name, f": {torch.numel(param) / 1024 ** 2:.2f}M, {param.shape}")            
                 
     # print("Total GPU memory: %.2f GB" % (torch.cuda.mem_get_info()[1] / 1024 ** 3))
     # print("Avail GPU memory %.2f GB" % (torch.cuda.mem_get_info()[0] / 1024 ** 3))
@@ -78,26 +75,11 @@ def param_stats(model, training=False, print_trainable=False):
         assert param_trainable != 0, "There's a bug in your code, your're training nothing!"
 
 
-def select_gpu(exclude=[]):
-    """
-    Select the gpu with maximum free memory
-    """
-    num_gpus = torch.cuda.device_count()
-    max_mem = 0
-    max_gpu = 0
-    for device in range(num_gpus):
-        torch.cuda.set_device(device)
-        free_mem = torch.cuda.mem_get_info()[0]
-        if free_mem > max_mem and device not in exclude:
-            max_mem = free_mem  
-            max_gpu = device
-            
-    torch.cuda.set_device(max_gpu)
-    print("Selected GPU: %d" % max_gpu, "with max memory %.2f GB" % (max_mem / 1024 ** 3))
-    return max_gpu
-    
 
 def replace_with_symlink(path: str, target_disk: str):
+    """
+    For replacing all model checkpoints in a dir with symlinks, and moving them to a new disk.
+    """
     if not os.path.exists(target_disk):
         print(f"{target_disk} does not exist, skipping replacement")
         return 
@@ -117,7 +99,8 @@ def replace_with_symlink(path: str, target_disk: str):
     
     
 def override_config(old_configs: List[Dict], new_args: List[str] or Dict):
-    """Scan through the old configs and update them with new args if they exist
+    """
+    Scan through the old configs and update them with new args if they exist.
     """
     extra_args = {}
     new_args = new_args.items() if type(new_args) == dict else new_args
@@ -176,6 +159,11 @@ def get_run_group(task_name: str, do_tune: bool=False, group: str=None, cur_time
 
 
 class MyAwesomeTrainer(Trainer):
+    """
+    Modified for initializing the monarch params and adding them to the optimizer
+    before the 1st training step.
+    """
+    
     def __init__(self, *args, **kwargs):
         self.large_lr = kwargs.pop("large_lr", False)
         self.use_scaler = kwargs.pop("use_scaler", False)

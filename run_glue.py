@@ -1,17 +1,50 @@
 
-# @Wenxuan: Doesn't converge for some obscure reason..
-""" Finetuning the library models for sequence classification on GLUE."""
+""" 
+Finetuning the library models for sequence classification on GLUE.
+Ex. training usage: python run_glue.py task_configs/glue_peft_configs/cola.json 
+Ex. Hyperparameter tuning usage: python run_glue.py task_configs/glue_peft_configs/cola.json --do_tune=True
+"""
 def warn(*args, **kwargs):
     pass
 import warnings
 warnings.warn = warn
+import os, sys
+import pynvml
+
+def select_gpu(exclude=[]):
+    """
+    Select the GPU with maximum free memory
+    """
+    pynvml.nvmlInit()
+    
+    num_gpus = pynvml.nvmlDeviceGetCount()
+    max_mem = 0
+    max_gpu = 0
+    if num_gpus == 0:
+        raise Exception("No GPU found")
+    
+    for i in range(num_gpus):
+        handle = pynvml.nvmlDeviceGetHandleByIndex(i)
+        mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
+        free_mem = mem_info.free
+        
+        if free_mem > max_mem and i not in exclude:
+            max_mem = free_mem  
+            max_gpu = i
+            
+    pynvml.nvmlShutdown()
+    
+    print("Selected GPU:", max_gpu, "with max memory %.2f GB" % (max_mem / 1024 ** 3))
+    return max_gpu
+
+# A bit ugly...but this only works before all torch libs are imported
+if not "--do_tune=True" in sys.argv:
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(select_gpu())
 
 import json
 import time
 import logging
-import os
 import random
-import sys
 import glob
 import copy
 import numpy as np
@@ -19,7 +52,6 @@ from datasets import load_dataset, load_metric
 from transformers import (
     AutoConfig,
     AutoTokenizer,
-    AutoModelForSequenceClassification,
     DataCollatorWithPadding,
     EvalPrediction,
     HfArgumentParser,
@@ -50,8 +82,7 @@ import ray.train.huggingface.transformers as ray_hf
 from ray.tune import CLIReporter
 from ray.air.integrations.wandb import WandbLoggerCallback
 
-# NOTE: Given the same GPU (A100) results are mostly reproducible without this.
-# Besides it does NOT gurarantee deterministic results across different GPUs
+# Ensure reproducibility given the same hardware
 torch.use_deterministic_algorithms(True)
 torch.backends.cudnn.deterministic = True
 
@@ -90,7 +121,6 @@ logger = logging.getLogger(__name__)
 
 def main(config: dict = None):
     ############################## Command line args ##############################
-    # Example usage: python run_glue_hf.py task_configs/cola.json 
     args = parse_args()
     peft_config = json.load(open("task_configs/glue_peft_configs/peft_monarch.json", "r"))  # load monarch config
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))

@@ -1,4 +1,4 @@
-Before running anything, set up env by running 
+Before running anything, set up env by running (the docker-compose.yml uses my WANDB_API_KEY by default)
 ```
 docker compose build; docker compose up -d
 hostname > hostname.txt # to not confuse machines in wandb

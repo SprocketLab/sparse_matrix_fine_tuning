@@ -53,28 +53,29 @@ from collections import defaultdict
 import sys, os
 import ray
 sys.path.insert(0, "/fly")  # docker working dir
+from train_utils import param_stats
 from src.models.layers.monarch_linear import MonarchLinear, Scaler
 import loralib as lora
 
-def param_stats(model, training=False, print_trainable=False):
-    param_count = 0
-    param_trainable = 0
-    model_size = 0
+# def param_stats(model, training=False, print_trainable=False):
+#     param_count = 0
+#     param_trainable = 0
+#     model_size = 0
     
-    for name, param in model.named_parameters():
-        param_count += torch.numel(param) 
-        model_size += torch.numel(param) * param.element_size()
-        if param.requires_grad:
-            param_trainable += torch.numel(param) 
-            if print_trainable:
-                print("trainable:", name)            
-    print(
-        f"Total parameters: {param_count / 1024 ** 2:.2f}M,\n \
-        trainable parameters: {param_trainable / 1024 ** 2:.2f}M ({100 * param_trainable / param_count:.2f}%)\n \
-        model size: {model_size / 1024 ** 2:.2f}MB"
-    )
-    if training:
-        assert param_trainable != 0, "There's a bug in your code, your're training nothing!"
+#     for name, param in model.named_parameters():
+#         param_count += torch.numel(param) 
+#         model_size += torch.numel(param) * param.element_size()
+#         if param.requires_grad:
+#             param_trainable += torch.numel(param) 
+#             if print_trainable:
+#                 print("trainable:", name)            
+#     print(
+#         f"Total parameters: {param_count / 1024 ** 2:.2f}M,\n \
+#         trainable parameters: {param_trainable / 1024 ** 2:.2f}M ({100 * param_trainable / param_count:.2f}%)\n \
+#         model size: {model_size / 1024 ** 2:.2f}MB"
+#     )
+#     if training:
+#         assert param_trainable != 0, "There's a bug in your code, your're training nothing!"
 
 
 logger = logging.get_logger(__name__)
@@ -930,7 +931,7 @@ class RobertaModel(RobertaPreTrainedModel):
 
         self.pooler = RobertaPooler(config) if add_pooling_layer else None
         self.monarch_param_set = False
-        self.log_param_steps = 800
+        self.log_param_steps = 50
         self.train_mode_count = 0
         self.layers_to_adapt = [RobertaSelfAttention, RobertaIntermediate] # @Wenxuan
         self.watch_count = defaultdict(int)
@@ -981,7 +982,7 @@ class RobertaModel(RobertaPreTrainedModel):
             self.monarch_param_set = True
             
         if mode and self.train_mode_count % self.log_param_steps == 0:
-            param_stats(self, training=True, print_trainable=False)
+            param_stats(self, training=True, print_trainable=True)
         self.train_mode_count += 1
 
         # check if wandb is initialized
