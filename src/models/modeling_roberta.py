@@ -931,8 +931,6 @@ class RobertaModel(RobertaPreTrainedModel):
 
         self.pooler = RobertaPooler(config) if add_pooling_layer else None
         self.monarch_param_set = False
-        self.log_param_steps = 50
-        self.train_mode_count = 0
         self.layers_to_adapt = [RobertaSelfAttention, RobertaIntermediate] # @Wenxuan
         self.watch_count = defaultdict(int)
         self.wandb_watch_enabled = False
@@ -956,14 +954,16 @@ class RobertaModel(RobertaPreTrainedModel):
                 module.requires_grad_(False)
             
             # Only enable grads for adapters
-            if isinstance(module, MonarchLinear) or isinstance(module, Scaler):
+            if isinstance(module, MonarchLinear) or isinstance(module, Scaler)  or "classifier" in name:
+                # Load merged lora weights of the corresponding layer
                 if self.peft_config["from_lora"]:
-                    # Get merged lora weights of the corresponding layer
                     dense = lora_dict[name + ".dense"] + lora_dict[name + "lora_A"] @ lora_dict[name + "lora_B"]
                     module.set_weights_from_dense_init(dense)
-                    
+                
+                # Enable grads
                 module.requires_grad_(True)
             else:
+                # Disable grads
                 module.requires_grad_(False)
         self.monarch_param_set = True
 
@@ -974,17 +974,14 @@ class RobertaModel(RobertaPreTrainedModel):
             
 
     def train(self, mode: bool = True):
-        super().train(mode)
         if hasattr(self, "peft_config") and self.peft_config["monarch"] and not self.monarch_param_set:
             self.init_monarch_layers()
             if mode:
                 self.trainer.create_optimizer_and_scheduler(self.trainer.num_training_steps)
             self.monarch_param_set = True
             
-        if mode and self.train_mode_count % self.log_param_steps == 0:
-            param_stats(self, training=True, print_trainable=True)
-        self.train_mode_count += 1
-
+        super().train(mode)
+        
         # check if wandb is initialized
         # if ray tune search is on, don't watch
         if wandb.run is not None and not self.wandb_watch_enabled and not ray.tune.is_session_enabled():

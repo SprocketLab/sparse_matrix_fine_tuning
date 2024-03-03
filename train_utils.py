@@ -12,10 +12,9 @@ import time
 import logging
 import torch.nn as nn
 from tqdm import tqdm
-from sklearn.metrics import accuracy_score
 from ast import literal_eval
-from typing import Dict, List
-from dataclasses import dataclass, field
+from typing import Dict, List, Union
+
 
 
 def parse_args():
@@ -44,11 +43,12 @@ def parse_args():
                                 Whether to save an extra copy in the dataset folder, which will be used by other un-tuned runs default")
     parser.add_argument("--resume_tune", default=False, type=eval, help="Whether to resume Ray Tune from error")
     parser.add_argument("--load_group", default=False, type=eval, help="Whether to load the full group name from group dir's full_group.txt")
+    parser.add_argument("--move_ckpt", default=False, type=eval, help="Replace the final checkpoints with symlinks to another disk to save space")
     args, unknown = parser.parse_known_args()
     return args
 
 
-def param_stats(model, training=False, print_trainable=False):
+def param_stats(model, training=True, print_trainable=False, skip_cls=False):
     """
     Do a param count and optionally print the trainable layers
     """
@@ -59,11 +59,17 @@ def param_stats(model, training=False, print_trainable=False):
     for name, param in model.named_parameters():
         param_count += torch.numel(param) 
         model_size += torch.numel(param) * param.element_size()
+        
         if param.requires_grad:
+            if "classifier" in name:
+                if skip_cls:
+                    continue 
+            
             param_trainable += torch.numel(param) 
             if print_trainable:
-                print(name, f": {torch.numel(param) / 1024 ** 2:.2f}M, {param.shape}")            
+                print(name, f": {torch.numel(param) / 1024 ** 2:.4f}M, {param.shape}")            
                 
+            
     # print("Total GPU memory: %.2f GB" % (torch.cuda.mem_get_info()[1] / 1024 ** 3))
     # print("Avail GPU memory %.2f GB" % (torch.cuda.mem_get_info()[0] / 1024 ** 3))
     print(
@@ -71,6 +77,7 @@ def param_stats(model, training=False, print_trainable=False):
         trainable parameters: {param_trainable / 1024 ** 2:.2f}M ({100 * param_trainable / param_count:.2f}%)\n \
         model size: {model_size / 1024 ** 2:.2f}MB"
     )
+    
     if training:
         assert param_trainable != 0, "There's a bug in your code, your're training nothing!"
 
@@ -85,8 +92,12 @@ def replace_with_symlink(path: str, target_disk: str):
         return 
     
     # replace the first two levels
-    new_path = path.replace(path.split("/")[0], target_disk)
-    # check if they link to the same file 
+    cur_disk = path.split("/")[0]
+    if cur_disk == target_disk:
+        return 
+    new_path = path.replace(cur_disk, target_disk)
+
+    # check if they link to the same file or there's a symlink already
     if os.path.exists(new_path) and os.path.samefile(path, new_path):
         print(f"{path} and {new_path} are the same file, skipping replacement")
         return
@@ -98,16 +109,17 @@ def replace_with_symlink(path: str, target_disk: str):
     os.symlink(new_path, path)
     
     
-def override_config(old_configs: List[Dict], new_args: List[str] or Dict):
+
+def override_config(old_configs: List[Dict], new_args: Union[List[str], Dict]):
     """
     Scan through the old configs and update them with new args if they exist.
     """
     extra_args = {}
-    new_args = new_args.items() if type(new_args) == dict else new_args
+    new_args = new_args.items() if isinstance(new_args, dict) else new_args
     
     for arg in new_args:
         
-        if type(arg) == tuple:
+        if isinstance(arg, tuple):
             # dictionary
             key, val = arg
         elif arg.startswith('--'):
@@ -131,7 +143,7 @@ def override_config(old_configs: List[Dict], new_args: List[str] or Dict):
                 config = config.__dict__
                 
             if key in config.keys():
-                if not(type(attempt) == type(config[key]) or config[key] == None):
+                if not(isinstance(attempt, type(config[key])) or config[key] is None):
                     warnings.warn(f"wrong type for {key}, expected {type(config[key])}, got {type(attempt)}")
 
                 # cross fingers
@@ -145,15 +157,15 @@ def override_config(old_configs: List[Dict], new_args: List[str] or Dict):
     return extra_args
         
         
-def get_run_group(task_name: str, do_tune: bool=False, group: str=None, cur_time: str=None, notes: str=None):
+def get_run_group(task_name: str=None, do_tune: bool=False, group: str=None, cur_time: str=None, notes: str=None):
     """
     Get wandb run group. If time is provided, will keep those tasks in the same time group in wandb.
     """
     run_group = "tune" + "_" if do_tune else "" # if hyperapram tuning, add tune to group name
-    run_group += task_name + "_"
+    run_group += task_name + "_" if task_name else ""
     if notes:
         run_group += notes + "_"
-    run_group += group + "_" if group not in [None, ""] else ""
+    run_group += group + "_" if group else ""
     run_group += time.strftime("%m-%d-%H", time.localtime()) if cur_time is None else cur_time 
     return run_group
 
@@ -168,23 +180,27 @@ class MyAwesomeTrainer(Trainer):
         self.large_lr = kwargs.pop("large_lr", False)
         self.use_scaler = kwargs.pop("use_scaler", False)
         self.new_lr = kwargs.pop("new_lr", 5e-3)
+        self.log_param_steps = kwargs.pop("log_param_steps", 900)
+        self.train_steps = 0
+        
         super().__init__(*args, **kwargs)
         if hasattr(self.model, "roberta") and self.train_dataset is not None:
-            self.model.roberta.trainer = self # for re-initializing optimizer to add monarch params
+            # A bit ugly...but is for re-initializing optimizer after adding monarch params
+            self.model.roberta.trainer = self 
             len_dataloader = len(self.get_train_dataloader()) // self.args.gradient_accumulation_steps
             self.num_training_steps = math.ceil(len_dataloader * self.args.num_train_epochs)
             
-    # def evaluate(self, eval_dataset=None):
-    #     output = super().evaluate(eval_dataset)
-    #     # check if ray tune is on
-    #     if tune.is_session_enabled():
-    #         tune.report(**output)
-    #     return output
-    
+
     def training_step(self, model, inputs):
-        # for re-initializing optimizer to add monarch params
-        # assignment is faster than if; just do it every time. Must assign like this in ray tune
+        # Assignment is faster than if; just do it every time. Must assign this way in each Ray Tune run
         self.model.roberta.trainer = self 
+        self.model.train() # From my tests, this line's speed is model size agnostic
+        
+        # Check param count
+        if self.train_steps % self.log_param_steps == 0:
+            param_stats(self.model, training=True, print_trainable=True, skip_cls=True)
+        self.train_steps += 1
+            
         return super().training_step(model, inputs)
     
     def create_optimizer(self):
@@ -242,175 +258,4 @@ class MyAwesomeTrainer(Trainer):
             import smdistributed.modelparallel.torch as smp
             self.optimizer = smp.DistributedOptimizer(self.optimizer)
         return self.optimizer
-
-    # def create_scheduler(self, num_training_steps: int, optimizer: torch.optim.Optimizer = None):
-    #     """
-    #     Added num_cycles to support cosine_with_restarts
-    #     """
-    #     if self.lr_scheduler is None:
-    #         self.lr_scheduler = get_scheduler(
-    #             self.args.lr_scheduler_type,
-    #             optimizer=self.optimizer if optimizer is None else optimizer,
-    #             num_warmup_steps=self.args.get_warmup_steps(num_training_steps),
-    #             num_training_steps=num_training_steps,
-    #             scheduler_specific_kwargs={"num_cycles": 3} if self.args.lr_scheduler_type == "cosine_with_restarts" else None
-    #         )
-    #     return self.lr_scheduler
-
-
-    # def create_optmizer_and_scheduler(self, num_training_steps):
-    #     super().create_optimizer_and_scheduler(num_training_steps)
-    #     self.num_training_steps = num_training_steps
-    
-    
-################################### GLUE Task configs ###################################
-
-task_to_keys = {
-    "cola": ("sentence", None),
-    "mnli": ("premise", "hypothesis"),
-    "mrpc": ("sentence1", "sentence2"),
-    "qnli": ("question", "sentence"),
-    "qqp": ("question1", "question2"),
-    "rte": ("sentence1", "sentence2"),
-    "sst2": ("sentence", None),
-    "stsb": ("sentence1", "sentence2"),
-    "wnli": ("sentence1", "sentence2"),
-}
-
-
-@dataclass
-class DataTrainingArguments:
-    """
-    Arguments pertaining to what data we are going to input our model for training and eval.
-
-    Using `HfArgumentParser` we can turn this class
-    into argparse arguments to be able to specify them on
-    the command line.
-    """
-
-    task_name: Optional[str] = field(
-        default=None,
-        metadata={"help": "The name of the task to train on: " + ", ".join(task_to_keys.keys())},
-    )
-    dataset_name: Optional[str] = field(
-        default=None, metadata={"help": "The name of the dataset to use (via the datasets library)."}
-    )
-    dataset_config_name: Optional[str] = field(
-        default=None, metadata={"help": "The configuration name of the dataset to use (via the datasets library)."}
-    )
-    max_seq_length: int = field(
-        default=128,
-        metadata={
-            "help": (
-                "The maximum total input sequence length after tokenization. Sequences longer "
-                "than this will be truncated, sequences shorter will be padded."
-            )
-        },
-    )
-    overwrite_cache: bool = field(
-        default=False, metadata={"help": "Overwrite the cached preprocessed datasets or not."}
-    )
-    pad_to_max_length: bool = field(
-        default=True,
-        metadata={
-            "help": (
-                "Whether to pad all samples to `max_seq_length`. "
-                "If False, will pad the samples dynamically when batching to the maximum length in the batch."
-            )
-        },
-    )
-    max_train_samples: Optional[int] = field(
-        default=None,
-        metadata={
-            "help": (
-                "For debugging purposes or quicker training, truncate the number of training examples to this "
-                "value if set."
-            )
-        },
-    )
-    max_eval_samples: Optional[int] = field(
-        default=None,
-        metadata={
-            "help": (
-                "For debugging purposes or quicker training, truncate the number of evaluation examples to this "
-                "value if set."
-            )
-        },
-    )
-    max_predict_samples: Optional[int] = field(
-        default=None,
-        metadata={
-            "help": (
-                "For debugging purposes or quicker training, truncate the number of prediction examples to this "
-                "value if set."
-            )
-        },
-    )
-    train_file: Optional[str] = field(
-        default=None, metadata={"help": "A csv or a json file containing the training data."}
-    )
-    validation_file: Optional[str] = field(
-        default=None, metadata={"help": "A csv or a json file containing the validation data."}
-    )
-    test_file: Optional[str] = field(default=None, metadata={"help": "A csv or a json file containing the test data."})
-
-    def __post_init__(self):
-        if self.task_name is not None:
-            self.task_name = self.task_name.lower()
-            if self.task_name not in task_to_keys.keys():
-                raise ValueError("Unknown task, you should pick one in " + ",".join(task_to_keys.keys()))
-        elif self.dataset_name is not None:
-            pass
-        elif self.train_file is None or self.validation_file is None:
-            raise ValueError("Need either a GLUE task, a training/validation file or a dataset name.")
-        else:
-            train_extension = self.train_file.split(".")[-1]
-            assert train_extension in ["csv", "json"], "`train_file` should be a csv or a json file."
-            validation_extension = self.validation_file.split(".")[-1]
-            assert (
-                validation_extension == train_extension
-            ), "`validation_file` should have the same extension (csv or json) as `train_file`."
-
-
-@dataclass
-class ModelArguments:
-    """
-    Arguments pertaining to which model/config/tokenizer we are going to fine-tune from.
-    """
-
-    model_name_or_path: str = field(
-        metadata={"help": "Path to pretrained model or model identifier from huggingface.co/models"}
-    )
-    config_name: Optional[str] = field(
-        default=None, metadata={"help": "Pretrained config name or path if not the same as model_name"}
-    )
-    tokenizer_name: Optional[str] = field(
-        default=None, metadata={"help": "Pretrained tokenizer name or path if not the same as model_name"}
-    )
-    cache_dir: Optional[str] = field(
-        default=None,
-        metadata={"help": "Where do you want to store the pretrained models downloaded from huggingface.co"},
-    )
-    use_fast_tokenizer: bool = field(
-        default=True,
-        metadata={"help": "Whether to use one of the fast tokenizer (backed by the tokenizers library) or not."},
-    )
-    model_revision: str = field(
-        default="main",
-        metadata={"help": "The specific model version to use (can be a branch name, tag name or commit id)."},
-    )
-    use_auth_token: bool = field(
-        default=False,
-        metadata={
-            "help": (
-                "Will use the token generated when running `transformers-cli login` (necessary to use this script "
-                "with private models)."
-            )
-        },
-    )
-    ignore_mismatched_sizes: bool = field(
-        default=False,
-        metadata={"help": "Will enable to load a pretrained model whose head dimensions are different."},
-    )
-
     

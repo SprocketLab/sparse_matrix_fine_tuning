@@ -61,7 +61,12 @@ from transformers import (
     set_seed,
 )
 from src.models.modeling_roberta import RobertaForSequenceClassification
-from src.hf_setup import setup_logging_ckpt
+from src.hf_setup import (
+    setup_logging_ckpt,
+    DataTrainingArguments,
+    ModelArguments,
+    task_to_keys
+)
 from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version
 from transformers.utils.versions import require_version
@@ -70,11 +75,9 @@ from train_utils import (
     MyAwesomeTrainer,
     get_run_group,
     parse_args,
-    DataTrainingArguments,
-    ModelArguments,
-    task_to_keys,
     replace_with_symlink
 )
+
 import torch
 from ray import train, tune
 from ray.tune.schedulers import ASHAScheduler
@@ -149,7 +152,8 @@ def main(config: dict = None):
     training_args.optim = "adamw_torch" # forward compatibility
     
     # Set up wandb 
-    os.environ["WANDB_RUN_GROUP"] = get_run_group(data_args.task_name, do_tune, group, args.time, args.notes) if not full_group else full_group
+    task_name = data_args.task_name if do_tune else "" # Put all tasks in one group in standalone training
+    os.environ["WANDB_RUN_GROUP"] = get_run_group(task_name, do_tune, group, args.time, args.notes) if not full_group else full_group
     # Upload host machine to wandb for locating ckpts
     if os.path.exists("hostname.txt"):
         hostname = open("hostname.txt", "r").readline().strip()
@@ -172,7 +176,7 @@ def main(config: dict = None):
         os.environ["WANDB_MODE"] = "disabled"
         
     task_output_dir = os.path.join(training_args.output_dir, data_args.task_name)
-    training_args.output_dir = os.path.join(task_output_dir, group)
+    training_args.output_dir = os.path.join(task_output_dir, group) if group else os.path.join(task_output_dir, "default")
     os.makedirs(training_args.output_dir, exist_ok=True)
 
     # For resuming HPO    
@@ -531,15 +535,17 @@ def main(config: dict = None):
                 "learning_rate": tune.quniform(2e-5, 6e-4, 2e-5), # 29 choices
                 "per_device_train_batch_size": tune.choice([16, 32]), # In Monarch-Mixer they mixed 32 and 16 
                 "weight_decay": 1e-3, # After 2nd HPO, all runs converged to 1e-3 #tune.choice([0.1, 0.01, 1e-3]),
-                "lr_scheduler_type": tune.choice(["cosine", "linear"]), # mostly linear underperforms
+                "lr_scheduler_type": "cosine", # mostly linear underperforms
                 "blk_r": peft_config["blk_r"],
                 "nblocks": peft_config["nblocks"],
             }
-            n_trials = args.n_trials # 36 by default
+            n_trials = args.n_trials # 30 by default
                 # block size = {256, 128, 64}
                 # block rank = {4, 2, 8}
                 # n_trials = 40
+    
             if args.tune_blk_config:
+                # Do NAS 
                 param_space["blk_r"] = tune.choice([1, 2, 4, 8])
                 param_space["blk_sz"] = tune.choice([64, 128, 512])
                 param_space["lr_scheduler_type"] = "cosine"
@@ -550,7 +556,7 @@ def main(config: dict = None):
                 "learning_rate": tune.grid_search([1e-5, 2e-5, 3e-5]),
                 "per_device_train_batch_size": tune.grid_search([16, 32]),
                 "weight_decay": tune.choice([0.1]),
-                "lr_scheduler_type": tune.grid_search(["cosine", "linear"]),
+                "lr_scheduler_type": tune.grid_search(["cosine"]),
             }
             n_trials = 1 # grid search will try all combinations by default
         
@@ -603,7 +609,7 @@ def main(config: dict = None):
         # Save in the run dir
         cur_tune_path = os.path.join(training_args.output_dir, "best_hyperparams.json")
         json.dump(best_hp, open(cur_tune_path, "w"))
-        if args.as_base_hp:
+        if args.as_base_hp or group == "":
             json.dump(best_hp, open(task_output_dir, "w"))
     
     
@@ -612,8 +618,8 @@ def main(config: dict = None):
     best_param_path = os.path.join(training_args.output_dir, "best_hyperparams.json")
     base_param_path = os.path.join(task_output_dir, "best_hyperparams.json")
     if not os.path.exists(best_param_path):
-        logging.warning("No hyperparams for this group found. Using best HP for the default configuration for this dataset.\
-                        This may be unintended due to a typo. (Check group name carefully)")
+        logging.warning("No hyperparams for this group found. Using best HP for this tasks' default config.\
+                        This may be an unintended typo. (Check group name carefully)")
         best_param_path = base_param_path
         
     if os.path.exists(best_param_path):
@@ -624,7 +630,7 @@ def main(config: dict = None):
         override_config([model_args, data_args, training_args], best_hyperparams)        
     else:
         best_hyperparams = None
-        logging.warning("No best hyperparams from HPO found. Using default configs.")
+        logging.warning("No best hyperparams from HPO found. Using LoRA HPs.")
 
     trainer = MyAwesomeTrainer(
         model_init=model_init,
@@ -658,10 +664,6 @@ def main(config: dict = None):
         trainer.save_metrics("train", metrics)
         trainer.save_state()
         
-        # attempt moving checkpoints to a more spacious disk
-        target_disk = "/data"
-        for ckpt in glob.glob(training_args.output_dir + "/**/pytorch_model.bin", recursive=True):
-            replace_with_symlink(ckpt, target_disk)
 
     # Evaluation
     if training_args.do_eval and not do_tune:
@@ -726,6 +728,12 @@ def main(config: dict = None):
     
     print(f"Used best hyperparameters from {best_param_path}: ", best_hyperparams)
     print("peft_config: ", peft_config)
-        
+    
+    # Attempt moving checkpoints to a more spacious disk
+    target_disk = "/data"
+    path = os.path.abspath(training_args.output_dir + "/**/pytorch_model.bin")
+    for ckpt in glob.glob(path, recursive=True):
+        replace_with_symlink(ckpt, target_disk)
+            
 if __name__ == "__main__":
     main()

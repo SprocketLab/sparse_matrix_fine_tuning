@@ -14,7 +14,7 @@ done
 
 # Check if FLAGS array is not empty
 if [ ${#FLAGS[@]} -ne 0 ]; then
-    echo "Using flags ${FLAGS[@]}, from command line."
+    echo "Using flags ${FLAGS[@]} from the command line."
 else
     echo "Using no additional flags."
 fi
@@ -26,14 +26,15 @@ fi
 
 time=$(date "+%m-%d-%H")
 python run_glue.py /fly/task_configs/glue_peft_configs/cola.json   --time=$time "${FLAGS[@]}" &
-python run_glue.py /fly/task_configs/glue_peft_configs/qnli.json   --time=$time "${FLAGS[@]}" &
-# python run_glue.py /fly/task_configs/glue_peft_configs/rte.json    --time=$time "${FLAGS[@]}" &
-# python run_glue.py /fly/task_configs/glue_peft_configs/sst-2.json  --time=$time "${FLAGS[@]}" 
-# python run_glue.py /fly/task_configs/glue_peft_configs/stsb.json   --time=$time "${FLAGS[@]}"&
-python run_glue.py /fly/task_configs/glue_peft_configs/mrpc.json   --time=$time "${FLAGS[@]}" 
-# python run_glue.py /fly/task_configs/glue_peft_configs/qqp.json    --time=$time "${FLAGS[@]}" 
-# python run_glue.py /fly/task_configs/glue_peft_configs/mnli.json   --time=$time "${FLAGS[@]}" 
-# python run_glue.py /fly/task_configs/glue_peft_configs/wnli.json  --time=$time "${FLAGS[@]}"
+# wait for the previous job to occupy GPU memory to pick the correct vacant device for the next
+sleep 25; python run_glue.py /fly/task_configs/glue_peft_configs/qnli.json   --time=$time "${FLAGS[@]}" &
+# sleep 25; python run_glue.py /fly/task_configs/glue_peft_configs/rte.json    --time=$time "${FLAGS[@]}" &
+# sleep 25; python run_glue.py /fly/task_configs/glue_peft_configs/sst-2.json  --time=$time "${FLAGS[@]}" 
+# sleep 25; python run_glue.py /fly/task_configs/glue_peft_configs/stsb.json   --time=$time "${FLAGS[@]}"&
+sleep 25; python run_glue.py /fly/task_configs/glue_peft_configs/mrpc.json   --time=$time "${FLAGS[@]}" 
+# sleep 25; python run_glue.py /fly/task_configs/glue_peft_configs/qqp.json    --time=$time "${FLAGS[@]}" 
+# sleep 25; python run_glue.py /fly/task_configs/glue_peft_configs/mnli.json   --time=$time "${FLAGS[@]}" 
+# sleep 25; python run_glue.py /fly/task_configs/glue_peft_configs/wnli.json  --time=$time "${FLAGS[@]}"
 
 out_path="results/monarch_roberta_glue"
 # find all .tsv files in results/monarch_roberta_glue and zip them
