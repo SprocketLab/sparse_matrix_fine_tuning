@@ -80,9 +80,9 @@ from train_utils import (
 
 import torch
 from ray import train, tune
-from ray.tune.schedulers import ASHAScheduler
 import ray.train.huggingface.transformers as ray_hf
 from ray.tune import CLIReporter
+from ray.tune.schedulers import ASHAScheduler
 from ray.air.integrations.wandb import WandbLoggerCallback
 
 # Ensure reproducibility given the same hardware
@@ -146,6 +146,7 @@ def main(config: dict = None):
         peft_config["layers_to_adapt"] = ["query", "value"]
     if peft_config["mlp"]:
         peft_config["layers_to_adapt"] += ["dense"]
+        
     # Do NOT use loss as saving metric, maximize eval metric instead
     training_args.metric_for_best_model = task_to_metric[data_args.task_name] 
     training_args.greater_is_better = True 
@@ -534,7 +535,7 @@ def main(config: dict = None):
                 # "num_train_epochs": tune.choice([20, 25]),
                 "learning_rate": tune.quniform(2e-5, 6e-4, 2e-5), # 29 choices
                 "per_device_train_batch_size": tune.choice([16, 32]), # In Monarch-Mixer they mixed 32 and 16 
-                "weight_decay": 1e-3, # After 2nd HPO, all runs converged to 1e-3 #tune.choice([0.1, 0.01, 1e-3]),
+                "weight_decay": training_args.weight_decay,
                 "lr_scheduler_type": "cosine", # mostly linear underperforms
                 "blk_r": peft_config["blk_r"],
                 "nblocks": peft_config["nblocks"],
@@ -545,6 +546,7 @@ def main(config: dict = None):
                 # n_trials = 40
     
             if args.tune_blk_config:
+                # TODO: Search a larger space, and fail the runs over the budget (~1.2M param)
                 # Do NAS 
                 param_space["blk_r"] = tune.choice([1, 2, 4, 8])
                 param_space["blk_sz"] = tune.choice([64, 128, 512])
@@ -597,9 +599,9 @@ def main(config: dict = None):
             resources_per_trial={"cpu": 1, "gpu": args.gpus_per_trial},
             local_dir="ray_results",
             name=os.environ["WANDB_RUN_GROUP"],
-            max_failures=50, # tolerate OOM
-            # callbacks=[WandbLoggerCallback(project=os.environ["WANDB_PROJECT"], group=os.environ["WANDB_RUN_GROUP"])],
-            direction="maximize",
+            max_failures=100, # tolerate OOM
+            direction="maximize" if direction == "max" else "minimize",
+            # compute_objective
             resume=args.resume_tune 
         )
         best_hp = best_run.hyperparameters
@@ -610,7 +612,7 @@ def main(config: dict = None):
         cur_tune_path = os.path.join(training_args.output_dir, "best_hyperparams.json")
         json.dump(best_hp, open(cur_tune_path, "w"))
         if args.as_base_hp or group == "":
-            json.dump(best_hp, open(task_output_dir, "w"))
+            json.dump(best_hp, open(os.path.join(task_output_dir, "best_hyperparams.json"), "w"))
     
     
     ############################## Full training ##############################
@@ -730,10 +732,11 @@ def main(config: dict = None):
     print("peft_config: ", peft_config)
     
     # Attempt moving checkpoints to a more spacious disk
-    target_disk = "/data"
-    path = os.path.abspath(training_args.output_dir + "/**/pytorch_model.bin")
-    for ckpt in glob.glob(path, recursive=True):
-        replace_with_symlink(ckpt, target_disk)
+    # TODO: Debug
+    # target_disk = "/data"
+    # path = os.path.abspath(training_args.output_dir + "/**/pytorch_model.bin")
+    # for ckpt in glob.glob(path, recursive=True):
+    #     replace_with_symlink(ckpt, target_disk)
             
 if __name__ == "__main__":
     main()

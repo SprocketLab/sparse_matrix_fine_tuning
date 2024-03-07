@@ -35,7 +35,7 @@ def parse_args():
     parser.add_argument("--tune_blk_config", default=False, type=eval, help="Whether to tune block sizes & rank ")
     # Wandb grouping args
     parser.add_argument("--group", default="", help="For grouping wandb runs")
-    parser.add_argument("--notes", default="", help="Notes to add to wandb run name" )
+    parser.add_argument("--notes", default="", help="Notes to add to wandb run name. This won't mess up best HP group" )
     parser.add_argument("--project", default=None, help="For grouping wandb groups and runs")
     parser.add_argument("--full_group", default=None, help="Full group name for resuming eval (with date and task)")
     parser.add_argument("--time", default=None, help="For grouping wandb groups and runs. If not provided will use current time")
