@@ -8,6 +8,7 @@ services:
     image: fly:latest
     volumes:
       - .:/fly
+      - /data:/data
     working_dir: /fly
     environment: 
       - WANDB_API_KEY=16d21dc747a6f33247f1e9c96895d4ffa5ea0b27
