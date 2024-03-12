@@ -41,6 +41,7 @@ def select_gpu(exclude=[]):
 if not "--do_tune=True" in sys.argv:
     os.environ["CUDA_VISIBLE_DEVICES"] = str(select_gpu())
 
+from functools import partial
 import json
 import time
 import logging
@@ -121,6 +122,8 @@ task_to_metric = {
 logger = logging.getLogger(__name__)
 
 
+def get_hpo_metric(target_metric: str, metrics: dict):
+    return metrics[target_metric]
 
 def main(config: dict = None):
     ############################## Command line args ##############################
@@ -452,10 +455,12 @@ def main(config: dict = None):
     def compute_metrics(p: EvalPrediction):
         preds = p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions
         preds = np.squeeze(preds) if is_regression else np.argmax(preds, axis=1)
+        
         if data_args.task_name is not None:
             result = metric.compute(predictions=preds, references=p.label_ids)
             if len(result) > 1:
                 result["combined_score"] = np.mean(list(result.values())).item()
+            print("result: ", result)
             return result
         elif is_regression:
             return {"mse": ((preds - p.label_ids) ** 2).mean().item()}
@@ -586,7 +591,6 @@ def main(config: dict = None):
             max_progress_rows=9,
             max_report_frequency=9,
         )   
-        
         # Do hyperparam optimization with Ray Tune
         best_run = trainer.hyperparameter_search(
             hp_space=lambda _: param_space,
@@ -601,7 +605,7 @@ def main(config: dict = None):
             name=os.environ["WANDB_RUN_GROUP"],
             max_failures=100, # tolerate OOM
             direction="maximize" if direction == "max" else "minimize",
-            # compute_objective
+            compute_objective=partial(get_hpo_metric, task_to_metric[data_args.task_name]),
             resume=args.resume_tune 
         )
         best_hp = best_run.hyperparameters
@@ -700,7 +704,6 @@ def main(config: dict = None):
 
     if training_args.do_predict:
         logger.info("*** Predict ***")
-
         # Loop to handle MNLI double evaluation (matched, mis-matched)
         tasks = [data_args.task_name]
         predict_datasets = [predict_dataset]

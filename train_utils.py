@@ -106,7 +106,7 @@ def replace_with_symlink(path: str, target_disk: str):
     new_dir = os.path.dirname(new_path)
     os.makedirs(new_dir, exist_ok=True)
     shutil.move(path, new_path)
-    os.symlink(new_path, path)
+    os.symlidnk(new_path, path)
     
     
 
@@ -181,7 +181,7 @@ class MyAwesomeTrainer(Trainer):
         self.use_scaler = kwargs.pop("use_scaler", False)
         self.new_lr = kwargs.pop("new_lr", 5e-3)
         self.log_param_steps = kwargs.pop("log_param_steps", 900)
-        self.train_steps = 0
+        self.train_step = 0
         
         super().__init__(*args, **kwargs)
         if hasattr(self.model, "roberta") and self.train_dataset is not None:
@@ -197,9 +197,9 @@ class MyAwesomeTrainer(Trainer):
         self.model.train() # From my tests, this line's speed is model size agnostic
         
         # Check param count
-        if self.train_steps % self.log_param_steps == 0:
-            param_stats(self.model, training=True, print_trainable=True, skip_cls=True)
-        self.train_steps += 1
+        if self.train_step % self.log_param_steps == 0:
+            param_stats(self.model, training=True, print_trainable=False, skip_cls=True)
+        self.train_step += 1
             
         return super().training_step(model, inputs)
     

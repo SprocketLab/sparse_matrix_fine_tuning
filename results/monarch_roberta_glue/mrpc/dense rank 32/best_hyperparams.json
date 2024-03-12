@@ -1,1 +1,1 @@
-{"seed": 42, "large_lr": false, "learning_rate": 0.00048000000000000007, "per_device_train_batch_size": 32, "weight_decay": 0.001, "lr_scheduler_type": "linear"}
+{"seed": 42, "large_lr": false, "learning_rate": 0.00032, "per_device_train_batch_size": 32, "weight_decay": 0.001, "lr_scheduler_type": "linear"}
