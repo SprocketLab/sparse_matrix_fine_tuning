@@ -104,7 +104,7 @@ def replace_with_symlink(path: str, target_disk: str):
     
     # move to new disk to clear space
     new_dir = os.path.dirname(new_path)
-    os.makedirs(new_dir, exist_ok=True)
+    os.makedirs(new_dir, exist_ok=True) 
     shutil.move(path, new_path)
     os.symlidnk(new_path, path)
     

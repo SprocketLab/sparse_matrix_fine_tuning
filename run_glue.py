@@ -304,7 +304,7 @@ def main(config: dict = None):
         use_auth_token=True if model_args.use_auth_token else None,
     )
     
-    
+
     # helper to init and set hyperparams for Ray Tune search
     def model_init(hyperparams: dict = None):
         set_seed(training_args.seed)
@@ -502,7 +502,6 @@ def main(config: dict = None):
         
     if not adapter:
         peft_config["adapter"] = False # Will not use merging adapter style
-        
     
     ############################ Ray Tune Hyperparameter optimization ############################
     if do_tune:
@@ -538,14 +537,14 @@ def main(config: dict = None):
                 # "large_lr": tune.sample_from(lambda _: np.random.uniform() > 0.4),
                 "large_lr": False,
                 # "num_train_epochs": tune.choice([20, 25]),
-                "learning_rate": tune.quniform(2e-5, 6e-4, 2e-5), # 29 choices
+                "learning_rate": tune.quniform(1e-4, 6.6e-4, 2e-5), 
                 "per_device_train_batch_size": tune.choice([16, 32]), # In Monarch-Mixer they mixed 32 and 16 
                 "weight_decay": training_args.weight_decay,
                 "lr_scheduler_type": "cosine", # mostly linear underperforms
                 "blk_r": peft_config["blk_r"],
                 "nblocks": peft_config["nblocks"],
             }
-            n_trials = args.n_trials # 30 by default
+            n_trials = args.n_trials # 36 by default
                 # block size = {256, 128, 64}
                 # block rank = {4, 2, 8}
                 # n_trials = 40
@@ -573,8 +572,10 @@ def main(config: dict = None):
         max_t = 40 * 60 if tune_unit == "time" else 15 # mins or eval iterations
         if data_args.task_name == "mrpc":
             max_t = 30 * 60 if tune_unit == "time" else 12
-        elif data_args.task_name == "stsb" or data_args.task_name == "cola":
+        elif data_args.task_name == "stsb":
             max_t = 25 * 60 if tune_unit == "time" else 11
+        elif data_args.task_name == "cola":
+            max_t = 35 * 60 if tune_unit == "time" else 14
             
         grade_period = 4 * 60  if tune_unit == "time" else 3
         time_attr = "time_total_s" if tune_unit == "time" else "training_iteration"

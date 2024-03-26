@@ -33,14 +33,14 @@ run_conditionally() {
 
 # Run Python scripts with correctly formatted flags
 # Run HP tuning in foreground while full training in background in parallel
-python run_glue.py /fly/task_configs/glue_peft_configs/cola.json --project="monarch_glue_tune" --do_tune=True --do_train=False --do_eval=True --do_test=False "${FLAGS[@]}";
-run_conditionally  python run_glue.py /fly/task_configs/glue_peft_configs/cola.json --project="monarch_glue_tune" --load_group=True "${FLAGS[@]}" &
+# python run_glue.py /fly/task_configs/glue_peft_configs/cola.json --project="monarch_glue_tune" --do_tune=True --do_train=False --do_eval=True --do_test=False "${FLAGS[@]}";
+# run_conditionally  python run_glue.py /fly/task_configs/glue_peft_configs/cola.json --project="monarch_glue_tune" --load_group=True "${FLAGS[@]}" &
 
 python run_glue.py /fly/task_configs/glue_peft_configs/mrpc.json --project="monarch_glue_tune" --do_tune=True --do_train=False --do_eval=True --do_test=False "${FLAGS[@]}";
-run_conditionally  psython run_glue.py /fly/task_configs/glue_peft_configs/mrpc.json --project="monarch_glue_tune" --load_group=True "${FLAGS[@]}" &
+run_conditionally  python run_glue.py /fly/task_configs/glue_peft_configs/mrpc.json --project="monarch_glue_tune" --load_group=True "${FLAGS[@]}" &
 
 # python run_glue.py /fly/task_configs/glue_peft_configs/qnli.json --project="monarch_glue_tune" --do_tune=True --do_train=False --do_eval=True --do_test=False "${FLAGS[@]}";
-# run_conditionally  psython run_glue.py /fly/task_configs/glue_peft_configs/qnli.json --project="monarch_glue_tune" --load_group=True "${FLAGS[@]}" &
+# run_conditionally  python run_glue.py /fly/task_configs/glue_peft_configs/qnli.json --project="monarch_glue_tune" --load_group=True "${FLAGS[@]}" &
 
 
 # python run_glue.py /fly/task_configs/glue_peft_configs/rte.json --project="monarch_glue_tune" --do_tune=True --do_train=False --do_eval=True --do_test=False "${FLAGS[@]}";

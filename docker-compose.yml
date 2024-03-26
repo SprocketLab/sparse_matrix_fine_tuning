@@ -38,7 +38,6 @@ services:
 #     -w /fly \
 #     -e WANDB_API_KEY=16d21dc747a6f33247f1e9c96895d4ffa5ea0b27 \
 #     -e CUBLAS_WORKSPACE_CONFIG=:16:8 \
-#     -e NVIDIA_VISIBLE_DEVICES=0,1,2,3 \
 #     --gpus all \
 #     --ipc=host \
 #     --shm-size=6g \
