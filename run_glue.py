@@ -61,6 +61,7 @@ from transformers import (
     default_data_collator,
     set_seed,
 )
+from transformers.models.roberta.modeling_roberta import RobertaSelfAttention, RobertaIntermediate
 from src.models.modeling_roberta import RobertaForSequenceClassification
 from src.hf_setup import (
     setup_logging_ckpt,
@@ -76,15 +77,13 @@ from train_utils import (
     MyAwesomeTrainer,
     get_run_group,
     parse_args,
-    replace_with_symlink
+    init_monarch_layers
 )
 
 import torch
-from ray import train, tune
-import ray.train.huggingface.transformers as ray_hf
+from ray import tune
 from ray.tune import CLIReporter
 from ray.tune.schedulers import ASHAScheduler
-from ray.air.integrations.wandb import WandbLoggerCallback
 
 # Ensure reproducibility given the same hardware
 torch.use_deterministic_algorithms(True)
@@ -329,12 +328,15 @@ def main(config: dict = None):
                 if k in best_hyperparams.keys() and best_hyperparams[k] != peft_config[k]:
                     print("Overriding {} = {} from best HP".format(k, best_hyperparams[k]))
                     peft_config[k] = best_hyperparams[k]
-
         if use_monarch:
-            model.roberta.set_peft_config(peft_config)
-            # model.roberta.init_monarch_layers()
-            
-        # NOTE: Ray doesn't support torch.compile and it also causes a bug with trainer...
+            # model.roberta.set_peft_config(peft_config)
+            # For legacy purposes, don't init here. I ran some experiments with 
+            # modules initialized in the 1st training step, so init here instead would
+            # break the reproducibility. TODO: Try ensuring nothing breaks the random seed
+            # in between so that we can init here
+            model.roberta.init_monarch_layers = partial(init_monarch_layers, model.roberta)
+            model.roberta.peft_config = peft_config
+        # NOTE: Ray doesn't support torch.compile, plus a bug with trainer...
         # if torch.__version__.startswith("2") and not do_tune:
         #     model = torch.compile(model)
         return model

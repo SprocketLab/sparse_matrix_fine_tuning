@@ -38,7 +38,7 @@ ENV PIP_NO_CACHE_DIR=1
 RUN git clone https://github.com/idiap/fast-transformers \
     && sed -i 's/\["-arch=compute_60"\]/\["-arch=compute_70"\]/' fast-transformers/setup.py \
     && pip install fast-transformers/ \
-    && rm -rf fast-transformers
+    && rm -rf fast-transformers || true
 
 # xgboost conflicts with deepspeed
 RUN pip uninstall -y xgboost && DS_BUILD_UTILS=1 DS_BUILD_FUSED_LAMB=1 pip install deepspeed

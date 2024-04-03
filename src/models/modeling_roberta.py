@@ -53,30 +53,9 @@ from collections import defaultdict
 import sys, os
 import ray
 sys.path.insert(0, "/fly")  # docker working dir
-from train_utils import param_stats
+from train_utils import param_stats, init_monarch_layers
 from src.models.layers.monarch_linear import MonarchLinear, Scaler
 import loralib as lora
-
-# def param_stats(model, training=False, print_trainable=False):
-#     param_count = 0
-#     param_trainable = 0
-#     model_size = 0
-    
-#     for name, param in model.named_parameters():
-#         param_count += torch.numel(param) 
-#         model_size += torch.numel(param) * param.element_size()
-#         if param.requires_grad:
-#             param_trainable += torch.numel(param) 
-#             if print_trainable:
-#                 print("trainable:", name)            
-#     print(
-#         f"Total parameters: {param_count / 1024 ** 2:.2f}M,\n \
-#         trainable parameters: {param_trainable / 1024 ** 2:.2f}M ({100 * param_trainable / param_count:.2f}%)\n \
-#         model size: {model_size / 1024 ** 2:.2f}MB"
-#     )
-#     if training:
-#         assert param_trainable != 0, "There's a bug in your code, your're training nothing!"
-
 
 logger = logging.get_logger(__name__)
 
@@ -95,8 +74,8 @@ ROBERTA_PRETRAINED_MODEL_ARCHIVE_LIST = [
 ]
 
 adapted_layers = set()
-""" @Wenxuan """
-class PEFT_adapter():        
+class peft_module():
+    """A helper module to automatically replace layers with Monarch matrices"""        
     def init_monarch_layers(self, print_shape=False):
         if not self.peft_config.get("monarch", False):
             return 
@@ -142,7 +121,7 @@ class PEFT_adapter():
             if bias:
                 new_layer.bias = layer.bias
             
-            # Set layer training mode 
+            # Disable dense grads
             new_layer.requires_grad_(True) 
             if hasattr(new_layer, "dense"):
                 new_layer.dense.requires_grad_(False)
@@ -173,7 +152,6 @@ class PEFT_adapter():
             self.rank = peft_config["blk_r"]
             self.nblocks = peft_config["nblocks"]
 
-            
         
 
 class RobertaEmbeddings(nn.Module):
@@ -295,7 +273,7 @@ class RobertaEmbeddings(nn.Module):
 
 
 # Copied from transformers.models.bert.modeling_bert.BertSelfAttention with Bert->Roberta
-class RobertaSelfAttention(nn.Module, PEFT_adapter):
+class RobertaSelfAttention(nn.Module, peft_module):
     def __init__(self, config, position_embedding_type=None, peft_config=None):
         super().__init__()
         if config.hidden_size % config.num_attention_heads != 0 and not hasattr(
@@ -535,7 +513,7 @@ class RobertaAttention(nn.Module):
 
 
 # Copied from transformers.models.bert.modeling_bert.BertIntermediate
-class RobertaIntermediate(nn.Module, PEFT_adapter):
+class RobertaIntermediate(nn.Module, peft_module):
     def __init__(self, config):
         super().__init__()
         self.dense = nn.Linear(config.hidden_size, config.intermediate_size)
@@ -931,51 +909,51 @@ class RobertaModel(RobertaPreTrainedModel):
 
         self.pooler = RobertaPooler(config) if add_pooling_layer else None
         self.monarch_param_set = False
-        self.layers_to_adapt = [RobertaSelfAttention, RobertaIntermediate] # @Wenxuan
         self.watch_count = defaultdict(int)
         self.wandb_watch_enabled = False
         # Initialize weights and apply final processing
         self.post_init()
 
         
-    """ @Wenxuan """
-    def init_monarch_layers(self):
-        if self.monarch_param_set:
-            return
+    # def init_monarch_layers(self, layers_to_adapt = [RobertaSelfAttention, RobertaIntermediate]):
+    #     if self.monarch_param_set:
+    #         return
         
-        if self.peft_config["from_lora"]:
-            lora_dict = torch.load(self.peft_config["from_lora"])
+    #     self.layers_to_adapt = layers_to_adapt
+    #     if self.peft_config["from_lora"]:
+    #         lora_dict = torch.load(self.peft_config["from_lora"])
 
-        for name, module in self.named_modules():
-            # Replace linear with monarch if is target layer
-            if any([isinstance(module, layer) for layer in self.layers_to_adapt]):
-                module.init_monarch_layers()
-            else:
-                module.requires_grad_(False)
+    #     for name, module in self.named_modules():
+    #         # Replace linear with monarch if is target layer
+    #         if any([isinstance(module, layer) for layer in self.layers_to_adapt]):
+    #             module.init_monarch_layers()
+    #         else:
+    #             module.requires_grad_(False)
             
-            # Only enable grads for adapters
-            if isinstance(module, MonarchLinear) or isinstance(module, Scaler)  or "classifier" in name:
-                # Load merged lora weights of the corresponding layer
-                if self.peft_config["from_lora"]:
-                    dense = lora_dict[name + ".dense"] + lora_dict[name + "lora_A"] @ lora_dict[name + "lora_B"]
-                    module.set_weights_from_dense_init(dense)
+    #         # Only enable grads for adapters
+    #         if isinstance(module, MonarchLinear) or isinstance(module, Scaler)  or "classifier" in name:
+    #             # Load merged lora weights of the corresponding layer
+    #             if self.peft_config["from_lora"]:
+    #                 dense = lora_dict[name + ".dense"] + lora_dict[name + "lora_A"] @ lora_dict[name + "lora_B"]
+    #                 module.set_weights_from_dense_init(dense)
                 
-                # Enable grads
-                module.requires_grad_(True)
-            else:
-                # Disable grads
-                module.requires_grad_(False)
-        self.monarch_param_set = True
+    #             # Enable grads
+    #             module.requires_grad_(True)
+    #         else:
+    #             # Disable grads
+    #             module.requires_grad_(False)
+    #     self.monarch_param_set = True
 
         
-        global adapted_layers
-        for name, old_shape, shape_1, shape_2 in adapted_layers:
-            print(f"Adapted {name} {old_shape} with monarch layers: {shape_1}, {shape_2}")
+    #     global adapted_layers
+    #     for name, old_shape, shape_1, shape_2 in adapted_layers:
+    #         print(f"Adapted {name} {old_shape} with monarch layers: {shape_1}, {shape_2}")
             
 
     def train(self, mode: bool = True):
+        # breakpoint()
         if hasattr(self, "peft_config") and self.peft_config["monarch"] and not self.monarch_param_set:
-            self.init_monarch_layers()
+            self.init_monarch_layers(self.peft_config, [RobertaSelfAttention, RobertaIntermediate])
             if mode:
                 self.trainer.create_optimizer_and_scheduler(self.trainer.num_training_steps)
             self.monarch_param_set = True
@@ -1010,18 +988,18 @@ class RobertaModel(RobertaPreTrainedModel):
             self.wandb_watch_enabled = True
             
 
-    def set_peft_config(self, peft_config=None):
-        """ @Wenxuan
-            Set peft config for all attention layers and
-            reinit their submodules based on config
-        """
-        self.peft_config = peft_config
-        print("PEFT config set. Will init layers when entering training mode.")
-        self.monarch_param_set = False
+    # def set_peft_config(self, peft_config=None):
+    #     """ @Wenxuan
+    #         Set peft config for all attention layers and
+    #         reinit their submodules based on config
+    #     """
+    #     self.peft_config = peft_config
+    #     print("PEFT config set. Will init layers when entering training mode.")
+    #     self.monarch_param_set = False
         
-        for name, module in self.named_modules():
-            if any([isinstance(module, layer) for layer in self.layers_to_adapt]):
-                module.set_peft_config(peft_config)
+    #     for name, module in self.named_modules():
+    #         if any([isinstance(module, layer) for layer in self.layers_to_adapt]):
+    #             module.set_peft_config(peft_config)
                 
     def get_input_embeddings(self):
         return self.embeddings.word_embeddings
