@@ -79,13 +79,13 @@ class MonarchLinear(StructuredLinear):
     """
     def __init__(
         self,
-        *args,
+        in_features,
+        out_features,
         peft_config: dict,
         nblocks: int = 4,
         weights: torch.Tensor = None,
-        blk_r: int = 1,
-        blk_sz: int = None,
         device="cuda",
+        *args,
         **kwargs,
     ):
         """
@@ -96,12 +96,14 @@ class MonarchLinear(StructuredLinear):
             blk_sz (int, optional): Size of each block. If None, will be calculated from in_features
             (nb, r,)
         """
-        super().__init__(*args, **kwargs)
+        super().__init__(in_features, out_features, *args, **kwargs)
         self.nblocks = nblocks
-        self.blk_r = blk_r
-        if blk_sz is None:
-            blk_sz = int(math.ceil(self.in_features / nblocks))
-        self.in_blksz = blk_sz
+        self.blk_r = peft_config["blk_r"]
+        self.blk_sz = peft_config["blk_sz"]
+        
+        if self.blk_sz is None:
+            self.blk_sz = int(math.ceil(self.in_features / nblocks))
+        self.in_blksz = self.blk_sz
         self.mid_blksz = self.blk_r
         # Use square blocks if testing block size trade-offs
         if peft_config["square"]:
@@ -255,15 +257,15 @@ class MonarchLinear(StructuredLinear):
 
     def forward(self, x):
         if self.use_adapter:
-            out_main = F.linear(x, self.dense)
+            out = F.linear(x, self.dense) if hasattr(self, "dense") else x
             if self.use_mult_factor:
-                out_main = single_monarch_mult(out_main, self.blkdiag_mult)
+                out = single_monarch_mult(out, self.blkdiag_mult)
                 
             if not self.merged:                
                 # training with adapter
-                x = out_main + self.monarch_forward(x)
+                x = out + self.monarch_forward(x)
             else:
-                x = out_main
+                x = out
         else:
             # Dense already projected to monarch
             x = self.monarch_forward(x)

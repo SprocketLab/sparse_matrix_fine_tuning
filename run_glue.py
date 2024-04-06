@@ -127,7 +127,7 @@ def get_hpo_metric(target_metric: str, metrics: dict):
 def main(config: dict = None):
     ############################## Command line args ##############################
     args = parse_args()
-    peft_config = json.load(open("task_configs/glue_peft_configs/peft_monarch.json", "r"))  # load monarch config
+    peft_config = json.load(open("task_configs/glue_peft_configs/peft_config.json", "r"))  # load monarch config
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
     
     model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(args.config_path))

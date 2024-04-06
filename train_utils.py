@@ -73,8 +73,7 @@ def param_stats(model, training=True, print_trainable=False, skip_cls=False):
     # print("Avail GPU memory %.2f GB" % (torch.cuda.mem_get_info()[0] / 1024 ** 3))
     print(
         f"Total parameters: {param_count / 1024 ** 2:.2f}M,\n \
-        trainable parameters: {param_trainable / 1024 ** 2:.2f}M ({100 * param_trainable / param_count:.2f}%)\n \
-        model size: {model_size / 1024 ** 2:.2f}MB"
+        trainable parameters: {param_trainable / 1024 ** 2:.2f}M ({100 * param_trainable / param_count:.2f}%)"
     )
     
     if training:
@@ -264,7 +263,7 @@ class MyAwesomeTrainer(Trainer):
 adapted_layers = set()
 class peft_module():
     """A helper module to automatically replace layers with Monarch matrices"""        
-    def init_monarch_layers(self):
+    def set_monarch_recursive(self):
         if not self.peft_config.get("monarch", False):
             return 
         global adapted_layers
@@ -276,46 +275,44 @@ class peft_module():
             sizes = (sizes[0], sizes[1])
             return sizes
         
-        for name in self.peft_config["layers_to_adapt"]:
-            if not hasattr(self, name):
-                continue
-            
-            layer = getattr(self, name)
-            weights = layer.weight 
-            m, n = weights.shape
-            
-            if self.peft_config["adapter"] and self.nblocks != "sqrt(n)":
-                # freeze dense, init and train monarch, and then merge during inference
-                nblocks = self.nblocks
-            else:
-                # project dense to monarch and keep monarch only
-                nblocks = factor(layer.in_features)[0]  # increase to sqrt(n) blocks -> more params
-                if self.nblocks == "sqrt(n)":
-                    self.nblocks = nblocks
+        for module in self.modules():
+            for name in self.peft_config["layers_to_adapt"]:
+                layer = getattr(module, name, None)
+                if layer is None or isinstance(layer, MonarchLinear):
+                    continue
+                
+                weights = layer.weight 
+                m, n = weights.shape
+                
+                if self.peft_config["adapter"] and self.nblocks != "sqrt(n)":
+                    # freeze dense, init and train monarch, and then merge during inference
+                    nblocks = self.nblocks
+                else:
+                    # project dense to monarch and keep monarch only
+                    nblocks = factor(layer.in_features)[0]  # increase to sqrt(n) blocks -> more params
+                    if self.nblocks == "sqrt(n)":
+                        self.nblocks = nblocks
 
-            bias = layer.bias != None
-            # blk_full_dim = self.peft_config["nblocks"] * self.peft_config["blk_sz"]
-            new_layer = MonarchLinear(
-                in_features=n,
-                out_features=m,
-                nblocks=nblocks,
-                blk_r=self.peft_config["blk_r"],
-                blk_sz=self.peft_config["blk_sz"],
-                # blk_full_dim=blk_full_dim,
-                weights=weights,
-                bias=bias,
-                peft_config=self.peft_config
-            )
-            if bias:
-                new_layer.bias = layer.bias
-            
-            # Disable dense grads
-            new_layer.requires_grad_(True) 
-            if hasattr(new_layer, "dense"):
-                new_layer.dense.requires_grad_(False)
-            setattr(self, name, new_layer)
-            # For printing
-            adapted_layers.add((name, (m, n), new_layer.blkdiag1.shape, new_layer.blkdiag2.shape))
+                bias = layer.bias != None
+                new_layer = MonarchLinear(
+                    in_features=n,
+                    out_features=m,
+                    nblocks=nblocks,
+                    weights=weights,
+                    bias=bias,
+                    peft_config=self.peft_config
+                )
+                if bias:
+                    new_layer.bias = layer.bias
+                
+                # Disable dense grads
+                new_layer.requires_grad_(True) 
+                if hasattr(new_layer, "dense"):
+                    new_layer.dense.requires_grad_(False)
+                setattr(module, name, new_layer)
+                
+                # For printing info
+                adapted_layers.add((name, (m, n), new_layer.blkdiag1.shape, new_layer.blkdiag2.shape))
         
 
     def set_peft_config(self, peft_config):
@@ -328,35 +325,34 @@ class peft_module():
 def init_monarch_layers(model: nn.Module, peft_config: Dict, target_classes: Union[List[str], List[nn.Module]]):
     """
     Hack the model by replacing modules with Monarch adapters
+    Args:
+        target_classes: List of classes look recursively into for peft_config["layers_to_adapt"].
+            If not given, will traverse all layers.
     """
-    # TODO: return trainable params for optimizer
-    if model.monarch_param_set:
-        return
+    # TODO: return trainable params for optimizer)
     # model.set_peft_config = peft_module.set_peft_config
     setattr(model, "set_peft_config", partial(peft_module.set_peft_config, model))
     model.set_peft_config(peft_config)
     for name, module in model.named_modules():
         # Replace linear with monarch if is target layer
-        if any([isinstance(module, layer) for layer in target_classes]
-            ):
-            # hack to "inherit" peft_adapter
-            # module.init_monarch_layers = peft_module.init_monarch_layers
-            # module.set_peft_config = peft_module.set_peft_config
-            setattr(module, "init_monarch_layers", partial(peft_module.init_monarch_layers, module))
+        is_target = len(target_classes) == 0 or any([isinstance(module, layer) for layer in target_classes])
+        if is_target or any(hasattr(module, _name) for _name in peft_config["layers_to_adapt"]):
+            # hack the module to "inherit" peft_adapter
+            setattr(module, "set_monarch_recursive", partial(peft_module.set_monarch_recursive, module))
             setattr(module, "set_peft_config", partial(peft_module.set_peft_config, module))
             module.set_peft_config(peft_config)
-            module.init_monarch_layers()
-        else:
-            module.requires_grad_(False)
+            module.set_monarch_recursive()
+            
         
         # Only enable grads for adapters
-        if isinstance(module, MonarchLinear) or isinstance(module, Scaler)  or "classifier" in name:
-            # Load merged lora weights of the corresponding layer
+        if isinstance(module, MonarchLinear) or isinstance(module, Scaler) or "classifier" in name:
+            # print(module.dense.weight.requires_grad)
             module.requires_grad_(True)
+            if hasattr(module, "dense"):
+                module.dense.requires_grad_(False)
         else:
             module.requires_grad_(False)
     model.monarch_param_set = True
-
     
     global adapted_layers
     for name, old_shape, shape_1, shape_2 in adapted_layers:

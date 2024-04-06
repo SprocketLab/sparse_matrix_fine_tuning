@@ -28,7 +28,7 @@ python monarch_roberta.py  --peft
 ```
 For GLUE tasks 
 Training hyperparams are in task_configs/[task].json
-Tune block size, rank, etc. in task_configs/peft_monarch.json.
+Tune block size, rank, etc. in task_configs/peft_config.json.
 Or try run_glue_hf.py with default args below
 ```
 export WANDB_API_KEY="YOUR_KEY"

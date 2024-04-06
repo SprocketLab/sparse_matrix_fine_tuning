@@ -111,8 +111,6 @@ class peft_module():
                 in_features=n,
                 out_features=m,
                 nblocks=nblocks,
-                blk_r=self.peft_config["blk_r"],
-                blk_sz=self.peft_config["blk_sz"],
                 # blk_full_dim=blk_full_dim,
                 weights=weights,
                 bias=bias,

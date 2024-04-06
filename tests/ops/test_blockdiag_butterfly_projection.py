@@ -3,6 +3,8 @@ import math
 import torch
 import pytest
 from einops import rearrange
+import sys
+sys.path.append("/fly")
 from src.models.layers.blockdiag_butterfly_multiply import blockdiag_butterfly_multiply
 from src.ops.blockdiag_butterfly_projection import blockdiag_butterfly_project, factors
 from src.ops.blockdiag_butterfly_projection import ButterflyFFT, ButterflyFFT2
