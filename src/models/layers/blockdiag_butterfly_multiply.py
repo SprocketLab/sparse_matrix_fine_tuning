@@ -61,9 +61,9 @@ class BlockdiagButterflyMultiply(torch.autograd.Function):
     bmm performance.
     The backward pass is also written manually with careful memory copies.
     Arguments:
-        x: (batch, n) @ (n, p)
-        w1_bfly: (k, q, p), where k = n / p, NOTE: q is customized output dim 
-        w2_bfly: (l, s, r), where l = k * q / r = n * q / (p * r), NOTE: s is customized output dim
+        x: (batch, n) 
+        w1_bfly: (nblocks, blk_r, blk_sz)
+        w2_bfly: (nblocks, blk_sz, blk_r)
     Outputs:
         out: (batch, m), where m = l * s = n * s * q / (p * r)
     """

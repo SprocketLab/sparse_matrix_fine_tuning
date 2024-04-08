@@ -73,6 +73,13 @@ class Scaler(nn.Module):
         return x
 
 """ @Wenxuan """
+_DEFAULT_CONFIG = {
+    "nblocks": 4,
+    "blk_r": 4,
+    "blk_sz": None,
+    "square": False,
+    "adapter": True,
+}
 class MonarchLinear(StructuredLinear):
     """
     bmm with two monarch factors
@@ -81,7 +88,7 @@ class MonarchLinear(StructuredLinear):
         self,
         in_features,
         out_features,
-        peft_config: dict,
+        peft_config: dict = _DEFAULT_CONFIG,
         nblocks: int = 4,
         weights: torch.Tensor = None,
         device="cuda",
@@ -94,12 +101,11 @@ class MonarchLinear(StructuredLinear):
             weights (torch.Tensor, optional): The dense weight matrix for projection. If none will init with Kaiming
             blk_r (int, optional): The per block rank (output dim). Used also in SVD projection and param definition
             blk_sz (int, optional): Size of each block. If None, will be calculated from in_features
-            (nb, r,)
         """
         super().__init__(in_features, out_features, *args, **kwargs)
         self.nblocks = nblocks
-        self.blk_r = peft_config["blk_r"]
-        self.blk_sz = peft_config["blk_sz"]
+        self.blk_r = peft_config["blk_r"] if "blk_r" not in kwargs  else kwargs["blk_r"]
+        self.blk_sz = peft_config["blk_sz"] if "blk_sz" not in kwargs else kwargs["blk_sz"]
         
         if self.blk_sz is None:
             self.blk_sz = int(math.ceil(self.in_features / nblocks))
@@ -221,13 +227,13 @@ class MonarchLinear(StructuredLinear):
             rank (int, optional): SVD rank
         """
         assert w.ndim == 2, "w must be a 2D weight matrix"
-        is_square = w.shape[0] == w.shape[1]
         # project to monarch matrix
         # blkdiag1, blkdiag2 = blockdiag_butterfly_project(w)
         blkdiag1, blkdiag2 = blockdiag_butterfly_project_einsum_rank(
             w, self.nblocks, self.nblocks, rank
         )
-        assert blkdiag1.shape == self.blkdiag1.shape and blkdiag2.shape == self.blkdiag2.shape, "Projected monarch shapes do not match original shapes"
+        assert blkdiag1.shape == self.blkdiag1.shape and blkdiag2.shape == self.blkdiag2.shape, \
+            "Projected monarch shapes mismatch original shapes. Check you dense weight shape!"
         self.blkdiag1 = nn.Parameter(blkdiag1)
         self.blkdiag2 = nn.Parameter(blkdiag2)
         
@@ -269,7 +275,8 @@ class MonarchLinear(StructuredLinear):
         else:
             # Dense already projected to monarch
             x = self.monarch_forward(x)
-        return x + self.bias
+        
+        return x + self.bias if getattr(self, "bias", None) is not None else x
 
 
     # Override magic methods
