@@ -8,7 +8,7 @@ import os
 from os.path import exists, join, isdir
 from dataclasses import dataclass, field
 import sys
-sys.append("/fly")
+sys.path.append("/fly")
 from train_utils import param_stats, init_monarch_layers
 from typing import Optional, Dict, Sequence
 import numpy as np
@@ -23,6 +23,7 @@ from packaging.version import parse
 import torch
 import transformers
 from torch.nn.utils.rnn import pad_sequence
+from huggingface_hub import login
 import argparse
 from transformers import (
     AutoTokenizer,
@@ -48,7 +49,6 @@ from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
 from ray import tune
 from ray.tune import CLIReporter
 from ray.tune.schedulers import ASHAScheduler
-    
 
 if torch.cuda.is_available():   
     torch.backends.cuda.matmul.allow_tf32 = True
@@ -61,7 +61,7 @@ DEFAULT_PAD_TOKEN = "[PAD]"
 @dataclass
 class ModelArguments:
     model_name_or_path: Optional[str] = field(
-        default="EleutherAI/pythia-12b"
+        default="meta-llama/Llama-2-7b"
     )
     trust_remote_code: Optional[bool] = field(
         default=False,
@@ -110,6 +110,9 @@ class DataArguments:
 
 @dataclass
 class TrainingArguments(transformers.Seq2SeqTrainingArguments):
+    hf_token: Optional[str] = field(
+        default=""
+    )
     do_tune: Optional[bool] = field(
         default=None,
         metadata={"help": "Whether to do Hyperparam tuning using ASHA."}
@@ -178,7 +181,7 @@ class TrainingArguments(transformers.Seq2SeqTrainingArguments):
         metadata={"help": "To use wandb or something else for reporting."}
     )
     output_dir: str = field(default='./output', metadata={"help": 'The output dir for logs and checkpoints'})
-    optim: str = field(default='paged_adamw_32bit', metadata={"help": 'The optimizer to be used'})
+    optim: str = field(default='adamw_torch', metadata={"help": 'The optimizer to be used'})
     per_device_train_batch_size: int = field(default=1, metadata={"help": 'The training batch size per GPU. Increase for better speed.'})
     gradient_accumulation_steps: int = field(default=16, metadata={"help": 'How many gradients to accumulate before to perform an optimizer step'})
     max_steps: int = field(default=10000, metadata={"help": 'How many optimizer update steps to take'})
@@ -269,7 +272,7 @@ class SavePeftModelCallback(transformers.TrainerCallback):
         touch(join(args.output_dir, 'completed'))
         self.save_model(args, state, kwargs)
 
-def get_accelerate_model(args, checkpoint_dir):
+def get_accelerate_model(args):
 
     if torch.cuda.is_available():
         n_gpus = torch.cuda.device_count()
@@ -290,22 +293,12 @@ def get_accelerate_model(args, checkpoint_dir):
     model = AutoModelForCausalLM.from_pretrained(
         args.model_name_or_path,
         cache_dir=args.cache_dir,
-        load_in_4bit=args.bits == 4,
-        load_in_8bit=args.bits == 8,
         device_map=device_map,
         max_memory=max_memory,
-        quantization_config=BitsAndBytesConfig(
-            load_in_4bit=args.bits == 4,
-            load_in_8bit=args.bits == 8,
-            llm_int8_threshold=6.0,
-            llm_int8_has_fp16_weight=False,
-            bnb_4bit_compute_dtype=compute_dtype,
-            bnb_4bit_use_double_quant=args.double_quant,
-            bnb_4bit_quant_type=args.quant_type,
-        ),
         torch_dtype=(torch.float32 if args.fp16 else (torch.bfloat16 if args.bf16 else torch.float32)),
-        trust_remote_code=args.trust_remote_code,
-        use_auth_token=args.use_auth_token
+        trust_remote_code=True,
+        use_auth_token=True,
+        # token=args.hf_token
     )
     if compute_dtype == torch.float16 and args.bits == 4:
         if torch.cuda.is_bf16_supported():
@@ -313,7 +306,6 @@ def get_accelerate_model(args, checkpoint_dir):
             print('Your GPU supports bfloat16, you can accelerate training with the argument --bf16')
             print('='*80)
             
-
     setattr(model, 'model_parallel', True)
     setattr(model, 'is_parallelizable', True)
 
@@ -348,26 +340,6 @@ def get_accelerate_model(args, checkpoint_dir):
                     model.config.pad_token_id if model.config.pad_token_id != -1 else tokenizer.pad_token_id
                 ),
         })
-    
-    if not args.full_finetune:
-        model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=args.gradient_checkpointing)
-
-    # if not args.full_finetune:
-    #     if checkpoint_dir is not None:
-    #         print("Loading adapters from checkpoint.")
-    #         model = PeftModel.from_pretrained(model, join(checkpoint_dir, 'adapter_model'), is_trainable=True)
-    #     else:
-    #         print(f'adding LoRA modules...')
-    #         modules = find_all_linear_names(args, model)
-    #         config = LoraConfig(
-    #             r=args.lora_r,
-    #             lora_alpha=args.lora_alpha,
-    #             target_modules=modules,
-    #             lora_dropout=args.lora_dropout,
-    #             bias="none",
-    #             task_type="CAUSAL_LM",
-    #         )
-    #         model = get_peft_model(model, config)
 
     for name, module in model.named_modules():
         if isinstance(module, LoraLayer):
@@ -381,22 +353,6 @@ def get_accelerate_model(args, checkpoint_dir):
                     module = module.to(torch.bfloat16)
     return model, tokenizer
 
-def print_trainable_parameters(args, model):
-    """
-    Prints the number of trainable parameters in the model.
-    """
-    trainable_params = 0
-    all_param = 0
-    for _, param in model.named_parameters():
-        all_param += param.numel()
-        if param.requires_grad:
-            trainable_params += param.numel()
-    if args.bits == 4: trainable_params /= 2
-    print(
-        f"trainable params: {trainable_params} || "
-        f"all params: {all_param} || "
-        f"trainable: {100 * trainable_params / all_param}"
-    )
 
 def smart_tokenizer_and_embedding_resize(
     special_tokens_dict: Dict,
@@ -647,6 +603,7 @@ def make_data_module(tokenizer: transformers.PreTrainedTokenizer, args) -> Dict:
         data_collator=data_collator
     )
 
+
 def get_last_checkpoint(checkpoint_dir):
     if isdir(checkpoint_dir):
         is_completed = exists(join(checkpoint_dir, 'completed'))
@@ -661,6 +618,7 @@ def get_last_checkpoint(checkpoint_dir):
         return checkpoint_dir, is_completed # checkpoint found!
     return None, False # first training
 
+
 def train():
     hfparser = transformers.HfArgumentParser((
         ModelArguments, DataArguments, TrainingArguments, GenerationArguments
@@ -672,12 +630,15 @@ def train():
         **vars(model_args), **vars(data_args), **vars(training_args)
     )
     print(args)
+    login(args.hf_token)
     
     checkpoint_dir, completed_training = get_last_checkpoint(args.output_dir)
     if completed_training:
         print('Detected that training was already completed!')
 
-    _, tokenizer = get_accelerate_model(args, checkpoint_dir)
+    breakpoint()
+    model, tokenizer = get_accelerate_model(args)
+    
 
     model.config.use_cache = False
     print('loaded model')
@@ -760,19 +721,10 @@ def train():
 
         trainer.add_callback(MMLUEvalCallback)
 
-    # Verifying the datatypes and parameter counts before training.
-    print_trainable_parameters(args, model)
-    dtypes = {}
-    for _, p in model.named_parameters():
-        dtype = p.dtype
-        if dtype not in dtypes: dtypes[dtype] = 0
-        dtypes[dtype] += p.numel()
-    total = 0
-    for k, v in dtypes.items(): total+= v
-    for k, v in dtypes.items():
-        print(k, v, v/total)
-
     all_metrics = {"run_name": args.run_name}
+    
+    if args.do_tune:
+        pass
     # Training
     if args.do_train:
         logger.info("*** Train ***")
