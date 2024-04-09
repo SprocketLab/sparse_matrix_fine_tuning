@@ -15,6 +15,7 @@ from ast import literal_eval
 from typing import Dict, List, Union
 from functools import partial
 
+PEFT_ROBERTA_PATH = "/fly/task_configs/glue_peft_configs/peft_config.json"
 
 def parse_args():
     # Create the parser
@@ -184,7 +185,7 @@ class MyAwesomeTrainer(Trainer):
         super().__init__(*args, **kwargs)
         if hasattr(self.model, "roberta") and self.train_dataset is not None:
             # A bit ugly...but is for re-initializing optimizer after adding monarch params
-            self.model.roberta.trainer = self 
+            self.model.roberta.create_optimizer_and_scheduler = partial(self.create_optimizer_and_scheduler, self)
             len_dataloader = len(self.get_train_dataloader()) // self.args.gradient_accumulation_steps
             self.num_training_steps = math.ceil(len_dataloader * self.args.num_train_epochs)
             
@@ -322,7 +323,7 @@ class peft_module():
             self.nblocks = peft_config["nblocks"]
 
 
-def init_monarch_layers(model: nn.Module, peft_config: Dict, target_classes: Union[List[str], List[nn.Module]]):
+def init_monarch_layers(model: nn.Module, peft_config: Dict, target_classes: Union[List[str], List[nn.Module]] = []):
     """
     Hack the model by replacing modules with Monarch adapters
     Args:
@@ -358,3 +359,6 @@ def init_monarch_layers(model: nn.Module, peft_config: Dict, target_classes: Uni
     for name, old_shape, shape_1, shape_2 in adapted_layers:
         print(f"Adapted {name} {old_shape} with monarch layers: {shape_1}, {shape_2}")
             
+            
+def get_hpo_metric(target_metric: str, metrics: dict):
+    return metrics[target_metric]

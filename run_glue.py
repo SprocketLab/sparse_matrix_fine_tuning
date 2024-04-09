@@ -1,8 +1,8 @@
 
 """ 
 Finetuning the library models for sequence classification on GLUE.
-Ex. training usage: python run_glue.py task_configs/glue_peft_configs/cola.json 
-Ex. Hyperparameter tuning usage: python run_glue.py task_configs/glue_peft_configs/cola.json --do_tune=True
+Ex. training usage: python run_glue.py /fly/task_configs/glue_peft_configs/cola.json 
+Ex. Hyperparameter tuning usage: python run_glue.py /fly/task_configs/glue_peft_configs/cola.json --do_tune=True
 """
 def warn(*args, **kwargs):
     pass
@@ -77,7 +77,9 @@ from train_utils import (
     MyAwesomeTrainer,
     get_run_group,
     parse_args,
-    init_monarch_layers
+    init_monarch_layers,
+    get_hpo_metric,
+    PEFT_ROBERTA_PATH
 )
 
 import torch
@@ -121,13 +123,11 @@ task_to_metric = {
 logger = logging.getLogger(__name__)
 
 
-def get_hpo_metric(target_metric: str, metrics: dict):
-    return metrics[target_metric]
 
 def main(config: dict = None):
     ############################## Command line args ##############################
     args = parse_args()
-    peft_config = json.load(open("task_configs/glue_peft_configs/peft_config.json", "r"))  # load monarch config
+    peft_config = json.load(open(PEFT_ROBERTA_PATH, "r"))  # load monarch config
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
     
     model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(args.config_path))
@@ -267,7 +267,7 @@ def main(config: dict = None):
     if data_args.task_name is not None:
         is_regression = data_args.task_name == "stsb"
         if not is_regression:
-            label_list = json.load(open("task_configs/labels.json", "r"))[data_args.task_name]
+            label_list = json.load(open("/fly/task_configs/labels.json", "r"))[data_args.task_name]
             # label_list = raw_datasets["train"].features["label"].names
             num_labels = len(label_list)
         else:
@@ -311,7 +311,7 @@ def main(config: dict = None):
             global best_hyperparams
         else:
             best_hyperparams = hyperparams
-            
+        
         model = RobertaForSequenceClassification.from_pretrained(
             pretrained_model_name_or_path=model_args.model_name_or_path,
             from_tf=bool(".ckpt" in model_args.model_name_or_path),

@@ -18,11 +18,10 @@ else
     echo "Using no additional flags."
 fi
 
-
 python qlora_monarch.py \
     --model_name_or_path meta-llama/Llama-2-7b-hf \
     --use_auth \
-    --output_dir ./output/llama-2-guanaco-7b \
+    --output_dir /fly/results/llama_mmlu \
     --logging_steps 10 \
     --save_strategy steps \
     --data_seed 42 \
@@ -37,11 +36,12 @@ python qlora_monarch.py \
     --group_by_length \
     --logging_strategy steps \
     --remove_unused_columns False \
+    --do_tune \
     --do_train \
     --do_eval \
     --do_mmlu_eval \
-    --mmlu_split test\
     --bf16 \
+    --mmlu_split eval \
     --warmup_ratio 0.03 \
     --lr_scheduler_type constant \
     --gradient_checkpointing \

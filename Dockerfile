@@ -99,6 +99,8 @@ RUN pip install tensorboardX
 
 COPY qlora/requirements.txt .
 RUN pip install -r requirements.txt
+RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" || true
+
 # ENV PATH $CONDA_DIR/bin:$PATH
 # RUN wget --quiet https://repo.continuum.io/miniconda/Miniconda$CONDA_PYTHON_VERSION-latest-Linux-x86_64.sh -O /tmp/miniconda.sh && \
 #     echo 'export PATH=$CONDA_DIR/bin:$PATH' > /etc/profile.d/conda.sh && \
