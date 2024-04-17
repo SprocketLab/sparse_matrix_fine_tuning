@@ -46,7 +46,6 @@ import json
 import time
 import logging
 import random
-import glob
 import copy
 import numpy as np
 from datasets import load_dataset, load_metric
@@ -79,7 +78,8 @@ from train_utils import (
     parse_args,
     init_monarch_layers,
     get_hpo_metric,
-    PEFT_ROBERTA_PATH
+    PEFT_ROBERTA_PATH,
+    print_dtypes
 )
 
 import torch
@@ -90,7 +90,7 @@ from ray.tune.schedulers import ASHAScheduler
 # Ensure reproducibility given the same hardware
 torch.use_deterministic_algorithms(True)
 torch.backends.cudnn.deterministic = True
-
+_DTYPES_PRINTED = False
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
 check_min_version("4.21.0.dev0")
 require_version("datasets>=1.8.0", "To fix: pip install -r examples/pytorch/text-classification/requirements.txt")
@@ -122,15 +122,20 @@ task_to_metric = {
 }
 logger = logging.getLogger(__name__)
 
-
+def override_dict(dict_new, dict_old):
+    if dict_new is not None:
+        for k in dict_old.keys():
+            if k in dict_new.keys() and dict_new[k] != dict_old[k]:
+                print("Overriding {} = {} from best HP".format(k, dict_new[k]))
+                dict_old[k] = dict_new[k]
 
 def main(config: dict = None):
     ############################## Command line args ##############################
     args = parse_args()
     peft_config = json.load(open(PEFT_ROBERTA_PATH, "r"))  # load monarch config
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
-    
     model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(args.config_path))
+    
     # NOTE: Extra args can override all training configs (best HP, peft_config, etc.)
     extra_args = override_config([model_args, data_args, training_args, peft_config], sys.argv[2:])
     use_monarch = args.use_monarch
@@ -306,36 +311,39 @@ def main(config: dict = None):
 
     # helper to init and set hyperparams for Ray Tune search
     def model_init(hyperparams: dict = None):
+        global best_hyperparams, _DTYPES_PRINTED
         set_seed(training_args.seed)
-        if hyperparams is None:
-            global best_hyperparams
-        else:
+        if hyperparams is not None:
             best_hyperparams = hyperparams
+        if training_args.fp16:
+            dtype = torch.float16
         
         model = RobertaForSequenceClassification.from_pretrained(
             pretrained_model_name_or_path=model_args.model_name_or_path,
-            from_tf=bool(".ckpt" in model_args.model_name_or_path),
             config=config,
             cache_dir=model_args.cache_dir,
             revision=model_args.model_revision,
             use_auth_token=True if model_args.use_auth_token else None,
             ignore_mismatched_sizes=model_args.ignore_mismatched_sizes,
         )
-        
-        # Hyperparameter search
-        if best_hyperparams is not None:
-            for k in peft_config.keys():
-                if k in best_hyperparams.keys() and best_hyperparams[k] != peft_config[k]:
-                    print("Overriding {} = {} from best HP".format(k, best_hyperparams[k]))
-                    peft_config[k] = best_hyperparams[k]
+            
+        if torch.cuda.is_available():
+            model = model.to("cuda")    
+        # For Hyperparameter search
+        override_dict(best_hyperparams, peft_config)
+        if not _DTYPES_PRINTED:
+            print_dtypes(model)
+            _DTYPES_PRINTED = True
         if use_monarch:
-            # model.roberta.set_peft_config(peft_config)
             # For legacy purposes, don't init here. I ran some experiments with 
             # modules initialized in the 1st training step, so init here instead would
             # break the reproducibility. TODO: Try ensuring nothing breaks the random seed
             # in between so that we can init here
+            
+            # init_monarch_layers(model.roberta, peft_config)
             model.roberta.init_monarch_layers = partial(init_monarch_layers, model.roberta)
             model.roberta.peft_config = peft_config
+            
         # NOTE: Ray doesn't support torch.compile, plus a bug with trainer...
         # if torch.__version__.startswith("2") and not do_tune:
         #     model = torch.compile(model)
@@ -530,7 +538,6 @@ def main(config: dict = None):
             new_lr=peft_config["new_lr"],
             use_scaler=peft_config["scaler"],
         )
-        
         # PEFT monarch search space
         if use_monarch:
             param_space = {
@@ -653,7 +660,7 @@ def main(config: dict = None):
         new_lr=peft_config["new_lr"],
         use_scaler=peft_config["scaler"],
     )
-    
+
     # # Training
     if training_args.do_train and not do_tune:
         checkpoint = None
@@ -678,6 +685,7 @@ def main(config: dict = None):
     if training_args.do_eval and not do_tune:
         logger.info("*** Evaluate ***")
         last_checkpoint = os.path.join(get_last_checkpoint(training_args.output_dir),"pytorch_model.bin")
+        override_dict(best_hyperparams, peft_config)
         trainer.model.roberta.init_monarch_layers()
         trainer.model.eval()
         trainer.model.load_state_dict(torch.load(last_checkpoint))

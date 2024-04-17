@@ -92,6 +92,7 @@ class MonarchLinear(StructuredLinear):
         nblocks: int = 4,
         weights: torch.Tensor = None,
         device="cuda",
+        dtype=torch.float32,
         *args,
         **kwargs,
     ):
@@ -252,7 +253,8 @@ class MonarchLinear(StructuredLinear):
                     self.dense.data -= merged_weights
                     self.merged = False
                 self.dense.requires_grad_(False) # freeze dense, train monarch adapter
-                self.bias.requires_grad_(False)
+                if self.bias is not None:
+                    self.bias.requires_grad_(False)
         else:
             if self.use_adapter and not self.merged:
                 # Merge the adapter weights and mark it

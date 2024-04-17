@@ -71,6 +71,7 @@ class BlockdiagButterflyMultiply(torch.autograd.Function):
     @staticmethod
     @torch.cuda.amp.custom_fwd(cast_inputs=torch.float16)
     def forward(ctx, x, w1_bfly, w2_bfly):
+        # breakpoint()
         batch_shape, n = x.shape[:-1], x.shape[-1]
         batch_dim = np.prod(batch_shape)
         k, q, p = w1_bfly.shape
@@ -80,6 +81,7 @@ class BlockdiagButterflyMultiply(torch.autograd.Function):
         
         x_reshaped = x.reshape(batch_dim, k, p).transpose(0, 1)
         out1 = torch.empty(batch_dim, k, q, device=x.device, dtype=x.dtype).transpose(0, 1) 
+        
         out1 = torch.bmm(x_reshaped, w1_bfly.transpose(-1, -2), out=out1) # (k, batch_dim, p) @ (k, p, q) -> (k, batch_dim, q)
         out1 = out1.transpose(0, 1).reshape(batch_dim, r, l).transpose(-1, -2).contiguous().transpose(0, 1) # (batch_dim, k, q) -> (batch_dim, r, l) -> (batch_dim, l, r) -> (l, batch_dim, r)
         out2 = torch.empty(batch_dim, l, s, device=x.device, dtype=x.dtype).transpose(0, 1)

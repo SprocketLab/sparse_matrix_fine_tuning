@@ -949,11 +949,10 @@ class RobertaModel(RobertaPreTrainedModel):
             
 
     def train(self, mode: bool = True):
-        # breakpoint()
         if hasattr(self, "peft_config") and self.peft_config["monarch"] and not self.monarch_param_set:
             self.init_monarch_layers(self.peft_config, [RobertaSelfAttention, RobertaIntermediate])
-            if mode:
-                self.create_optimizer_and_scheduler(self.trainer.num_training_steps)
+            # if mode:
+                # self.trainer.create_optimizer_and_scheduler(self.trainer.num_training_steps)
             self.monarch_param_set = True
             
         super().train(mode)

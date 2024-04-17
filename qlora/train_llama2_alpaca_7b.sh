@@ -21,16 +21,14 @@ fi
 
 python qlora_monarch.py \
     --model_name_or_path meta-llama/Llama-2-7b-hf \
+    --eval_accumulation_steps 2 \
     --use_auth \
-    --output_dir ./output/llama-2-guanaco-7b \
-    --logging_steps 10 \
+    --output_dir  /fly/results/llama_mmlu/train \
+    --logging_steps 40 \
     --save_strategy steps \
-    --data_seed 42 \
-    --save_steps 500 \
-    --save_total_limit 40 \
+    --save_steps 187 \
+    --save_total_limit 1 \
     --evaluation_strategy steps \
-    --eval_dataset_size 1024 \
-    --max_eval_samples 1000 \
     --per_device_eval_batch_size 1 \
     --max_new_tokens 32 \
     --dataloader_num_workers 1 \
@@ -39,8 +37,6 @@ python qlora_monarch.py \
     --remove_unused_columns False \
     --do_train \
     --do_eval \
-    --do_mmlu_eval \
-    --mmlu_split test\
     --bf16 \
     --warmup_ratio 0.03 \
     --lr_scheduler_type constant \
@@ -57,4 +53,7 @@ python qlora_monarch.py \
     --max_grad_norm 0.3 \
     --weight_decay 0.0 \
     --seed 0 \
-    --hf_token=$HF_TOKEN "${FLAGS[@]}" 
+    --hf_token=$HF_TOKEN "${FLAGS[@]}" \
+    --do_mmlu_eval \
+    --mmlu_split test \
+    --load_best_model_at_end 
