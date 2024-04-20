@@ -5,14 +5,12 @@ from collections import defaultdict
 import copy
 import json
 import os
-os.environ['PYTHONPATH'] = "/fly" # avoid ray cluster error
+os.environ["PYTHONPATH"] = "/fly"
 from os.path import exists, join, isdir
 from dataclasses import dataclass, field
 import sys
 sys.path.append("/fly")
-# TODO: some bug causing ray failing to import parent stuff..https://github.com/ray-project/ray/issues/37042
-from train_utils import *
-import gc
+from train_utils import param_stats, init_monarch_layers, get_hpo_metric, get_run_group
 from typing import Optional, Dict, Sequence
 import numpy as np
 from tqdm import tqdm
@@ -20,9 +18,8 @@ import logging
 import bitsandbytes as bnb
 import pandas as pd
 from functools import partial
-from packaging import version
 from packaging.version import parse
-from copy import deepcopy
+
 import torch
 import transformers
 from torch.nn.utils.rnn import pad_sequence
@@ -39,8 +36,9 @@ from transformers import (
 )
 from datasets import load_dataset, Dataset
 import evaluate
-from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
 import wandb
+from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
+
 from ray import tune
 from ray.tune import CLIReporter
 from ray.tune.schedulers import ASHAScheduler
@@ -54,7 +52,6 @@ best_hyperparams = None
 args = None
 model = None
 peft_config = json.load(open("/fly/task_configs/llama_mmlu/peft_config.json", "r"))
-dtypes_printed = False
 
 IGNORE_INDEX = -100
 DEFAULT_PAD_TOKEN = "[PAD]"
@@ -105,12 +102,14 @@ class DataArguments:
 
 @dataclass
 class TrainingArguments(transformers.Seq2SeqTrainingArguments):
+    full_group: Optional[str] = field(
+        default=None, metadata={"help": "Use the full group name for resuming HPO."}
+    ) 
     resume_tune: Optional[bool] = field(
-        default=False,
-        metadata={"help": "Whether to resume tuning from a previous run."}
+        default=False, metadata={"help": "Resume HPO"}
     )
     n_trials: Optional[int] = field(
-        default=50, metadata={"help": "Number of hyperparameter search trials."}
+        default=40, metadata={"help": "Number of hyperparameter search trials."}
     )
     group: Optional[str] = field(
         default="", metadata={"help": "The wandb group name for the run."}
@@ -158,8 +157,9 @@ class TrainingArguments(transformers.Seq2SeqTrainingArguments):
     )
     report_to: str = field(
         default='wandb',
-        metadata={"help": "To use wandb or 'none' for reporting."}
+        metadata={"help": "To use wandb or something else for reporting."}
     )
+    use_wandb: bool = field(default=True)
     output_dir: str = field(default='./output', metadata={"help": 'The output dir for logs and checkpoints'})
     optim: str = field(default='adamw_torch', metadata={"help": 'The optimizer to be used'})
     per_device_train_batch_size: int = field(default=1, metadata={"help": 'The training batch size per GPU. Increase for better speed.'})
@@ -170,7 +170,7 @@ class TrainingArguments(transformers.Seq2SeqTrainingArguments):
     remove_unused_columns: bool = field(default=False, metadata={"help": 'Removed unused columns. Needed to make this codebase work.'})
     max_grad_norm: float = field(default=0.3, metadata={"help": 'Gradient clipping max norm. This is tuned and works well for all models tested.'})
     gradient_checkpointing: bool = field(default=True, metadata={"help": 'Use gradient checkpointing. You want to use this.'})
-    do_train: bool = field(default=True, metadata={"help": 'To train or not to train, that is the question?'})
+    do_train: bool = field(default=False, metadata={"help": 'To train or not to train, that is the question?'})
     lr_scheduler_type: str = field(default='constant', metadata={"help": 'Learning rate schedule. Constant a bit better than cosine, and has advantage for analysis'})
     warmup_ratio: float = field(default=0.03, metadata={"help": 'Fraction of steps to do a warmup for'})
     logging_steps: int = field(default=10, metadata={"help": 'The frequency of update steps after which to log the loss'})
@@ -211,10 +211,49 @@ class GenerationArguments:
     length_penalty: Optional[float] = field(default=1.0)
     no_repeat_ngram_size: Optional[int] = field(default=0)
 
+# def find_all_linear_names(args, model):
+#     cls = bnb.nn.Linear4bit if args.bits == 4 else (bnb.nn.Linear8bitLt if args.bits == 8 else torch.nn.Linear)
+#     lora_module_names = set()
+#     for name, module in model.named_modules():
+#         if isinstance(module, cls):
+#             names = name.split('.')
+#             lora_module_names.add(names[0] if len(names) == 1 else names[-1])
 
-# TODO: With the original script, I don't even need to delete the tokenizer to free memory
+
+#     if 'lm_head' in lora_module_names: # needed for 16-bit
+#         lora_module_names.remove('lm_head')
+#     return list(lora_module_names)
+
+
+# class SavePeftModelCallback(transformers.TrainerCallback):
+#     def save_model(self, args, state, kwargs):
+#         print('Saving PEFT checkpoint...')
+#         if state.best_model_checkpoint is not None:
+#             checkpoint_folder = os.path.join(state.best_model_checkpoint, "adapter_model")
+#         else:
+#             checkpoint_folder = os.path.join(args.output_dir, f"{PREFIX_CHECKPOINT_DIR}-{state.global_step}")
+
+#         peft_model_path = os.path.join(checkpoint_folder, "adapter_model")
+#         kwargs["model"].save_pretrained(peft_model_path)
+
+#         pytorch_model_path = os.path.join(checkpoint_folder, "pytorch_model.bin")
+#         if os.path.exists(pytorch_model_path):
+#             os.remove(pytorch_model_path)
+
+#     def on_save(self, args, state, control, **kwargs):
+#         self.save_model(args, state, kwargs)
+#         return control
+
+#     def on_train_end(self, args, state, control, **kwargs):
+#         def touch(fname, times=None):
+#             with open(fname, 'a'):
+#                 os.utime(fname, times)
+
+#         touch(join(args.output_dir, 'completed'))
+#         self.save_model(args, state, kwargs)
+
 def model_init(hyperparams: dict = None):
-    global peft_config, dtypes_printed, model
+    global peft_config, model
     set_seed(args.seed)
     if hyperparams is None:
         global best_hyperparams
@@ -238,44 +277,35 @@ def model_init(hyperparams: dict = None):
     max_memory = {i: max_memory for i in range(n_gpus)}
     device_map = "auto"
 
-    # # if we are in a distributed setting, we need to set the device map and max memory per device
+    # if we are in a distributed setting, we need to set the device map and max memory per device
     if os.environ.get('LOCAL_RANK') is not None:
         local_rank = int(os.environ.get('LOCAL_RANK', '0'))
         device_map = {'': local_rank}
         max_memory = {'': max_memory[local_rank]}
 
 
-    if model == None:
+    compute_dtype = (torch.float16 if args.fp16 else (torch.bfloat16 if args.bf16 else torch.float32))
+    if model is None:
         model = AutoModelForCausalLM.from_pretrained(
             args.model_name_or_path,
             cache_dir=args.cache_dir,
             device_map=device_map,
             max_memory=max_memory,
+            torch_dtype=(torch.float32 if args.fp16 else (torch.bfloat16 if args.bf16 else torch.float32)),
             trust_remote_code=True,
             use_auth_token=True,
             # token=args.hf_token
         )
-
     model.enable_input_require_grads()
-    init_monarch_layers(model, peft_config) # Monarch adaptation
+    # Monarch adaptation
+    init_monarch_layers(model, peft_config)
+    param_stats(model)
     
-    param_stats(model, print_trainable=False)
-    if not dtypes_printed:
-        dtypes = {}
-        for _, p in model.named_parameters():
-            dtype = p.dtype
-            if dtype not in dtypes: dtypes[dtype] = 0
-            dtypes[dtype] += p.numel()
-        total = 0
-        for k, v in dtypes.items(): total+= v
-        for k, v in dtypes.items():
-            print(k, v, v/total)
-        dtypes_printed = True
-        
     setattr(model, 'model_parallel', True)
     setattr(model, 'is_parallelizable', True)
 
     model.config.torch_dtype=(torch.float32 if args.fp16 else (torch.bfloat16 if args.bf16 else torch.float32))
+
     # Tokenizer
     global tokenizer
     if tokenizer is None:
@@ -300,38 +330,37 @@ def model_init(hyperparams: dict = None):
             # Note that these are present in the vocabulary.
             # Note also that `model.config.pad_token_id` is 0 which corresponds to `<unk>` token.
             print('Adding special tokens.')
-            unk_token = deepcopy(model.config.pad_token_id if model.config.pad_token_id != -1 else tokenizer.pad_token_id)
             tokenizer.add_special_tokens({
-                    "eos_token": tokenizer.convert_ids_to_tokens(deepcopy(model.config.eos_token_id)),
-                    "bos_token": tokenizer.convert_ids_to_tokens(deepcopy(model.config.bos_token_id)),
-                    "unk_token": tokenizer.convert_ids_to_tokens(unk_token),
+                    "eos_token": tokenizer.convert_ids_to_tokens(model.config.eos_token_id),
+                    "bos_token": tokenizer.convert_ids_to_tokens(model.config.bos_token_id),
+                    "unk_token": tokenizer.convert_ids_to_tokens(
+                        model.config.pad_token_id if model.config.pad_token_id != -1 else tokenizer.pad_token_id
+                    ),
             })
 
-    for name, module in model.named_modules():
-        # if isinstance(module, LoraLayer):
-        #     if args.bf16:
-        #         module = module.to(torch.bfloat16)
-        if 'norm' in name:
-            module = module.to(torch.float32)
-        if 'lm_head' in name or 'embed_tokens' in name:
-            if hasattr(module, 'weight'):
-                if args.bf16 and module.weight.dtype == torch.float32:
-                    module = module.to(torch.bfloat16)
+    # for name, module in model.named_modules():
+    #     # if isinstance(module, LoraLayer):
+    #     #     if args.bf16:
+    #     #         module = module.to(torch.bfloat16)
+    #     if 'norm' in name:
+    #         module = module.to(torch.float32)
+    #     if 'lm_head' in name or 'embed_tokens' in name:
+    #         if hasattr(module, 'weight'):
+    #             if args.bf16 and module.weight.dtype == torch.float32:
+    #                 module = module.to(torch.bfloat16)
     return model
 
 
 def smart_tokenizer_and_embedding_resize(
     special_tokens_dict: Dict,
     tokenizer: transformers.PreTrainedTokenizer,
-    model: transformers.PreTrainedModel = None,
+    model: transformers.PreTrainedModel,
 ):
     """Resize tokenizer and embedding.
 
     Note: This is the unoptimized version that may make your embedding size not be divisible by 64.
     """
     num_new_tokens = tokenizer.add_special_tokens(special_tokens_dict)
-    if model is None:
-        return 
     model.resize_token_embeddings(len(tokenizer))
     
     if num_new_tokens > 0:
@@ -550,7 +579,6 @@ def make_data_module(tokenizer: transformers.PreTrainedTokenizer, args) -> Dict:
             eval_dataset = eval_dataset.select(range(args.max_eval_samples))
         if args.group_by_length:
             eval_dataset = eval_dataset.map(lambda x: {'length': len(x['input']) + len(x['output'])})
-            
     if args.do_train:
         train_dataset = dataset['train']
         if args.max_train_samples is not None and len(train_dataset) > args.max_train_samples:
@@ -595,34 +623,47 @@ def train():
     model_args, data_args, training_args, generation_args, extra_args = \
         hfparser.parse_args_into_dataclasses(return_remaining_strings=True)
     training_args.generation_config = transformers.GenerationConfig(**vars(generation_args))
-     
-    global args, model, best_hyperparams # For reference in model_init
+    global args, model
     args = argparse.Namespace(
         **vars(model_args), **vars(data_args), **vars(training_args)
     )
     print(args)
     login(args.hf_token)
-    # Setup wandb 
-    
-    group = "train"
+    if not args.use_wandb:
+        os.environ["WANDB_MODE"] = "offline"
+        
+    group = "mmlu"
     if args.do_tune:
         os.environ["WANDB_PROJECT"] = "llama-mmlu-tune"
         os.environ["WANDB_RUN_GROUP"] = get_run_group(group, args.do_tune, args.group, notes=args.notes)
+        if args.resume_tune:
+            path = os.path.join(args.output_dir, "full_group.txt")
+            if os.path.exists(path):
+                with open(path, "r") as f:
+                    os.environ["WANDB_RUN_GROUP"] = f.read()
         wandb.init(project=os.environ["WANDB_PROJECT"], group=os.environ["WANDB_RUN_GROUP"], config=vars(args))
+
     else:
         os.environ["WANDB_PROJECT"] = "llama-mmlu"
         os.environ["WANDB_RUN_GROUP"] = get_run_group(group, False, args.group, notes=args.notes)
         wandb.init(project=os.environ["WANDB_PROJECT"], group=os.environ["WANDB_RUN_GROUP"], config=vars(args),)
-        
+    print(f"wandb group name: {os.environ['WANDB_RUN_GROUP']}")
+    
     checkpoint_dir, completed_training = get_last_checkpoint(args.output_dir)
     if completed_training:
         print('Detected that training was already completed!')
 
     _ = model_init(args)
-    free_memory()
+    import gc
+    gc.collect()
+    torch.cuda.empty_cache()
     global tokenizer
 
+    model.config.use_cache = False
+    print('loaded model')
+
     data_module = make_data_module(tokenizer=tokenizer, args=args)
+    
     trainer = Seq2SeqTrainer(
         model_init=model_init,
         tokenizer=tokenizer,
@@ -696,16 +737,13 @@ def train():
                 results[f'mmlu_{args.mmlu_split}_accuracy'] = np.mean(subject_scores) 
                 trainer.log(results)
                 trainer.data_collator.source_max_len = source_max_len
-        
-        # Do NOT tune hyperparams on test data
+
         # trainer.add_callback(MMLUEvalCallback)
-    
+
     all_metrics = {"run_name": args.run_name}
     
     if args.do_tune:
-        training_args.output_dir = os.path.join(args.output_dir, group)
         # Save full tune group name for resuming
-        os.makedirs(training_args.output_dir, exist_ok=True)
         with open(os.path.join(training_args.output_dir, "full_group.txt"), "w") as f:
             f.write(os.environ["WANDB_RUN_GROUP"])
             
@@ -718,11 +756,13 @@ def train():
         param_space = {
             # "nblocks": tune.choice(['sqrt(n)', 4]),
             "seed": training_args.seed,
+            # "large_lr": tune.sample_from(lambda _: np.random.uniform() > 0.4),
+            "large_lr": False,
             # "num_train_epochs": tune.choice([20, 25]),
             "learning_rate": tune.quniform(8e-5, 6e-4, 2e-5), 
             "gradient_accumulation_steps": tune.choice([16, 32, 64]), # Will OOM if tune batch size
-            "weight_decay": tune.choice([training_args.weight_decay, 1e-3]),
-            "lr_scheduler_type": tune.choice(["cosine", "linear"]), # try constant?
+            "weight_decay": tune.choice([0, 1e-3]),
+            "lr_scheduler_type": tune.choice(["cosine", "linear"]), # mostly linear underperforms
             "blk_r": peft_config["blk_r"],
             "nblocks": peft_config["nblocks"],
         }
@@ -739,11 +779,10 @@ def train():
         #     n_trials += 10
         
         # Set up scheduler and reporter etc.
-        metric = "eval_loss"
-        direction = "min" if "loss" in metric else "max" # TODO: don't get this wrong!
+        direction = "min"
         tune_unit = "iter"
-        max_t = 7
-        # metric = f'mmlu_{args.mmlu_split}_accuracy'
+        max_t = 40 * 60  if "tune_unit" == "time" else 7
+        metric = f'eval_loss'
         grade_period = 4 * 60  if tune_unit == "time" else 2
         time_attr = "time_total_s" if tune_unit == "time" else "training_iteration"
         
@@ -758,7 +797,7 @@ def train():
             parameter_columns=["learning_rate", "per_device_train_batch_size", "weight_decay"],
             metric_columns=["train_loss", "eval_loss", metric, "training_iteration"],
             max_progress_rows=9,
-            max_report_frequency=12,
+            max_report_frequency=9,
         )   
         # Do hyperparam optimization with Ray Tune
         best_run = trainer.hyperparameter_search(
@@ -767,20 +806,21 @@ def train():
             n_trials=n_trials, # under the hood it calls ray.tune.run(num_samples=n_trials, ...)
             scheduler=scheduler,
             keep_checkpoints_num=0,
-            checkpoint_score_attr=direction + "-" + metric,
-            progress_reporter=reporter,
+            # checkpoint_score_attr="min-" + metric, # rank in decreasing order
+            # progress_reporter=reporter,
             resources_per_trial={"cpu": 1, "gpu": 1},
             local_dir="ray_results",
             name=os.environ["WANDB_RUN_GROUP"],
-            max_failures=100, # tolerate OOM
+            max_failures=9999, # tolerate OOM
             direction="maximize" if direction == "max" else "minimize",
             compute_objective=partial(get_hpo_metric, metric),
             resume=args.resume_tune 
         )
+        global best_hyperparams
         best_hyperparams = best_run.hyperparameters
             
         # Save the best HP for full training 
-        print(f"Best hyperparameters from run {best_run.run_id}: ", best_hyperparams)
+        print("Best hyperparameters: ", best_hyperparams)
         # Save in the run dir
         cur_tune_path = os.path.join(training_args.output_dir, "best_hyperparams.json")
         json.dump(best_hyperparams, open(cur_tune_path, "w"))
@@ -790,13 +830,10 @@ def train():
     # Training
     if args.do_train:
         logger.info("*** Train ***")
-        # Load best hyperparameters from HPO if available
         best_hp_path = os.path.join(training_args.output_dir, "best_hyperparams.json")
         if os.path.exists(best_hp_path):
             best_hyperparams = json.load(open(best_hp_path))
-        if best_hyperparams is not None:
             print(f"Using best hyperparameters: {best_hyperparams}")
-            
         # Note: `resume_from_checkpoint` not supported for adapter checkpoints by HF.
         # Currently adapter checkpoint is reloaded as expected but optimizer/scheduler states are not.
         trainer.args.save_total_limit = 1
@@ -811,7 +848,8 @@ def train():
     # Evaluation
     if args.do_eval:
         logger.info("*** Evaluate ***")
-        trainer.add_callback(MMLUEvalCallback)  
+        trainer.add_callback(MMLUEvalCallback)
+        breakpoint()
         metrics = trainer.evaluate(metric_key_prefix="eval")
         trainer.log_metrics("eval", metrics)
         trainer.save_metrics("eval", metrics)
