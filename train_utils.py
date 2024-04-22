@@ -90,8 +90,6 @@ def param_stats(model, training=True, print_trainable=False, skip_cls=False):
     
     if training:
         assert param_trainable != 0, "There's a bug in your code, your're training nothing!"
-    if param_trainable > 4 * 1024 **2:
-        breakpoint()
     return param_trainable
 
 
@@ -125,6 +123,8 @@ def override_config(old_configs: List[Dict], new_args: Union[List[str], Dict]):
     """
     Scan through the old configs and update them with new args if they exist.
     """
+    if len(new_args) == 0:
+        return
     extra_args = {}
     new_args = new_args.items() if isinstance(new_args, dict) else new_args
     
@@ -135,7 +135,10 @@ def override_config(old_configs: List[Dict], new_args: Union[List[str], Dict]):
             key, val = arg
         elif arg.startswith('--'):
             # command line args
-            key, val = arg.split('=') if '=' in arg else args.split(' ')
+            try:
+                key, val = arg.split('=') if '=' in arg else arg.split(' ')
+            except Exception as e:
+                print(f"Error: {e} for command line arg {arg}")
             key = key[2:]
         else:
             raise ValueError(f"wrong format for {arg}, extra command line argument must be --key=value or --key value")

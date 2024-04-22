@@ -21,7 +21,6 @@ fi
 python qlora_monarch.py \
     --model_name_or_path meta-llama/Llama-2-7b-hf \
     --eval_accumulation_steps 2 \
-    --use_auth \
     --output_dir /fly/results/llama_mmlu \
     --logging_steps 40 \
     --save_strategy steps \
@@ -59,4 +58,3 @@ python qlora_monarch.py \
     --mmlu_split test \
     --save_total_limit 1 \
     --load_best_model_at_end \
-    # --max_eval_samples 1000 \

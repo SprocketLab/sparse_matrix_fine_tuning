@@ -10,7 +10,13 @@ from os.path import exists, join, isdir
 from dataclasses import dataclass, field
 import sys
 sys.path.append("/fly")
-from train_utils import param_stats, init_monarch_layers, get_hpo_metric, get_run_group
+from train_utils import (
+    param_stats,
+    init_monarch_layers,
+    get_hpo_metric,
+    get_run_group,
+    override_config
+)
 from typing import Optional, Dict, Sequence
 import numpy as np
 from tqdm import tqdm
@@ -275,7 +281,7 @@ def model_init(hyperparams: dict = None):
         
     max_memory = f'{args.max_memory_MB}MB'
     max_memory = {i: max_memory for i in range(n_gpus)}
-    device_map = "auto"
+    # device_map = "auto"
 
     # if we are in a distributed setting, we need to set the device map and max memory per device
     if os.environ.get('LOCAL_RANK') is not None:
@@ -289,7 +295,7 @@ def model_init(hyperparams: dict = None):
         model = AutoModelForCausalLM.from_pretrained(
             args.model_name_or_path,
             cache_dir=args.cache_dir,
-            device_map=device_map,
+            # device_map=device_map,
             max_memory=max_memory,
             torch_dtype=(torch.float32 if args.fp16 else (torch.bfloat16 if args.bf16 else torch.float32)),
             trust_remote_code=True,
@@ -617,13 +623,14 @@ def get_last_checkpoint(checkpoint_dir):
 
 
 def train():
+    global args, model, peft_config
     hfparser = transformers.HfArgumentParser((
         ModelArguments, DataArguments, TrainingArguments, GenerationArguments
     ))
     model_args, data_args, training_args, generation_args, extra_args = \
         hfparser.parse_args_into_dataclasses(return_remaining_strings=True)
+    override_config([training_args, peft_config], extra_args)
     training_args.generation_config = transformers.GenerationConfig(**vars(generation_args))
-    global args, model
     args = argparse.Namespace(
         **vars(model_args), **vars(data_args), **vars(training_args)
     )
@@ -641,14 +648,18 @@ def train():
             if os.path.exists(path):
                 with open(path, "r") as f:
                     os.environ["WANDB_RUN_GROUP"] = f.read()
-        wandb.init(project=os.environ["WANDB_PROJECT"], group=os.environ["WANDB_RUN_GROUP"], config=vars(args))
+        wandb.init(project=os.environ["WANDB_PROJECT"], group=os.environ["WANDB_RUN_GROUP"], config=vars(args).update(peft_config))
 
     else:
         os.environ["WANDB_PROJECT"] = "llama-mmlu"
         os.environ["WANDB_RUN_GROUP"] = get_run_group(group, False, args.group, notes=args.notes)
-        wandb.init(project=os.environ["WANDB_PROJECT"], group=os.environ["WANDB_RUN_GROUP"], config=vars(args),)
+        wandb.init(project=os.environ["WANDB_PROJECT"], group=os.environ["WANDB_RUN_GROUP"], config=vars(args).update(peft_config)) 
     print(f"wandb group name: {os.environ['WANDB_RUN_GROUP']}")
-    
+    task_output_dir = args.output_dir
+    if args.group is not None:
+        args.output_dir = training_args.output_dir = os.path.join(args.output_dir, args.group) 
+    print(f"output dir: {args.output_dir}")
+
     checkpoint_dir, completed_training = get_last_checkpoint(args.output_dir)
     if completed_training:
         print('Detected that training was already completed!')
@@ -708,6 +719,8 @@ def train():
                 preds, refs = [], []
                 loss_mmlu = 0
                 for batch in tqdm(data_loader, total=len(data_loader)):
+                    # get batch size
+                    print(len(batch))
                     (loss, logits, labels) = trainer.prediction_step(trainer.model,batch,prediction_loss_only=False,)
                     # There are two tokens, the output, and eos token.
                     for i, logit in enumerate(logits):
@@ -831,9 +844,16 @@ def train():
     if args.do_train:
         logger.info("*** Train ***")
         best_hp_path = os.path.join(training_args.output_dir, "best_hyperparams.json")
+        base_hp_path = os.path.join(task_output_dir, "best_hyperparams.json")
         if os.path.exists(best_hp_path):
             best_hyperparams = json.load(open(best_hp_path))
-            print(f"Using best hyperparameters: {best_hyperparams}")
+            print(f"Using best hp: {best_hyperparams}")
+        elif os.path.exists(base_hp_path):
+            best_hyperparams = json.load(open(base_hp_path))
+            print(f"Using best hp for from the base setup: {best_hyperparams}")
+        else:
+            print("No best hyperparameters found.")
+            
         # Note: `resume_from_checkpoint` not supported for adapter checkpoints by HF.
         # Currently adapter checkpoint is reloaded as expected but optimizer/scheduler states are not.
         trainer.args.save_total_limit = 1
@@ -849,7 +869,6 @@ def train():
     if args.do_eval:
         logger.info("*** Evaluate ***")
         trainer.add_callback(MMLUEvalCallback)
-        breakpoint()
         metrics = trainer.evaluate(metric_key_prefix="eval")
         trainer.log_metrics("eval", metrics)
         trainer.save_metrics("eval", metrics)

@@ -21,13 +21,15 @@ fi
 
 python qlora_monarch.py \
     --model_name_or_path meta-llama/Llama-2-7b-hf \
-    --eval_accumulation_steps 2 \
-    --output_dir  /fly/results/llama_mmlu \
+    --eval_accumulation_steps 1 \
+    --use_auth \
+    --output_dir  /fly/results/llama_mmlu/train \
     --do_eval \
+    --bf16 \
     --dataset alpaca \
     --source_max_len 16 \
     --target_max_len 512 \
     --seed 0 \
     --hf_token=$HF_TOKEN "${FLAGS[@]}" \
     --do_mmlu_eval \
-    --mmlu_split test --use_wandb False
+    --mmlu_split test 

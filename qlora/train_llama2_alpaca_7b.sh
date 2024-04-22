@@ -22,8 +22,7 @@ fi
 python qlora_monarch.py \
     --model_name_or_path meta-llama/Llama-2-7b-hf \
     --eval_accumulation_steps 2 \
-    --use_auth \
-    --output_dir  /fly/results/llama_mmlu/train \
+    --output_dir  /fly/results/llama_mmlu \
     --logging_steps 40 \
     --save_strategy steps \
     --save_steps 187 \
