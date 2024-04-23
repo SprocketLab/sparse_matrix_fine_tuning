@@ -180,7 +180,7 @@ class TrainingArguments(transformers.Seq2SeqTrainingArguments):
         metadata={"help": "Quantization data type to use. Should be one of `fp4` or `nf4`."}
     )
     bits: int = field(
-        default=4,
+        default=16,
         metadata={"help": "How many bits to use."}
     )
     lora_r: int = field(
@@ -213,7 +213,7 @@ class TrainingArguments(transformers.Seq2SeqTrainingArguments):
     remove_unused_columns: bool = field(default=False, metadata={"help": 'Removed unused columns. Needed to make this codebase work.'})
     max_grad_norm: float = field(default=0.3, metadata={"help": 'Gradient clipping max norm. This is tuned and works well for all models tested.'})
     gradient_checkpointing: bool = field(default=True, metadata={"help": 'Use gradient checkpointing. You want to use this.'})
-    do_train: bool = field(default=True, metadata={"help": 'To train or not to train, that is the question?'})
+    do_train: bool = field(default=False, metadata={"help": 'To train or not to train, that is the question?'})
     lr_scheduler_type: str = field(default='constant', metadata={"help": 'Learning rate schedule. Constant a bit better than cosine, and has advantage for analysis'})
     warmup_ratio: float = field(default=0.03, metadata={"help": 'Fraction of steps to do a warmup for'})
     logging_steps: int = field(default=10, metadata={"help": 'The frequency of update steps after which to log the loss'})
@@ -385,7 +385,8 @@ def get_accelerate_model(args, checkpoint_dir):
         model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=args.gradient_checkpointing)
 
     if not args.full_finetune:
-        if checkpoint_dir is not None:
+        # if checkpoint_dir is not None:
+        if False:
             print("Loading adapters from checkpoint.")
             model = PeftModel.from_pretrained(model, join(checkpoint_dir, 'adapter_model'), is_trainable=True)
         else:
@@ -413,22 +414,22 @@ def get_accelerate_model(args, checkpoint_dir):
                     module = module.to(torch.bfloat16)
     return model, tokenizer
 
-def print_trainable_parameters(args, model):
-    """
-    Prints the number of trainable parameters in the model.
-    """
-    trainable_params = 0
-    all_param = 0
-    for _, param in model.named_parameters():
-        all_param += param.numel()
-        if param.requires_grad:
-            trainable_params += param.numel()
-    if args.bits == 4: trainable_params /= 2
-    print(
-        f"trainable params: {trainable_params} || "
-        f"all params: {all_param} || "
-        f"trainable: {100 * trainable_params / all_param}"
-    )
+# def print_trainable_parameters(args, model):
+#     """
+#     Prints the number of trainable parameters in the model.
+#     """
+#     trainable_params = 0
+#     all_param = 0
+#     for _, param in model.named_parameters():
+#         all_param += param.numel()
+#         if param.requires_grad:
+#             trainable_params += param.numel()
+#     # if args.bits == 4: trainable_params /= 2
+#     print(
+#         f"trainable params: {trainable_params} || "
+#         f"all params: {all_param} || "
+#         f"trainable: {100 * trainable_params / all_param}"
+#     )
 
 def smart_tokenizer_and_embedding_resize(
     special_tokens_dict: Dict,
@@ -798,7 +799,7 @@ def train():
         #trainer.add_callback(MMLUEvalCallback)
 
     # Verifying the datatypes and parameter counts before training.
-    print_trainable_parameters(args, model)
+    param_stats(model, skip_cls=False, print_trainable=True)
     dtypes = {}
     for _, p in model.named_parameters():
         dtype = p.dtype

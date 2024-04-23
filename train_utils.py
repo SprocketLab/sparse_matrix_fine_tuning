@@ -15,6 +15,7 @@ import torch.nn as nn
 from ast import literal_eval
 from typing import Dict, List, Union
 from functools import partial
+import json
 
 PEFT_ROBERTA_PATH = "/fly/task_configs/glue_peft_configs/peft_config.json"
 
@@ -48,6 +49,20 @@ def parse_args():
     args, unknown = parser.parse_known_args()
     return args
 
+def load_best_hp(run_dir, task_dir):
+    best_hyperparams = None
+    best_hp_path = os.path.join(run_dir, "best_hyperparams.json")
+    base_hp_path = os.path.join(task_dir, "best_hyperparams.json")
+    if os.path.exists(best_hp_path):
+        best_hyperparams = json.load(open(best_hp_path))
+        print(f"Using best hp: {best_hyperparams}")
+    elif os.path.exists(base_hp_path):
+        best_hyperparams = json.load(open(base_hp_path))
+        print(f"Using best hp for from the base setup: {best_hyperparams}")
+    else:
+        print("No best hyperparameters found.")
+    return best_hyperparams
+
 def print_dtypes(model):
     dtypes = {}
     for _, p in model.named_parameters():
@@ -59,7 +74,7 @@ def print_dtypes(model):
     for k, v in dtypes.items():
         print(k, v, v/total)
 
-def param_stats(model, training=True, print_trainable=False, skip_cls=False):
+def param_stats(model, training=True, print_trainable=False, skip_cls=True):
     """
     Do a param count and optionally print the trainable layers
     """
@@ -84,8 +99,8 @@ def param_stats(model, training=True, print_trainable=False, skip_cls=False):
     # print("Total GPU memory: %.2f GB" % (torch.cuda.mem_get_info()[1] / 1024 ** 3))
     # print("Avail GPU memory %.2f GB" % (torch.cuda.mem_get_info()[0] / 1024 ** 3))
     print(
-        f"Total parameters: {param_count / 1024 ** 2:.2f}M,\n \
-        trainable parameters: {param_trainable / 1024 ** 2:.2f}M ({100 * param_trainable / param_count:.2f}%)"
+        f"Total parameters: {param_count / 1024 ** 2:.3f}M,\n \
+        trainable parameters: {param_trainable / 1024 ** 2:.3f}M ({100 * param_trainable / param_count:.3f}%)"
     )
     
     if training:
@@ -123,7 +138,7 @@ def override_config(old_configs: List[Dict], new_args: Union[List[str], Dict]):
     """
     Scan through the old configs and update them with new args if they exist.
     """
-    if len(new_args) == 0:
+    if new_args is None or len(new_args) == 0:
         return
     extra_args = {}
     new_args = new_args.items() if isinstance(new_args, dict) else new_args

@@ -19,7 +19,7 @@ else
 fi
 
 
-python qlora_monarch.py \
+python /fly/qlora/qlora_monarch.py \
     --model_name_or_path meta-llama/Llama-2-7b-hf \
     --eval_accumulation_steps 2 \
     --output_dir  /fly/results/llama_mmlu \
@@ -28,6 +28,7 @@ python qlora_monarch.py \
     --source_max_len 16 \
     --target_max_len 512 \
     --seed 0 \
+    --bf16 \
     --hf_token=$HF_TOKEN "${FLAGS[@]}" \
     --do_mmlu_eval \
-    --mmlu_split test --use_wandb False
+    --mmlu_split test  --resume
