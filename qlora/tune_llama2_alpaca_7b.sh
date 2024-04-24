@@ -24,7 +24,7 @@ python qlora_monarch.py \
     --output_dir /fly/results/llama_mmlu \
     --logging_steps 40 \
     --save_strategy steps \
-    --save_steps 187 \
+    --save_steps 600 \
     --save_total_limit 1 \
     --evaluation_strategy steps \
     --eval_dataset_size 1024 \
@@ -38,7 +38,7 @@ python qlora_monarch.py \
     --do_train \
     --do_eval \
     --bf16 \
-    --warmup_ratio 0.03 \
+    --warmup_steps 100 \
     --lr_scheduler_type cosine \
     --gradient_checkpointing \
     --dataset alpaca \
@@ -46,8 +46,8 @@ python qlora_monarch.py \
     --target_max_len 512 \
     --per_device_train_batch_size 1 \
     --gradient_accumulation_steps 16 \
-    --max_steps 1875 \
-    --eval_steps 187 \
+    --max_steps 101956 \
+    --eval_steps 600 \
     --learning_rate 0.0002 \
     --adam_beta2 0.999 \
     --max_grad_norm 0.3 \

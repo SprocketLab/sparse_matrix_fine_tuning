@@ -116,7 +116,7 @@ class TrainingArguments(transformers.Seq2SeqTrainingArguments):
         default=False, metadata={"help": "Resume HPO"}
     )
     n_trials: Optional[int] = field(
-        default=40, metadata={"help": "Number of hyperparameter search trials."}
+        default=20, metadata={"help": "Number of hyperparameter search trials."}
     )
     group: Optional[str] = field(
         default="", metadata={"help": "The wandb group name for the run."}
@@ -600,6 +600,8 @@ def train():
     print(f"output dir: {args.output_dir}")
     
     best_hyperparams = load_best_hp(args.output_dir, task_dir)
+    if best_hyperparams is not None:
+        override_config([best_hyperparams], extra_args)
     override_config([training_args, peft_config], best_hyperparams)
     override_config([training_args, peft_config], extra_args) # CLA args can override best hp
     training_args.generation_config = transformers.GenerationConfig(**vars(generation_args))
@@ -736,8 +738,8 @@ def train():
             "large_lr": False,
             # "num_train_epochs": tune.choice([20, 25]),
             "learning_rate": tune.quniform(8e-5, 6e-4, 2e-5), 
-            "gradient_accumulation_steps": tune.choice([16, 32, 64]), # Will OOM if tune batch size
-            "weight_decay": tune.choice([0, 1e-3]),
+            "gradient_accumulation_steps": tune.choice([16, 32]), # Will OOM if tune batch size
+            "weight_decay": tune.choice([0]),
             "lr_scheduler_type": tune.choice(["cosine", "linear"]), # mostly linear underperforms
             "blk_r": peft_config["blk_r"],
             "nblocks": peft_config["nblocks"],

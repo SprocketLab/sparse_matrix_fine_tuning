@@ -4,7 +4,7 @@
     "nblocks": 4,
     "blk_r": 4,
     "blk_sz": null,
-
+    "dropout": 0.1,
     "layers_to_adapt": [
         "q_proj",
         "v_proj",

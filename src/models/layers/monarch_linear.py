@@ -135,6 +135,8 @@ class MonarchLinear(StructuredLinear):
         self.use_mult_factor = peft_config.get("use_mult_factor", False)
         self.merged = False
         self.use_scaler = self.use_scaler or self.use_mult_factor
+        dropout_rate = peft_config.get("dropout", 0.0)
+        self.dropout = nn.Dropout(dropout_rate) if dropout_rate > 0.0 else lambda x : x
         
         assert self.scaler_type in ["scaler", "diag"]
         assert self.blk_r <= min(
@@ -218,7 +220,7 @@ class MonarchLinear(StructuredLinear):
         output = blockdiag_butterfly_multiply(
             self.preprocess(x), self.blkdiag1, self.blkdiag2
         )
-        return self.scaler(self.postprocess(output))
+        return self.scaler(self.dropout(self.postprocess(output)))
 
 
     def set_weights_from_dense_init(self, w: torch.Tensor, rank=1):
