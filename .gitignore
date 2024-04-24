@@ -11,6 +11,7 @@ results/monarch_roberta_glue/*.tsv
 !results/monarch_roberta_glue/*/*
 results/monarch_roberta_glue/*/*.tsv
 !results/monarch_roberta_glue/*/*/best_hyperparams.json
+**/ray_results/** 
 # Ignore other directories and file patterns
 wandb/**
 __pycache__/**

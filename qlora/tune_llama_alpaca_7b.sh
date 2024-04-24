@@ -18,20 +18,16 @@ else
     echo "Using no additional flags."
 fi
 
-
 python qlora_monarch.py \
-<<<<<<< Updated upstream:qlora/finetune_llama2_alpaca_7b.sh
+<<<<<<< Updated upstream:qlora/tune_llama2_alpaca_7b.sh
     --model_name_or_path meta-llama/Llama-2-7b-hf \
-    --use_auth \
-    --output_dir ./output/llama-2-guanaco-7b \
-    --logging_steps 10 \
 =======
     --model_name_or_path huggyllama/llama-7b \
     --eval_accumulation_steps 2 \
+>>>>>>> Stashed changes:qlora/tune_llama_alpaca_7b.sh
     --use_auth \
-    --output_dir  /fly/results/llama_mmlu \
-    --logging_steps 40 \
->>>>>>> Stashed changes:qlora/train_llama_alpaca_7b.sh
+    --output_dir /fly/results/llama_mmlu \
+    --logging_steps 10 \
     --save_strategy steps \
     --data_seed 42 \
     --save_steps 500 \
@@ -45,11 +41,12 @@ python qlora_monarch.py \
     --group_by_length \
     --logging_strategy steps \
     --remove_unused_columns False \
+    --do_tune \
     --do_train \
     --do_eval \
     --do_mmlu_eval \
-    --mmlu_split test\
     --bf16 \
+    --mmlu_split eval \
     --warmup_ratio 0.03 \
     --lr_scheduler_type constant \
     --gradient_checkpointing \

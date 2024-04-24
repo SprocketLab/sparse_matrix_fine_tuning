@@ -4,6 +4,7 @@ import argparse
 from transformers.utils.import_utils import is_sagemaker_mp_enabled
 import warnings 
 import sys, os
+import gc
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__))) # add current directory to path
 from src.models.layers.monarch_linear import MonarchLinear, Scaler
 import shutil
@@ -15,7 +16,6 @@ from ast import literal_eval
 from typing import Dict, List, Union
 from functools import partial
 import json
-
 PEFT_ROBERTA_PATH = "/fly/task_configs/glue_peft_configs/peft_config.json"
 
 def parse_args():
@@ -48,22 +48,6 @@ def parse_args():
     args, unknown = parser.parse_known_args()
     return args
 
-<<<<<<< Updated upstream
-=======
-def load_best_hp(run_dir, task_dir):
-    best_hyperparams = None
-    best_hp_path = os.path.join(run_dir, "best_hyperparams.json")
-    base_hp_path = os.path.join(task_dir, "best_hyperparams.json")
-    if os.path.exists(best_hp_path):
-        best_hyperparams = json.load(open(best_hp_path))
-        print(f"Using best hp: {best_hyperparams}")
-    elif os.path.exists(base_hp_path):
-        best_hyperparams = json.load(open(base_hp_path))
-        print(f"Using best hp for from the base setup: {best_hyperparams}")
-    else:
-        print("No best hyperparameters found.")
-    return best_hyperparams
-
 def print_dtypes(model):
     dtypes = {}
     for _, p in model.named_parameters():
@@ -74,9 +58,8 @@ def print_dtypes(model):
     for k, v in dtypes.items(): total+= v
     for k, v in dtypes.items():
         print(k, v, v/total)
->>>>>>> Stashed changes
 
-def param_stats(model, training=True, print_trainable=False, skip_cls=True):
+def param_stats(model, training=True, print_trainable=False, skip_cls=False):
     """
     Do a param count and optionally print the trainable layers
     """
@@ -107,11 +90,7 @@ def param_stats(model, training=True, print_trainable=False, skip_cls=True):
     
     if training:
         assert param_trainable != 0, "There's a bug in your code, your're training nothing!"
-<<<<<<< Updated upstream
-
-=======
     return param_trainable
->>>>>>> Stashed changes
 
 
 def replace_with_symlink(path: str, target_disk: str):
@@ -121,7 +100,6 @@ def replace_with_symlink(path: str, target_disk: str):
     if not os.path.exists(target_disk):
         print(f"{target_disk} does not exist, skipping replacement")
         return 
-    breakpoint()
     # replace the first two levels
     cur_disk = path.split("/")[0]
     if cur_disk == target_disk:
@@ -145,8 +123,6 @@ def override_config(old_configs: List[Dict], new_args: Union[List[str], Dict]):
     """
     Scan through the old configs and update them with new args if they exist.
     """
-    if new_args is None or len(new_args) == 0:
-        return
     extra_args = {}
     new_args = new_args.items() if isinstance(new_args, dict) else new_args
     
@@ -157,18 +133,10 @@ def override_config(old_configs: List[Dict], new_args: Union[List[str], Dict]):
             key, val = arg
         elif arg.startswith('--'):
             # command line args
-<<<<<<< Updated upstream
-            key, val = arg.split('=')
-=======
-            try:
-                key, val = arg.split('=') if '=' in arg else arg.split(' ')
-            except Exception as e:
-                print(f"Error: {e} ,can't use command line arg {arg}")
-                continue
->>>>>>> Stashed changes
+            key, val = arg.split('=') if '=' in arg else args.split(' ')
             key = key[2:]
         else:
-            raise ValueError(f"wrong format for {arg}, extra command line argument must be --key=value")
+            raise ValueError(f"wrong format for {arg}, extra command line argument must be --key=value or --key value")
 
         try:
             # attempt to eval it it (e.g. if bool, number, or etc)
@@ -225,21 +193,20 @@ class MyAwesomeTrainer(Trainer):
         self.train_step = 0
         
         super().__init__(*args, **kwargs)
-        if hasattr(self.model, "roberta") and self.train_dataset is not None:
-            # A bit ugly...but is for re-initializing optimizer after adding monarch params
-            self.model.roberta.create_optimizer_and_scheduler = partial(self.create_optimizer_and_scheduler, self)
+        if hasattr(self.model, "roberta") and self.train_dataset is not None:            
             len_dataloader = len(self.get_train_dataloader()) // self.args.gradient_accumulation_steps
             self.num_training_steps = math.ceil(len_dataloader * self.args.num_train_epochs)
             
-
-    def training_step(self, model, inputs):
-        # Assignment is faster than if; just do it every time. Must assign this way in each Ray Tune run
-        self.model.roberta.trainer = self 
-        self.model.train() # From my tests, this line's speed is model size agnostic
+    def train(self, **kwargs):
+        # Assignment is faster than if
+        self.model.roberta.trainer = self # TODO: model is reloaded with model_init passed to trainer! So this won't work
+        super().train(**kwargs)
         
+    def training_step(self, model, inputs):
+        self.model.train() # From my tests, this line's speed is model size agnostic
         # Check param count
         if self.train_step % self.log_param_steps == 0:
-            param_stats(self.model, training=True, print_trainable=True, skip_cls=True)
+            param_stats(self.model, training=True, print_trainable=False, skip_cls=True)
         self.train_step += 1
         return super().training_step(model, inputs)
     
@@ -370,26 +337,30 @@ def init_monarch_layers(model: nn.Module, peft_config: Dict, target_classes: Uni
     Hack the model by replacing modules with Monarch adapters
     Args:
         target_classes: List of classes look recursively into for peft_config["layers_to_adapt"].
-            If not given, will traverse all layers.
+            If not givenss, will traverse all layers.
     """
-    # TODO: return trainable params for optimizer)
+    # TODO: return trainable params for optimizer
     # model.set_peft_config = peft_module.set_peft_config
+    # if getattr(model, "monarch_param_set", False) and peft_config == getattr(model, "peft_config", None):
+    #     print("Monarch layers already initialized")
+    #     return
+    
     setattr(model, "set_peft_config", partial(peft_module.set_peft_config, model))
     model.set_peft_config(peft_config)
+     
     for name, module in model.named_modules():
         # Replace linear with monarch if is target layer
-        is_target = len(target_classes) == 0 or any([isinstance(module, layer) for layer in target_classes])
-        if is_target or any(hasattr(module, _name) for _name in peft_config["layers_to_adapt"]):
-            # hack the module to "inherit" peft_adapter
-            setattr(module, "set_monarch_recursive", partial(peft_module.set_monarch_recursive, module))
-            setattr(module, "set_peft_config", partial(peft_module.set_peft_config, module))
-            module.set_peft_config(peft_config)
-            module.set_monarch_recursive()
+        if not getattr(model, "monarch_param_set", False):
+            is_target = len(target_classes) == 0 or any([isinstance(module, layer) for layer in target_classes])
+            if is_target or any(hasattr(module, _name) for _name in peft_config["layers_to_adapt"]):
+                # hack the module to "inherit" peft_adapter
+                setattr(module, "set_monarch_recursive", partial(peft_module.set_monarch_recursive, module))
+                setattr(module, "set_peft_config", partial(peft_module.set_peft_config, module))
+                module.set_peft_config(peft_config)
+                module.set_monarch_recursive()
             
-        
         # Only enable grads for adapters
         if isinstance(module, MonarchLinear) or isinstance(module, Scaler) or "classifier" in name:
-            # print(module.dense.weight.requires_grad)
             module.requires_grad_(True)
             if hasattr(module, "dense"):
                 module.dense.requires_grad_(False)
@@ -404,3 +375,32 @@ def init_monarch_layers(model: nn.Module, peft_config: Dict, target_classes: Uni
             
 def get_hpo_metric(target_metric: str, metrics: dict):
     return metrics[target_metric]
+
+def print_alive_tensors():
+    """ prints currently alive Tensors and Variables """
+    for obj in gc.get_objects():
+        try:
+            if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
+                print(type(obj), obj.shape())
+        except:
+            pass
+        
+def free_memory():
+    gc.collect()
+    torch.cuda.empty_cache()
+    # print(torch.cuda.memory_summary(abbreviated=True)) # Also see https://discuss.pytorch.org/t/how-to-debug-causes-of-gpu-memory-leaks/6741/7
+    
+
+def load_best_hp(run_dir, task_dir):
+    best_hyperparams = None
+    best_hp_path = os.path.join(run_dir, "best_hyperparams.json")
+    base_hp_path = os.path.join(task_dir, "best_hyperparams.json")
+    if os.path.exists(best_hp_path):
+        best_hyperparams = json.load(open(best_hp_path))
+        print(f"Using best hp: {best_hyperparams}")
+    elif os.path.exists(base_hp_path):
+        best_hyperparams = json.load(open(base_hp_path))
+        print(f"Using best hp for from the base setup: {best_hyperparams}")
+    else:
+        print("No best hyperparameters found.")
+    return best_hyperparams

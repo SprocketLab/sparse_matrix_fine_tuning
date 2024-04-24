@@ -9,7 +9,14 @@ from os.path import exists, join, isdir
 from dataclasses import dataclass, field
 import sys
 sys.path.append("/fly")
-from train_utils import param_stats, init_monarch_layers, get_hpo_metric, get_run_group
+from train_utils import (
+    param_stats,
+    init_monarch_layers,
+    get_hpo_metric,
+    get_run_group,
+    override_config,
+    load_best_hp
+)
 from typing import Optional, Dict, Sequence
 import numpy as np
 from tqdm import tqdm
@@ -30,7 +37,6 @@ from transformers import (
     AutoModelForCausalLM,
     set_seed,
     Seq2SeqTrainer,
-    BitsAndBytesConfig,
     LlamaTokenizer
 
 )
@@ -45,6 +51,7 @@ import evaluate
 # )
 # from peft.tuners.lora import LoraLayer
 from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
+from accelerate import load_checkpoint_and_dispatch
 
 from ray import tune
 from ray.tune import CLIReporter
@@ -52,7 +59,7 @@ from ray.tune.schedulers import ASHAScheduler
 import json
 if torch.cuda.is_available():   
     torch.backends.cuda.matmul.allow_tf32 = True
-
+import wandb
 logger = logging.getLogger(__name__)
 tokenizer = None
 best_hyperparams = None
@@ -109,6 +116,12 @@ class DataArguments:
 
 @dataclass
 class TrainingArguments(transformers.Seq2SeqTrainingArguments):
+    full_group: Optional[str] = field(
+        default=None, metadata={"help": "Use the full group name for resuming HPO."}
+    ) 
+    resume: Optional[bool] = field(
+        default=False, metadata={"help": "Resume HPO"}
+    )
     n_trials: Optional[int] = field(
         default=40, metadata={"help": "Number of hyperparameter search trials."}
     )
@@ -211,46 +224,6 @@ class GenerationArguments:
     length_penalty: Optional[float] = field(default=1.0)
     no_repeat_ngram_size: Optional[int] = field(default=0)
 
-def find_all_linear_names(args, model):
-    cls = bnb.nn.Linear4bit if args.bits == 4 else (bnb.nn.Linear8bitLt if args.bits == 8 else torch.nn.Linear)
-    lora_module_names = set()
-    for name, module in model.named_modules():
-        if isinstance(module, cls):
-            names = name.split('.')
-            lora_module_names.add(names[0] if len(names) == 1 else names[-1])
-
-
-    if 'lm_head' in lora_module_names: # needed for 16-bit
-        lora_module_names.remove('lm_head')
-    return list(lora_module_names)
-
-
-# class SavePeftModelCallback(transformers.TrainerCallback):
-#     def save_model(self, args, state, kwargs):
-#         print('Saving PEFT checkpoint...')
-#         if state.best_model_checkpoint is not None:
-#             checkpoint_folder = os.path.join(state.best_model_checkpoint, "adapter_model")
-#         else:
-#             checkpoint_folder = os.path.join(args.output_dir, f"{PREFIX_CHECKPOINT_DIR}-{state.global_step}")
-
-#         peft_model_path = os.path.join(checkpoint_folder, "adapter_model")
-#         kwargs["model"].save_pretrained(peft_model_path)
-
-#         pytorch_model_path = os.path.join(checkpoint_folder, "pytorch_model.bin")
-#         if os.path.exists(pytorch_model_path):
-#             os.remove(pytorch_model_path)
-
-#     def on_save(self, args, state, control, **kwargs):
-#         self.save_model(args, state, kwargs)
-#         return control
-
-#     def on_train_end(self, args, state, control, **kwargs):
-#         def touch(fname, times=None):
-#             with open(fname, 'a'):
-#                 os.utime(fname, times)
-
-#         touch(join(args.output_dir, 'completed'))
-#         self.save_model(args, state, kwargs)
 
 def model_init(hyperparams: dict = None):
     global peft_config
@@ -272,7 +245,7 @@ def model_init(hyperparams: dict = None):
         
     max_memory = f'{args.max_memory_MB}MB'
     max_memory = {i: max_memory for i in range(n_gpus)}
-    device_map = "auto"
+    # device_map = "auto"
 
     # if we are in a distributed setting, we need to set the device map and max memory per device
     if os.environ.get('LOCAL_RANK') is not None:
@@ -282,17 +255,18 @@ def model_init(hyperparams: dict = None):
 
 
     compute_dtype = (torch.float16 if args.fp16 else (torch.bfloat16 if args.bf16 else torch.float32))
-    model = AutoModelForCausalLM.from_pretrained(
-        args.model_name_or_path,
-        cache_dir=args.cache_dir,
-        device_map=device_map,
-        max_memory=max_memory,
-        torch_dtype=(torch.float32 if args.fp16 else (torch.bfloat16 if args.bf16 else torch.float32)),
-        trust_remote_code=True,
-        use_auth_token=True,
-        # token=args.hf_token
-    )
-    
+    if model is None:
+        model = AutoModelForCausalLM.from_pretrained(
+            args.model_name_or_path,
+            cache_dir=args.cache_dir,
+            # device_map=device_map,
+            max_memory=max_memory,
+            torch_dtype=(torch.float32 if args.fp16 else (torch.bfloat16 if args.bf16 else torch.float32)),
+            trust_remote_code=True,
+            use_auth_token=True,
+            # token=args.hf_token
+        )
+    model.enable_input_require_grads()
     # Monarch adaptation
     init_monarch_layers(model, peft_config)
     param_stats(model)
@@ -334,16 +308,16 @@ def model_init(hyperparams: dict = None):
                     ),
             })
 
-    for name, module in model.named_modules():
+    # for name, module in model.named_modules():
         # if isinstance(module, LoraLayer):
         #     if args.bf16:
         #         module = module.to(torch.bfloat16)
-        if 'norm' in name:
-            module = module.to(torch.float32)
-        if 'lm_head' in name or 'embed_tokens' in name:
-            if hasattr(module, 'weight'):
-                if args.bf16 and module.weight.dtype == torch.float32:
-                    module = module.to(torch.bfloat16)
+        # if 'norm' in name:
+            # module = module.to(torch.float32)
+        # if 'lm_head' in name or 'embed_tokens' in name:
+        #     if hasattr(module, 'weight'):
+        #         if args.bf16 and module.weight.dtype == torch.float32:
+        #             module = module.to(torch.bfloat16)
     return model
 
 
@@ -613,19 +587,47 @@ def get_last_checkpoint(checkpoint_dir):
 
 
 def train():
+    global args, model, peft_config, best_hyperparams
     hfparser = transformers.HfArgumentParser((
         ModelArguments, DataArguments, TrainingArguments, GenerationArguments
     ))
     model_args, data_args, training_args, generation_args, extra_args = \
         hfparser.parse_args_into_dataclasses(return_remaining_strings=True)
-    training_args.generation_config = transformers.GenerationConfig(**vars(generation_args))
-    global args
     args = argparse.Namespace(
         **vars(model_args), **vars(data_args), **vars(training_args)
     )
+    # Group by hpo runs 
+    task_dir = args.output_dir
+    if args.group is not None:
+        args.output_dir = training_args.output_dir = os.path.join(args.output_dir, args.group) 
+    print(f"output dir: {args.output_dir}")
+    
+    best_hyperparams = load_best_hp(args.output_dir, task_dir)
+    override_config([training_args, peft_config], best_hyperparams)
+    override_config([training_args, peft_config], extra_args) # CLA args can override best hp
+    training_args.generation_config = transformers.GenerationConfig(**vars(generation_args))
+    
     print(args)
     login(args.hf_token)
-    os.environ["WANDB_RUN_GROUP"] = get_run_group("mmlu", args.do_tune, args.group, notes=args.notes)
+    if not args.use_wandb:
+        os.environ["WANDB_MODE"] = "offline"
+        
+    group = "mmlu"
+    if args.do_tune:
+        os.environ["WANDB_PROJECT"] = "llama-mmlu-tune"
+        os.environ["WANDB_RUN_GROUP"] = get_run_group(group, args.do_tune, args.group, notes=args.notes)
+
+    else:
+        os.environ["WANDB_PROJECT"] = "llama-mmlu"
+        os.environ["WANDB_RUN_GROUP"] = get_run_group(group, False, args.group, notes=args.notes)
+    if args.resume:
+        path = os.path.join(args.output_dir, "full_group.txt")
+        if os.path.exists(path):
+            with open(path, "r") as f:
+                os.environ["WANDB_RUN_GROUP"] = f.read()
+    wandb.init(project=os.environ["WANDB_PROJECT"], group=os.environ["WANDB_RUN_GROUP"], config=vars(args).update(peft_config)) 
+    print(f"wandb group name: {os.environ['WANDB_RUN_GROUP']}")
+
     checkpoint_dir, completed_training = get_last_checkpoint(args.output_dir)
     if completed_training:
         print('Detected that training was already completed!')
@@ -787,9 +789,8 @@ def train():
             max_failures=100, # tolerate OOM
             direction="maximize" if direction == "max" else "minimize",
             compute_objective=partial(get_hpo_metric, metric),
-            resume=args.resume_tune 
+            resume=args.resume 
         )
-        global best_hyperparams
         best_hyperparams = best_run.hyperparameters
             
         # Save the best HP for full training 
@@ -802,7 +803,19 @@ def train():
     
     # Training
     if args.do_train:
+        best_hyperparams = None
+        best_hp_path = os.path.join(args.output_dir, "best_hyperparams.json")
+        base_hp_path = os.path.join(task_dir, "best_hyperparams.json")
+        if os.path.exists(best_hp_path):
+            best_hyperparams = json.load(open(best_hp_path))
+            print(f"Using best hp: {best_hyperparams}")
+        elif os.path.exists(base_hp_path):
+            best_hyperparams = json.load(open(base_hp_path))
+            print(f"Using best hp for from the base setup: {best_hyperparams}")
+        else:
+            print("No best hyperparameters found.")
         logger.info("*** Train ***")
+        
         # Note: `resume_from_checkpoint` not supported for adapter checkpoints by HF.
         # Currently adapter checkpoint is reloaded as expected but optimizer/scheduler states are not.
         trainer.args.save_total_limit = 1
@@ -814,9 +827,17 @@ def train():
         trainer.save_metrics("train", metrics)
         trainer.save_state()
         all_metrics.update(metrics)
+        
+
     # Evaluation
     if args.do_eval:
+        # manually load best checkpoint as hf often fails to
+        last_checkpoint, _ = get_last_checkpoint(args.output_dir)
+        print(f"Loading checkpoint from {last_checkpoint}")
+        load_checkpoint_and_dispatch(trainer.model, last_checkpoint) 
+               
         logger.info("*** Evaluate ***")
+        trainer.add_callback(MMLUEvalCallback)
         metrics = trainer.evaluate(metric_key_prefix="eval")
         trainer.log_metrics("eval", metrics)
         trainer.save_metrics("eval", metrics)
