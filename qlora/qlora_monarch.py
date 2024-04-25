@@ -812,7 +812,9 @@ def train():
         # Currently adapter checkpoint is reloaded as expected but optimizer/scheduler states are not.
         trainer.args.save_total_limit = 1
         trainer.args.load_best_model_at_end = True
-        
+        if trainer.args.max_steps > 100000:
+            trainer.args.save_steps = trainer.args.eval_steps = trainer.args.max_steps // 200
+            
         train_result = trainer.train()
         metrics = train_result.metrics
         trainer.log_metrics("train", metrics)
