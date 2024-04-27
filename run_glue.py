@@ -59,6 +59,7 @@ from transformers import (
     TrainingArguments,
     default_data_collator,
     set_seed,
+    DebertaForSequenceClassification
 )
 from transformers.models.roberta.modeling_roberta import RobertaSelfAttention, RobertaIntermediate
 from src.models.modeling_roberta import RobertaForSequenceClassification
@@ -154,7 +155,8 @@ def main(config: dict = None):
         peft_config["layers_to_adapt"] = ["query", "value"]
     if peft_config["mlp"]:
         peft_config["layers_to_adapt"] += ["dense"]
-        
+
+    training_args.disable_tqdm=True, # EDIT
     # Do NOT use loss as saving metric, maximize eval metric instead
     training_args.metric_for_best_model = task_to_metric[data_args.task_name] 
     training_args.greater_is_better = True 
@@ -273,7 +275,9 @@ def main(config: dict = None):
     if data_args.task_name is not None:
         is_regression = data_args.task_name == "stsb"
         if not is_regression:
-            label_list = json.load(open("/fly/task_configs/labels.json", "r"))[data_args.task_name]
+            # labels_path = "/fly/task_configs/labels.json"
+            labels_path = "/fly/sparse_matrix_fine_tuning/task_configs/labels.json"
+            label_list = json.load(open(labels_path, "r"))[data_args.task_name]
             # label_list = raw_datasets["train"].features["label"].names
             num_labels = len(label_list)
         else:
@@ -319,14 +323,28 @@ def main(config: dict = None):
         if training_args.fp16:
             dtype = torch.float16
         
-        model = RobertaForSequenceClassification.from_pretrained(
-            pretrained_model_name_or_path=model_args.model_name_or_path,
-            config=config,
-            cache_dir=model_args.cache_dir,
-            revision=model_args.model_revision,
-            use_auth_token=True if model_args.use_auth_token else None,
-            ignore_mismatched_sizes=model_args.ignore_mismatched_sizes,
-        )
+        # model = RobertaForSequenceClassification.from_pretrained(
+        #     pretrained_model_name_or_path=model_args.model_name_or_path,
+        #     config=config,
+        #     cache_dir=model_args.cache_dir,
+        #     revision=model_args.model_revision,
+        #     use_auth_token=True if model_args.use_auth_token else None,
+        #     ignore_mismatched_sizes=model_args.ignore_mismatched_sizes,
+        # )
+        # EDIT
+        if "deberta" in model_args.model_name_or_path:
+            model = DebertaForSequenceClassification(
+                config
+            )
+        else: # Default to roberta
+            model = RobertaForSequenceClassification.from_pretrained(
+                        pretrained_model_name_or_path=model_args.model_name_or_path,
+                        config=config,
+                        cache_dir=model_args.cache_dir,
+                        revision=model_args.model_revision,
+                        use_auth_token=True if model_args.use_auth_token else None,
+                        ignore_mismatched_sizes=model_args.ignore_mismatched_sizes,
+            )
             
         if torch.cuda.is_available():
             model = model.to("cuda")    
@@ -341,9 +359,17 @@ def main(config: dict = None):
             # break the reproducibility. TODO: Try ensuring nothing breaks the random seed
             # in between so that we can init here
             
-            # init_monarch_layers(model.roberta, peft_config)
-            model.roberta.init_monarch_layers = partial(init_monarch_layers, model.roberta)
-            model.roberta.peft_config = peft_config
+            # model.roberta.init_monarch_layers = partial(init_monarch_layers, model.roberta)
+            # model.roberta.peft_config = peft_config
+            # EDIT
+            if hasattr(model, "roberta"):
+                model_internal = model.roberta
+            elif hasattr(model, "deberta"):
+                model_internal = model.deberta
+            else:
+                raise NotImplementedError
+            model_internal.init_monarch_layers = partial(init_monarch_layers, model_internal)
+            model_internal.peft_config = peft_config
             
         # NOTE: Ray doesn't support torch.compile, plus a bug with trainer...
         # if torch.__version__.startswith("2") and not do_tune:
@@ -687,7 +713,14 @@ def main(config: dict = None):
         logger.info("*** Evaluate ***")
         last_checkpoint = os.path.join(get_last_checkpoint(training_args.output_dir),"pytorch_model.bin")
         override_dict(best_hyperparams, peft_config)
-        trainer.model.roberta.init_monarch_layers()
+        # trainer.model.roberta.init_monarch_layers() # OLD version
+        # EDIT
+        if hasattr(trainer.model, "roberta"):
+            trainer_model_internal = trainer.model.roberta
+        elif hasattr(trainer.model, "deberta"):
+            trainer_model_internal = trainer.model.deberta
+        trainer_model_internal.init_monarch_layers(peft_config) 
+        
         trainer.model.eval()
         trainer.model.load_state_dict(torch.load(last_checkpoint))
             

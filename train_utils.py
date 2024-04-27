@@ -18,7 +18,8 @@ from typing import Dict, List, Union
 from functools import partial
 import json
 
-PEFT_ROBERTA_PATH = "/fly/task_configs/glue_peft_configs/peft_config.json"
+# PEFT_ROBERTA_PATH = "/fly/task_configs/glue_peft_configs/peft_config.json"
+PEFT_ROBERTA_PATH = "/fly/sparse_matrix_fine_tuning/task_configs/glue_peft_configs/peft_config.json"
 
 def parse_args():
     # Create the parser
@@ -214,7 +215,8 @@ class MyAwesomeTrainer(Trainer):
         self.train_step = 0
         
         super().__init__(*args, **kwargs)
-        if hasattr(self.model, "roberta") and self.train_dataset is not None:            
+        # if hasattr(self.model, "roberta") and self.train_dataset is not None: 
+        if (hasattr(self.model, "roberta") or hasattr(self.model, "deberta")) and self.train_dataset is not None:  # EDIT
             len_dataloader = len(self.get_train_dataloader()) // self.args.gradient_accumulation_steps
             self.num_training_steps = math.ceil(len_dataloader * self.args.num_train_epochs)
 
