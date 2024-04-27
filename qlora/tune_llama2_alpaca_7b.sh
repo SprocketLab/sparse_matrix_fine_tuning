@@ -25,7 +25,7 @@ python qlora_monarch.py \
     --logging_steps 40 \
     --save_strategy steps \
     --save_steps 200 \
-    --save_total_limit 1 \
+    --save_total_limit 4 \
     --evaluation_strategy steps \
     --eval_dataset_size 1024 \
     --per_device_eval_batch_size 1 \

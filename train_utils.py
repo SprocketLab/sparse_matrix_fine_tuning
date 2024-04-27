@@ -2,6 +2,7 @@ import torch
 from transformers import Trainer
 import argparse
 from transformers.utils.import_utils import is_sagemaker_mp_enabled
+from transformers import TrainerCallback
 import warnings 
 import sys, os
 import gc
@@ -216,14 +217,13 @@ class MyAwesomeTrainer(Trainer):
         if hasattr(self.model, "roberta") and self.train_dataset is not None:            
             len_dataloader = len(self.get_train_dataloader()) // self.args.gradient_accumulation_steps
             self.num_training_steps = math.ceil(len_dataloader * self.args.num_train_epochs)
-            
-    def train(self, **kwargs):
-        # Assignment is faster than if
-        self.model.roberta.trainer = self # TODO: model is reloaded with model_init passed to trainer! So this won't work
-        super().train(**kwargs)
+
         
     def training_step(self, model, inputs):
-        self.model.train() # From my tests, this line's speed is model size agnostic
+        param_shapes = [param.shape for param_group in self.optimizer.param_groups for param in param_group["params"]]
+        if not any([len(shape) == 3 for shape in param_shapes]):
+            self.create_optimizer_and_scheduler(self.num_training_steps)
+            print("Recreating optimizer for monarch params")
         # Check param count
         if self.train_step % self.log_param_steps == 0:
             param_stats(self.model, training=True, print_trainable=False, skip_cls=True)
@@ -411,3 +411,21 @@ def free_memory():
     # print(torch.cuda.memory_summary(abbreviated=True)) # Also see https://discuss.pytorch.org/t/how-to-debug-causes-of-gpu-memory-leaks/6741/7
     
 
+class ProfCallback(TrainerCallback):
+    def __init__(self, prof):
+        self.prof = prof
+    def on_step_end (self, args, state, control, **kwargs):
+        self.prof.step()
+# Example:
+# with torch.profiler.profile(activities=[torch.profiler.ProfilerActivity.CPU,
+#                                         torch.profiler.ProfilerActivity.CUDA], 
+#                             schedule=torch.profiler.schedule(skip_first=3, wait=1, warmup=1, active=2, repeat=2),
+#                             on_trace_ready=torch.profiler.tensorboard_trace_handler('hf-training-trainer'),
+#                             profile_memory=True,
+#                             with_stack=True,
+#                             record_shapes=True) as prof:
+    
+#     trainer.add_callback(ProfCallback(prof=prof))
+#     trainer.train()
+
+# print(f'training time, {(time.perf_counter() - start):.1f} s')

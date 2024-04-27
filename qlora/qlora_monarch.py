@@ -9,6 +9,7 @@ os.environ["PYTHONPATH"] = "/fly"
 from os.path import exists, join, isdir
 from dataclasses import dataclass, field
 import sys
+from copy import deepcopy
 sys.path.append("/fly")
 from train_utils import (
     param_stats,
@@ -261,6 +262,7 @@ def model_init(hyperparams: dict = None):
             torch_dtype=(torch.float32 if args.fp16 else (torch.bfloat16 if args.bf16 else torch.float32)),
             trust_remote_code=True,
             use_auth_token=True,
+            attn_implementation="flash_attention_2"
             # token=args.hf_token
         )
     model.enable_input_require_grads()
@@ -301,7 +303,8 @@ def model_init(hyperparams: dict = None):
                     "eos_token": tokenizer.convert_ids_to_tokens(model.config.eos_token_id),
                     "bos_token": tokenizer.convert_ids_to_tokens(model.config.bos_token_id),
                     "unk_token": tokenizer.convert_ids_to_tokens(
-                        model.config.pad_token_id if model.config.pad_token_id != -1 else tokenizer.pad_token_id
+                        model.config.pad_token_id if (model.config.pad_token_id != -1 and model.config.pad_token_id is not None) \
+                            else tokenizer.pad_token_id
                     ),
             })
 
@@ -714,6 +717,8 @@ def train():
                 # Average acc over all tasks?
                 results[f'mmlu_{args.mmlu_split}_accuracy'] = np.mean(subject_scores) 
                 trainer.log(results)
+                # save results locally
+                json.dump(results, open(os.path.join(args.output_dir, f'mmlu_{args.mmlu_split}_results.json'), 'w'))
                 trainer.data_collator.source_max_len = source_max_len
 
         # trainer.add_callback(MMLUEvalCallback)
@@ -724,7 +729,9 @@ def train():
         # Save full tune group name for resuming
         with open(os.path.join(training_args.output_dir, "full_group.txt"), "w") as f:
             f.write(os.environ["WANDB_RUN_GROUP"])
-            
+        
+        _args = deepcopy(trainer.args)
+        
         # Avoid flooding the disk during HPO
         trainer.args.save_total_limit = 0 
         trainer.args.load_best_model_at_end = False
@@ -787,13 +794,14 @@ def train():
             # checkpoint_score_attr="min-" + metric, # rank in decreasing order
             # progress_reporter=reporter,
             resources_per_trial={"cpu": 1, "gpu": 1},
-            local_dir="ray_results",
+            # local_dir="./ray_results",
             name=os.environ["WANDB_RUN_GROUP"],
             max_failures=9999, # tolerate OOM
             direction="maximize" if direction == "max" else "minimize",
             compute_objective=partial(get_hpo_metric, metric),
             resume=args.resume 
         )
+        trainer.args = _args
         best_hyperparams = best_run.hyperparameters
             
         # Save the best HP for full training 
@@ -807,15 +815,14 @@ def train():
     # Training
     if args.do_train:
         logger.info("*** Train ***")
-            
         # Note: `resume_from_checkpoint` not supported for adapter checkpoints by HF.
         # Currently adapter checkpoint is reloaded as expected but optimizer/scheduler states are not.
-        trainer.args.save_total_limit = 1
         trainer.args.load_best_model_at_end = True
         if trainer.args.max_steps > 100000:
             trainer.args.save_steps = trainer.args.eval_steps = trainer.args.max_steps // 200
-            
-        train_result = trainer.train()
+        
+        ckpt = checkpoint_dir if args.resume else checkpoint_dir
+        train_result = trainer.train(resume_from_checkpoint=ckpt)
         metrics = train_result.metrics
         trainer.log_metrics("train", metrics)
         trainer.save_metrics("train", metrics)

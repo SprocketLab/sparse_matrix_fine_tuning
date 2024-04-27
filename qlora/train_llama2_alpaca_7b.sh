@@ -26,7 +26,7 @@ python qlora_monarch.py \
     --logging_steps 40 \
     --save_strategy steps \
     --save_steps 600 \
-    --save_total_limit 1 \
+    --save_total_limit 4 \
     --evaluation_strategy steps \
     --per_device_eval_batch_size 1 \
     --max_new_tokens 32 \
