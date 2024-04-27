@@ -17,6 +17,8 @@ from ast import literal_eval
 from typing import Dict, List, Union
 from functools import partial
 import json
+import wandb, ray
+import glob
 
 # PEFT_ROBERTA_PATH = "/fly/task_configs/glue_peft_configs/peft_config.json"
 PEFT_ROBERTA_PATH = "/fly/sparse_matrix_fine_tuning/task_configs/glue_peft_configs/peft_config.json"
@@ -55,6 +57,7 @@ def load_best_hp(run_dir, task_dir):
     best_hyperparams = None
     best_hp_path = os.path.join(run_dir, "best_hyperparams.json")
     base_hp_path = os.path.join(task_dir, "best_hyperparams.json")
+    print("+++++++++++++++++++++++++++++++++++++++++++++++++++")
     if os.path.exists(best_hp_path):
         best_hyperparams = json.load(open(best_hp_path))
         print(f"Using best hp: {best_hyperparams}")
@@ -63,6 +66,7 @@ def load_best_hp(run_dir, task_dir):
         print(f"Using best hp for from the base setup: {best_hyperparams}")
     else:
         print("No best hyperparameters found.")
+    print("+++++++++++++++++++++++++++++++++++++++++++++++++++")
     return best_hyperparams
 
 def print_dtypes(model):
@@ -398,14 +402,30 @@ def init_monarch_layers(model: nn.Module, peft_config: Dict, target_classes: Uni
 def get_hpo_metric(target_metric: str, metrics: dict):
     return metrics[target_metric]
 
-def print_alive_tensors():
-    """ prints currently alive Tensors and Variables """
-    for obj in gc.get_objects():
-        try:
-            if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
-                print(type(obj), obj.shape())
-        except:
-            pass
+def watch_layers(model, max_per_module=2):
+    if wandb.run != None or ray.tune.is_session_enabled():
+        return
+    print("Enabling wandb watch")
+    # log modules of interest
+    for name, module in model.named_modules():
+        if isinstance(module, MonarchLinear) or isinstance(module, Scaler):
+            layer_name = name.split(".")[-1]
+            if model.watch_count[(type(module), layer_name)] < max_per_module:
+                wandb.watch(module, log="parameters", log_freq=300)
+                model.watch_count[(type(module), layer_name)] += 1
+
+    for (module, layer_name), count in model.watch_count.items():
+        print(f"Watched {count} {layer_name} layers  ")
+    
+    # Log all py files for reference
+    files_to_log = ["modeling_roberta.py", "monarch_linear.py", "train_utils.py"]
+
+    for file in glob.glob("/fly/**/*.py", recursive=True):
+        if any([file.endswith(f) for f in files_to_log]):
+            artifact = wandb.Artifact(os.path.basename(file), type="code")
+            artifact.add_file(file)
+            wandb.run.log_artifact(artifact)
+        
         
 def free_memory():
     gc.collect()

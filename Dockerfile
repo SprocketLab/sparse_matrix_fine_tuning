@@ -96,10 +96,11 @@ RUN pip install accelerate -U
 RUN pip install jupyterlab==4.0.3
 RUN pip install datasets==2.16.1
 RUN pip install tensorboardX
-
 COPY qlora/requirements.txt .
 RUN pip install -r requirements.txt
 RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" || true
+RUN pip install transformers==4.39.2
+RUN pip install flash_attn==2.5.6
 
 # ENV PATH $CONDA_DIR/bin:$PATH
 # RUN wget --quiet https://repo.continuum.io/miniconda/Miniconda$CONDA_PYTHON_VERSION-latest-Linux-x86_64.sh -O /tmp/miniconda.sh && \

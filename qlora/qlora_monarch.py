@@ -17,7 +17,8 @@ from train_utils import (
     get_hpo_metric,
     get_run_group,
     override_config,
-    load_best_hp
+    load_best_hp,
+    watch_layers
 )
 from typing import Optional, Dict, Sequence
 import numpy as np
@@ -172,7 +173,7 @@ class TrainingArguments(transformers.Seq2SeqTrainingArguments):
     optim: str = field(default='adamw_torch', metadata={"help": 'The optimizer to be used'})
     per_device_train_batch_size: int = field(default=1, metadata={"help": 'The training batch size per GPU. Increase for better speed.'})
     gradient_accumulation_steps: int = field(default=16, metadata={"help": 'How many gradients to accumulate before to perform an optimizer step'})
-    max_steps: int = field(default=10000, metadata={"help": 'How many optimizer update steps to take'})
+    max_steps: int = field(default=-1, metadata={"help": 'How many optimizer update steps to take'})
     weight_decay: float = field(default=0.0, metadata={"help": 'The L2 weight decay rate of AdamW'}) # use lora dropout instead for regularization if needed
     learning_rate: float = field(default=0.0002, metadata={"help": 'The learnign rate'})
     remove_unused_columns: bool = field(default=False, metadata={"help": 'Removed unused columns. Needed to make this codebase work.'})
@@ -269,7 +270,7 @@ def model_init(hyperparams: dict = None):
     # Monarch adaptation
     init_monarch_layers(model, peft_config)
     param_stats(model)
-    
+    watch_layers(model)
     setattr(model, 'model_parallel', True)
     setattr(model, 'is_parallelizable', True)
 
@@ -644,14 +645,12 @@ def train():
     print('loaded model')
 
     data_module = make_data_module(tokenizer=tokenizer, args=args)
-    
     trainer = Seq2SeqTrainer(
         model_init=model_init,
         tokenizer=tokenizer,
         args=training_args,
         **{k:v for k,v in data_module.items() if k != 'predict_dataset'},
     )
-
     # Callbacks
     # if not args.full_finetune:
     #     trainer.add_callback(SavePeftModelCallback)
@@ -741,8 +740,6 @@ def train():
         param_space = {
             # "nblocks": tune.choice(['sqrt(n)', 4]),
             "seed": training_args.seed,
-            # "large_lr": tune.sample_from(lambda _: np.random.uniform() > 0.4),
-            "large_lr": False,
             # "num_train_epochs": tune.choice([20, 25]),
             "learning_rate": tune.quniform(8e-5, 6e-4, 2e-5), 
             "gradient_accumulation_steps": tune.choice([16, 32]), # Will OOM if tune batch size
@@ -817,10 +814,7 @@ def train():
         logger.info("*** Train ***")
         # Note: `resume_from_checkpoint` not supported for adapter checkpoints by HF.
         # Currently adapter checkpoint is reloaded as expected but optimizer/scheduler states are not.
-        trainer.args.load_best_model_at_end = True
-        if trainer.args.max_steps > 100000:
-            trainer.args.save_steps = trainer.args.eval_steps = trainer.args.max_steps // 200
-        
+        trainer.args.load_best_model_at_end = True        
         ckpt = checkpoint_dir if args.resume else checkpoint_dir
         train_result = trainer.train(resume_from_checkpoint=ckpt)
         metrics = train_result.metrics
