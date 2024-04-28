@@ -89,7 +89,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # m2 dependencies
 RUN pip install einops omegaconf opt_einsum triton
-RUN pip install ray==2.6
 # Some how this fixes the pydantic__version__ bug...
 RUN python -m pip install -U pydantic spacy==3.4.4
 RUN pip install accelerate -U
@@ -101,7 +100,7 @@ RUN pip install -r requirements.txt
 RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" || true
 RUN pip install transformers==4.39.2
 RUN pip install flash_attn==2.5.6
-
+RUN pip install ray==2.7
 # ENV PATH $CONDA_DIR/bin:$PATH
 # RUN wget --quiet https://repo.continuum.io/miniconda/Miniconda$CONDA_PYTHON_VERSION-latest-Linux-x86_64.sh -O /tmp/miniconda.sh && \
 #     echo 'export PATH=$CONDA_DIR/bin:$PATH' > /etc/profile.d/conda.sh && \

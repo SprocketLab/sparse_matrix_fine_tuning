@@ -37,7 +37,7 @@ python qlora_monarch.py \
     --do_train \
     --do_eval \
     --bf16 \
-    --warmup_steps 100 \
+    --warmup_ratio 0.03 \
     --lr_scheduler_type constant \
     --gradient_checkpointing \
     --dataset alpaca \

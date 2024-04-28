@@ -19,6 +19,7 @@ from functools import partial
 import json
 import wandb, ray
 import glob
+from collections import defaultdict
 
 # PEFT_ROBERTA_PATH = "/fly/task_configs/glue_peft_configs/peft_config.json"
 PEFT_ROBERTA_PATH = "/fly/sparse_matrix_fine_tuning/task_configs/glue_peft_configs/peft_config.json"
@@ -406,15 +407,16 @@ def watch_layers(model, max_per_module=2):
     if wandb.run != None or ray.tune.is_session_enabled():
         return
     print("Enabling wandb watch")
+    watch_count = defaultdict(int)
     # log modules of interest
     for name, module in model.named_modules():
         if isinstance(module, MonarchLinear) or isinstance(module, Scaler):
             layer_name = name.split(".")[-1]
-            if model.watch_count[(type(module), layer_name)] < max_per_module:
+            if watch_count[(type(module), layer_name)] < max_per_module:
                 wandb.watch(module, log="parameters", log_freq=300)
-                model.watch_count[(type(module), layer_name)] += 1
+                watch_count[(type(module), layer_name)] += 1
 
-    for (module, layer_name), count in model.watch_count.items():
+    for (module, layer_name), count in watch_count.items():
         print(f"Watched {count} {layer_name} layers  ")
     
     # Log all py files for reference

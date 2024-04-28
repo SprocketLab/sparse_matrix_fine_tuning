@@ -244,7 +244,7 @@ def model_init(hyperparams: dict = None):
         
     max_memory = f'{args.max_memory_MB}MB'
     max_memory = {i: max_memory for i in range(n_gpus)}
-    # device_map = "auto"
+    device_map = "auto"
 
     # if we are in a distributed setting, we need to set the device map and max memory per device
     if os.environ.get('LOCAL_RANK') is not None:
@@ -258,7 +258,7 @@ def model_init(hyperparams: dict = None):
         model = AutoModelForCausalLM.from_pretrained(
             args.model_name_or_path,
             cache_dir=args.cache_dir,
-            # device_map=device_map,
+            device_map=device_map,
             max_memory=max_memory,
             torch_dtype=(torch.float32 if args.fp16 else (torch.bfloat16 if args.bf16 else torch.float32)),
             trust_remote_code=True,
@@ -270,7 +270,8 @@ def model_init(hyperparams: dict = None):
     # Monarch adaptation
     init_monarch_layers(model, peft_config)
     param_stats(model)
-    watch_layers(model)
+    if not args.do_tune:
+        watch_layers(model)
     setattr(model, 'model_parallel', True)
     setattr(model, 'is_parallelizable', True)
 
@@ -787,7 +788,8 @@ def train():
             backend="ray",
             n_trials=n_trials, # under the hood it calls ray.tune.run(num_samples=n_trials, ...)
             scheduler=scheduler,
-            keep_checkpoints_num=0,
+            keep_checkpoints_num=None,
+            # num_to_keep=None,
             # checkpoint_score_attr="min-" + metric, # rank in decreasing order
             # progress_reporter=reporter,
             resources_per_trial={"cpu": 1, "gpu": 1},
