@@ -275,8 +275,7 @@ def main(config: dict = None):
     if data_args.task_name is not None:
         is_regression = data_args.task_name == "stsb"
         if not is_regression:
-            # labels_path = "/fly/task_configs/labels.json"
-            labels_path = "/fly/sparse_matrix_fine_tuning/task_configs/labels.json"
+            labels_path = "/fly/task_configs/labels.json"
             label_list = json.load(open(labels_path, "r"))[data_args.task_name]
             # label_list = raw_datasets["train"].features["label"].names
             num_labels = len(label_list)

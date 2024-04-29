@@ -74,6 +74,9 @@ class BlockdiagButterflyMultiply(torch.autograd.Function):
         # breakpoint()
         batch_shape, n = x.shape[:-1], x.shape[-1]
         batch_dim = np.prod(batch_shape)
+        w1_bfly = w1_bfly.to(x.dtype)
+        w2_bfly = w2_bfly.to(x.dtype)
+        
         k, q, p = w1_bfly.shape
         l, s, r = w2_bfly.shape
         assert k * p == n

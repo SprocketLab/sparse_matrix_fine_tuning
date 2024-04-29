@@ -21,8 +21,7 @@ import wandb, ray
 import glob
 from collections import defaultdict
 
-# PEFT_ROBERTA_PATH = "/fly/task_configs/glue_peft_configs/peft_config.json"
-PEFT_ROBERTA_PATH = "/fly/sparse_matrix_fine_tuning/task_configs/glue_peft_configs/peft_config.json"
+PEFT_ROBERTA_PATH = "/fly/task_configs/glue_peft_configs/peft_config.json"
 
 def parse_args():
     # Create the parser

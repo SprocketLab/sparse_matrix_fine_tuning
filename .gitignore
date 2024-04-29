@@ -16,6 +16,7 @@ results/monarch_roberta_glue/*/*.tsv
 !results/llama_mmlu/*/
 !results/llama_mmlu/*/best_hyperparams.json
 !results/llama_mmlu/*/*/best_hyperparams.json
+!pyreft/examples/loreft/dataset
 # Ignore other directories and file patterns
 wandb/**
 __pycache__/**
