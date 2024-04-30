@@ -79,6 +79,7 @@ class ReftTrainer(Trainer):
         return_outputs=False
     ):
         # run intervened forward pass
+        intervene = inputs["intervention_locations"].numel() > 0
         _, cf_outputs = intervenable(
             {
                 "input_ids": inputs["input_ids"],
@@ -86,7 +87,7 @@ class ReftTrainer(Trainer):
             },
             unit_locations={"sources->base": (
                 None,
-                inputs["intervention_locations"].permute(1, 0, 2).tolist()
+                inputs["intervention_locations"].permute(1, 0, 2).tolist() if intervene else None
             )},
             labels=inputs["labels"],
             subspaces=inputs["subspaces"].permute(1, 0, 2).tolist() if "subspaces" in inputs else None

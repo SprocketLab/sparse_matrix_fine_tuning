@@ -1,7 +1,7 @@
 import os
-os.environ["PYTHONPATH"] = "/fly"
 import sys
 sys.path.append("/fly")
+sys.path.append("/fly/pyreft/pyvene")
 from train_utils import *
 import torch
 import argparse
@@ -135,11 +135,12 @@ def finetune(
         run_name = f"{model_str}.{task}.{now}"
 
     # which layers to intervene on
-    if layers != "all":
-        layers = [int(l) for l in layers.split(";")]
-    else:
-        temp_config = AutoConfig.from_pretrained(model)
-        layers = [l for l in range(temp_config.num_hidden_layers)]
+    # if layers != "all":
+    #     layers = [int(l) for l in layers.split(";")]
+    # else:
+    #     temp_config = AutoConfig.from_pretrained(model)
+    #     layers = [l for l in range(temp_config.num_hidden_layers)]
+    layers = []
 
     # position str takes the following formats:
     # f1 -> first token; f2 -> first two tokens.
@@ -234,14 +235,16 @@ def finetune(
             config=config, # just providing the label
             torch_dtype=dtype if dtype != "float8" else None,
             load_in_8bit=True if dtype == "float8" else False,
-            device_map=device
+            device_map=device,
+            # attn_implementation="flash_attention_2"
         )
     else:
         model = AutoModelForCausalLM.from_pretrained(
             model,
             torch_dtype=dtype if dtype != "float8" else None,  # save memory
             load_in_8bit=True if dtype == "float8" else False,
-            device_map=device
+            device_map=device,
+            # attn_implementation="flash_attention_2"
         )
         config = model.config
     if args.monarch:

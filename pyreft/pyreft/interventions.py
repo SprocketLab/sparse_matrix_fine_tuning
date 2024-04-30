@@ -111,8 +111,9 @@ class NoIntervention(
     """An empty class for usage with reft trainer"""
     def __init__(self, **kwargs):
         super().__init__(**kwargs, keep_last_dim=True)
-        
+        self.proj_layer = torch.nn.Identity()
+        breakpoint()
     def forward(
         self, base, source=None, subspaces=None
     ):
-        return base
+        return self.proj_layer(base)

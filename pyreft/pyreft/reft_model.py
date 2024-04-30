@@ -12,7 +12,7 @@ class ReftModel(pv.IntervenableModel):
     """
     def __init__(self, config, model, **kwargs):
         super().__init__(config, model, **kwargs)
-
+        self.model.enable_input_require_grads()
     @staticmethod
     def _convert_to_reft_model(intervenable_model):
         reft_model = ReftModel(intervenable_model.config, intervenable_model.model)
