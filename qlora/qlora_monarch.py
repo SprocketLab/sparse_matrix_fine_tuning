@@ -18,7 +18,8 @@ from train_utils import (
     get_run_group,
     override_config,
     load_best_hp,
-    watch_layers
+    watch_layers,
+    set_merged
 )
 from typing import Optional, Dict, Sequence
 import numpy as np
@@ -832,7 +833,8 @@ def train():
         last_checkpoint, _ = get_last_checkpoint(args.output_dir)
         print(f"Loading checkpoint from {last_checkpoint}")
         load_checkpoint_and_dispatch(trainer.model, last_checkpoint) 
-               
+        set_merged(trainer.model)
+        
         logger.info("*** Evaluate ***")
         trainer.add_callback(MMLUEvalCallback)
         metrics = trainer.evaluate(metric_key_prefix="eval")

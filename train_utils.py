@@ -452,3 +452,8 @@ class ProfCallback(TrainerCallback):
 #     trainer.train()
 
 # print(f'training time, {(time.perf_counter() - start):.1f} s')
+
+def set_merged(model):
+    for name, module in model.named_modules():
+        if isinstance(module, MonarchLinear):
+            module.merged = True 
