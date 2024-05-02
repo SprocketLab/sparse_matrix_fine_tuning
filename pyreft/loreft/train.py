@@ -22,7 +22,6 @@ import wandb
 import evaluate
 import datetime
 import json
-import math
 import numpy as np
 from torch.nn import CrossEntropyLoss
 from torch.utils.data import DataLoader
@@ -70,7 +69,7 @@ def finetune(
     intervention_type: str,
     max_n_train_example: int,
     max_n_eval_example: int,
-    is_wandb: bool,
+    use_wandb: bool,
     wandb_name: str,
     gradient_accumulation_steps: int,
     batch_size: int,
@@ -135,12 +134,11 @@ def finetune(
         run_name = f"{model_str}.{task}.{now}"
 
     # which layers to intervene on
-    # if layers != "all":
-    #     layers = [int(l) for l in layers.split(";")]
-    # else:
-    #     temp_config = AutoConfig.from_pretrained(model)
-    #     layers = [l for l in range(temp_config.num_hidden_layers)]
-    layers = []
+    if layers != "all":
+        layers = [int(l) for l in layers.split(";")]
+    else:
+        temp_config = AutoConfig.from_pretrained(model)
+        layers = [l for l in range(temp_config.num_hidden_layers)]
 
     # position str takes the following formats:
     # f1 -> first token; f2 -> first two tokens.
@@ -236,7 +234,7 @@ def finetune(
             torch_dtype=dtype if dtype != "float8" else None,
             load_in_8bit=True if dtype == "float8" else False,
             device_map=device,
-            # attn_implementation="flash_attention_2"
+            attn_implementation="flash_attention_2"
         )
     else:
         model = AutoModelForCausalLM.from_pretrained(
@@ -244,7 +242,7 @@ def finetune(
             torch_dtype=dtype if dtype != "float8" else None,  # save memory
             load_in_8bit=True if dtype == "float8" else False,
             device_map=device,
-            # attn_implementation="flash_attention_2"
+            attn_implementation="flash_attention_2"
         )
         config = model.config
     if args.monarch:
@@ -319,10 +317,11 @@ def finetune(
     n_params = reft_model.count_parameters(include_model=False)
 
     # start wandb logging
-    if is_wandb:
+    run_name = args.notes + run_name
+    if use_wandb:
         run = wandb.init(
-            project=f"reft-{task}", 
-            entity=wandb_name,
+            project=f"reft-monarch-{task}", 
+            # entity=wandb_name,
             name=run_name,
             dir=wandb_dir,
         )
@@ -339,7 +338,7 @@ def finetune(
         per_device_eval_batch_size=eval_batch_size,
         gradient_accumulation_steps=gradient_accumulation_steps,
         evaluation_strategy="epoch" if task == "glue" else "no",
-        save_strategy="epoch" if task == "glue" else "no",
+        save_strategy="epoch" if task == "glue" else "steps",
         metric_for_best_model=metric_for_best_model if task == "glue" else None,
         load_best_model_at_end=True if task == "glue" else False,
         logging_strategy="steps",
@@ -350,7 +349,7 @@ def finetune(
         warmup_ratio=warmup_ratio,
         optim="adamw_torch",
         weight_decay=weight_decay,
-        report_to="wandb" if is_wandb else "none",
+        report_to="wandb" if use_wandb else "none",
         use_cpu=False if device == "cuda" else True,
         seed=seed,
         # until HF supports ReFT, this remains False! :)
@@ -403,7 +402,7 @@ def finetune(
 
             # log
             eval_results.update(stats)
-            if is_wandb:
+            if use_wandb:
                 wandb.log(stats)
             generations = stats if generations is None else generations
             result_json_file_name = f"{output_dir}/{run_name}/{dataset_name}_{split}_outputs.json"
@@ -430,7 +429,7 @@ def main():
     parser.add_argument('-r', '--rank', type=int, help=8, default=8)
     parser.add_argument('-p', '--position', type=str, help='f1+l1', default='f1+l1')
     parser.add_argument('-e', '--epochs', type=int, help='1', default=1)
-    parser.add_argument('-is_wandb', '--is_wandb', action='store_true')
+    parser.add_argument('-wandb', '--use_wandb', default=True, type=eval)
     parser.add_argument('-wandb_name', '--wandb_name', type=str, default="reft")
     parser.add_argument('-save_model', '--save_model', action='store_true')
     parser.add_argument('-max_n_train_example', '--max_n_train_example', type=int, default=None)
@@ -467,6 +466,7 @@ def main():
     parser.add_argument('-top_p', '--top_p', type=float, default=None)
     parser.add_argument('-top_k', '--top_k', type=float, default=None)
 
+    parser.add_argument("--notes", type=str, default="")
     args = parser.parse_args()
 
     finetune(**vars(args), args=args)

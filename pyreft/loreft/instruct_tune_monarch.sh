@@ -21,12 +21,12 @@ fi
 python train.py -task ultrafeedback \
 -data_dir dataset \
 -model meta-llama/Llama-2-7b-hf \
--seed 42 -l "3;9;18;24" -r 4 -p f5+l5 -e 12 -lr 5e-4 \
--type nothing \
+-seed 42 -l "3;9;18;24" -r 4 -p f5+l5 -e 9 -lr 5e-4 \
+--intervention_type nothing \
 -gradient_accumulation_steps 32 \
 -batch_size 1 \
 -eval_batch_size 2 \
 --test_split test \
 --use_normalized_template \
 --max_length 768 \
--wu 0.10 -dtype bfloat16 "${FLAGS[@]}"
+-wu 0.03 -dtype bfloat16 "${FLAGS[@]}"

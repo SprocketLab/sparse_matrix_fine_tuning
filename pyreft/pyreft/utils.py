@@ -35,7 +35,8 @@ def get_reft_model(model, reft_config, set_device=True):
     reft_model = ReftModel(reft_config, model)
     if set_device:
         reft_model.set_device(model.device)
-    if not getattr(reft_model, "monarch_param_set", False):
+        
+    if not getattr(reft_model.model, "monarch_param_set", False):
         reft_model.disable_model_gradients()    
     else:
         print("Skip disabling grads")

@@ -69,7 +69,7 @@ class BlockdiagButterflyMultiply(torch.autograd.Function):
     """
 
     @staticmethod
-    @torch.cuda.amp.custom_fwd(cast_inputs=torch.float16)
+    @torch.cuda.amp.custom_fwd(cast_inputs=torch.bfloat16)
     def forward(ctx, x, w1_bfly, w2_bfly):
         # breakpoint()
         batch_shape, n = x.shape[:-1], x.shape[-1]
