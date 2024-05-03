@@ -19,7 +19,7 @@ from train_utils import (
     override_config,
     load_best_hp,
     watch_layers,
-    set_merged
+    MySeq2SeqTrainer
 )
 from typing import Optional, Dict, Sequence
 import numpy as np
@@ -647,7 +647,7 @@ def train():
     print('loaded model')
 
     data_module = make_data_module(tokenizer=tokenizer, args=args)
-    trainer = Seq2SeqTrainer(
+    trainer = MySeq2SeqTrainer(
         model_init=model_init,
         tokenizer=tokenizer,
         args=training_args,
@@ -833,7 +833,12 @@ def train():
         last_checkpoint, _ = get_last_checkpoint(args.output_dir)
         print(f"Loading checkpoint from {last_checkpoint}")
         load_checkpoint_and_dispatch(trainer.model, last_checkpoint) 
-        set_merged(trainer.model)
+        breakpoint()
+        # NOTE: to avoid merging monarch weights twice
+        # 1. models are often saved in safetensors instead of pickle, which don't store variables or code like self.merged
+        # 2. load_checkpoint_and_dispatch actually loads the merged state dict; we shouldn't re-merge it.
+        # We would NOT need this if we only save the monarch weights, not the merged dense weights
+        # set_merged(trainer.model)
         
         logger.info("*** Evaluate ***")
         trainer.add_callback(MMLUEvalCallback)

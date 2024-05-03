@@ -2,7 +2,7 @@ import torch
 from transformers import Trainer
 import argparse
 from transformers.utils.import_utils import is_sagemaker_mp_enabled
-from transformers import TrainerCallback
+from transformers import TrainerCallback, Seq2SeqTrainer
 import warnings 
 import sys, os
 import gc
@@ -204,6 +204,16 @@ def get_run_group(task_name: str=None, do_tune: bool=False, group: str=None, cur
     run_group += time.strftime("%m-%d-%H", time.localtime()) if cur_time is None else cur_time 
     return run_group
 
+class MySeq2SeqTrainer(Seq2SeqTrainer):
+    def save_model(self, output_dir, _internal_call=False):
+        """Only save trainable params"""
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        state_dict = {}
+        for n, p in self.model.named_parameters():
+            if p.requires_grad:
+                state_dict[n] = p.data
+        torch.save(state_dict, os.path.join(output_dir, "pytorch_model.bin"))
 
 class MyAwesomeTrainer(Trainer):
     """
@@ -236,7 +246,16 @@ class MyAwesomeTrainer(Trainer):
         self.train_step += 1
         return super().training_step(model, inputs)
     
-    
+    def save_model(self, output_dir, _internal_call=False):
+        """Only save trainable params"""
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        state_dict = {}
+        for n, p in self.model.named_parameters():
+            if p.requires_grad:
+                state_dict[n] = p.data
+        torch.save(state_dict, os.path.join(output_dir, "pytorch_model.bin"))
+        
     def create_optimizer(self):
         """
         Modified from https://github.com/huggingface/transformers/blob/v4.36.1/src/transformers/trainer.py#L923
@@ -258,15 +277,15 @@ class MyAwesomeTrainer(Trainer):
             
         optimizer_grouped_parameters = [
             {
-                "params": [p for n, p in self.model.named_parameters() if not any(nd in n for nd in no_decay + large_lr)],
+                "params": [p for n, p in self.model.named_parameters() if not any(nd in n for nd in no_decay + large_lr) and p.requires_grad],
                 "weight_decay": self.args.weight_decay,
             },
             {
-                "params": [p for n, p in self.model.named_parameters() if any(nd in n for nd in no_decay)],
+                "params": [p for n, p in self.model.named_parameters() if any(nd in n for nd in no_decay) and p.requires_grad],
                 "weight_decay": 0.0,
             },
             {
-                "params": [p for n, p in self.model.named_parameters() if any(nd in n for nd in large_lr)],
+                "params": [p for n, p in self.model.named_parameters() if any(nd in n for nd in large_lr) and p.requires_grad],
                 "lr": new_lr,
                 "weight_decay": new_decay
             }
@@ -288,9 +307,6 @@ class MyAwesomeTrainer(Trainer):
                     logging.debug(f"bitsandbytes: will optimize {module} in fp32")
             logging.info(f"skipped: {skipped / 2**20}M params")
 
-        if is_sagemaker_mp_enabled():
-            import smdistributed.modelparallel.torch as smp
-            self.optimizer = smp.DistributedOptimizer(self.optimizer)
         return self.optimizer
     
     
@@ -457,3 +473,4 @@ def set_merged(model):
     for name, module in model.named_modules():
         if isinstance(module, MonarchLinear):
             module.merged = True 
+            

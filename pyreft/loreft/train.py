@@ -317,7 +317,7 @@ def finetune(
     n_params = reft_model.count_parameters(include_model=False)
 
     # start wandb logging
-    run_name = args.notes + run_name
+    run_name = args.notes + "_" + run_name
     if use_wandb:
         run = wandb.init(
             project=f"reft-monarch-{task}", 
@@ -355,7 +355,6 @@ def finetune(
         # until HF supports ReFT, this remains False! :)
         remove_unused_columns=False
     )
-
     # make trainer
     trainer_class = ReftTrainerForSequenceClassification \
         if task in classification_tasks else ReftTrainerForCausalLM
