@@ -320,8 +320,8 @@ def get_accelerate_model(args, checkpoint_dir):
     model = AutoModelForCausalLM.from_pretrained(
         args.model_name_or_path,
         cache_dir=args.cache_dir,
-        load_in_4bit=args.bits == 4,
-        load_in_8bit=args.bits == 8,
+        # load_in_4bit=args.bits == 4,
+        # load_in_8bit=args.bits == 8,
         device_map=device_map,
         max_memory=max_memory,
         quantization_config=BitsAndBytesConfig(
@@ -377,7 +377,8 @@ def get_accelerate_model(args, checkpoint_dir):
                 "eos_token": tokenizer.convert_ids_to_tokens(model.config.eos_token_id),
                 "bos_token": tokenizer.convert_ids_to_tokens(model.config.bos_token_id),
                 "unk_token": tokenizer.convert_ids_to_tokens(
-                    model.config.pad_token_id if model.config.pad_token_id != -1 else tokenizer.pad_token_id
+                    model.config.pad_token_id if (model.config.pad_token_id != -1 and model.config.pad_token_id is not None) \
+                        else tokenizer.pad_token_id
                 ),
         })
     

@@ -2,6 +2,7 @@ import os
 import sys
 sys.path.append("/fly")
 sys.path.append("/fly/pyreft/pyvene")
+os.environ["PYTHONPATH"] = "/fly" # Allow ray tune to copy dependencies
 from train_utils import *
 import torch
 import argparse
@@ -30,7 +31,7 @@ from datasets import Dataset
 from task_config import task_config
 from dataset import LoReftGLUEDataset, LoReftSupervisedDataset
 from compute_metrics import compute_metrics
-
+from copy import deepcopy
 from pyreft import (
     TaskType,
     get_reft_model,
@@ -40,9 +41,18 @@ from pyreft import (
     NoreftIntervention,
     LoreftIntervention,
     NoIntervention,
-    ReftDataCollator
+    ReftDataCollator,
+    ReftModel
 )
+from ray import tune
+from ray.tune.schedulers import ASHAScheduler
 
+
+args = None
+tokenizer = None
+reft_model = None
+best_hyperparams = None
+config = None
 device = "cuda" if torch.cuda.is_available() else "cpu"
 classification_tasks = {"glue"}
 residual_stream_component_mapping = {
@@ -56,7 +66,108 @@ dtype_mapping = {
 }
 peft_config = json.load(open("/fly/task_configs/llama_mmlu/peft_config.json", "r"))
 
+def model_init(hyperparams: dict = best_hyperparams):
+    global peft_config, args, tokenizer, reft_model, config
+    # everything is guarded by a single seed
+    set_seed(args.seed)
+    dtype = dtype_mapping[args.dtype]
+    model_name = args.model
+    # Hyperparameter search
+    if hyperparams is not None:
+        for k in peft_config.keys():
+            if k in hyperparams.keys() and hyperparams[k] != peft_config[k]:
+                print("Overriding {} = {} from best HP".format(k, hyperparams[k]))
+                peft_config[k] = hyperparams[k]
+                
+    # which layers to intervene on
+    if isinstance(args.layers, str):
+        if args.layers != "all":
+            args.layers = [int(l) for l in args.layers.split(";")]
+        else:
+            temp_config = AutoConfig.from_pretrained(args.model)
+            args.layers = [l for l in range(temp_config.num_hidden_layers)]
 
+        # position str takes the following formats:
+        # f1 -> first token; f2 -> first two tokens.
+        # f1+l1 -> first and last tokens; f2+l2 -> first and last two tokens.
+        # fn or ln shares the same intervention.
+        if "+" in args.position and not args.share_weights:
+            args.layers += args.layers
+
+    if reft_model is None:
+        if args.task in classification_tasks:
+            config = AutoConfig.from_pretrained(
+                model_name, num_labels=args.num_labels,
+                finetuning_task=args.train_dataset,
+                load_in_8bit=True if dtype == "float8" else False,
+                device_map=device
+            )
+            # full precision loading since usually for small models
+            reft_model = AutoModelForSequenceClassification.from_pretrained(
+                model_name,
+                config=config, # just providing the label
+                torch_dtype=dtype if dtype != "float8" else None,
+                load_in_8bit=True if dtype == "float8" else False,
+                device_map=device,
+                attn_implementation="flash_attention_2"
+            )
+        else:
+            reft_model = AutoModelForCausalLM.from_pretrained(
+                model_name,
+                torch_dtype=dtype if dtype != "float8" else None,  # save memory
+                load_in_8bit=True if dtype == "float8" else False,
+                device_map=device,
+                attn_implementation="flash_attention_2"
+            )
+            config = reft_model.config
+    model_arch = config.architectures[0].lower()
+    # model_arch = type(reft_model.model).__name__
+    
+    # Monarch adaptation
+    if args.monarch:
+        peft_config["blk_r"] = args.blk_r
+        init_monarch_layers(reft_model, peft_config)
+    
+    param_stats(reft_model)
+    # Optionally apply ReFT
+    if args.intervention_type == "LoreftIntervention":
+        args.intervention_type = LoreftIntervention
+    elif args.intervention_type == "NoreftIntervention":
+        args.intervention_type = NoreftIntervention
+    else:
+        args.intervention_type = NoIntervention
+    
+    # intervention config based on model type
+    intervention_dtype = torch.bfloat16 if isinstance(dtype, str) else dtype
+    if model_arch in residual_stream_component_mapping:
+        representations = [{
+            "component": residual_stream_component_mapping[model_arch] % l,
+            "intervention": args.intervention_type(
+                embed_dim=config.hidden_size, low_rank_dimension=args.rank,
+                dropout=args.dropout, dtype=intervention_dtype, act_fn=args.act_fn, device=device,
+                add_bias=args.add_bias
+            )
+        } for l in args.layers]
+        task_type=TaskType.SEQ_CLS
+    else:
+        representations = [{
+            "layer": l, "component": "block_output",
+            "low_rank_dimension": args.rank,
+            "intervention": args.intervention_type(
+                embed_dim=config.hidden_size, low_rank_dimension=args.rank,
+                dropout=args.dropout, dtype=intervention_dtype, act_fn=args.act_fn, device=device,
+                add_bias=args.add_bias
+            )
+        } for l in args.layers]
+        task_type=TaskType.CAUSAL_LM
+    
+    # reft_model.enable_input_require_grads()
+    if not isinstance(reft_model, ReftModel):
+        reft_config = ReftConfig(representations=representations)
+        reft_model = get_reft_model(reft_model, reft_config, set_device=not isinstance(dtype, str))
+    reft_model.print_trainable_parameters()
+    return reft_model
+    
 def finetune(
     act_fn: str,
     add_bias: bool,
@@ -100,19 +211,17 @@ def finetune(
     temperature: float,
     top_p: float,
     top_k: float,
-    args,
     **kwargs
 ):
     """
     Generic Representation Finetuning.
     """
-
+    global tokenizer, reft_model
     assert task in {
-        "commonsense", "math", "alpaca", "instruct", "ultrafeedback", "glue", "gsm8k"
+        "commonsense", "math", "alpaca", "instruct", "ultrafeedback", "glue", "gsm8k", "tune_math"
     }
     if data_dir is not None:
         assert os.path.exists(data_dir), f"Data directory {data_dir} does not exist."
-    dtype = dtype_mapping[dtype]
     
     # store/log run details
     print(
@@ -122,40 +231,12 @@ def finetune(
         f"max_length: {max_length}, allow_cls_grad: {allow_cls_grad}"
     )
 
-    # everything is guarded by a single seed
-    set_seed(seed)
-    model_name = model
-    model_str = model.split("/")[-1]
-    train_dataset_str = train_dataset
     now = datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
-    if train_dataset is not None:
-        run_name = f"{model_str}.{task}.{train_dataset_str}.{test_split}.{now}"
+    model_str = args.model.split("/")[-1]
+    if args.train_dataset is not None:
+        run_name = f"{model_str}.{args.task}.{args.train_dataset}.{args.test_split}.{now}"
     else:
-        run_name = f"{model_str}.{task}.{now}"
-
-    # which layers to intervene on
-    if layers != "all":
-        layers = [int(l) for l in layers.split(";")]
-    else:
-        temp_config = AutoConfig.from_pretrained(model)
-        layers = [l for l in range(temp_config.num_hidden_layers)]
-
-    # position str takes the following formats:
-    # f1 -> first token; f2 -> first two tokens.
-    # f1+l1 -> first and last tokens; f2+l2 -> first and last two tokens.
-    # fn or ln shares the same intervention.
-    if "+" in position and not share_weights:
-        layers += layers
-
-    # load tokenizer
-    tokenizer = AutoTokenizer.from_pretrained(
-        model_name,
-        model_max_length=max_length,
-        padding_side="right",
-        use_fast=False,
-    )
-    tokenizer.pad_token = tokenizer.unk_token
-
+        run_name = f"{model_str}.{args.task}.{now}"
     # load dataset splits
     assert task in task_config, f"Unrecognized task: {task}"
     train_datasets = task_config[task]["train_datasets"] if train_dataset is None else [train_dataset]
@@ -163,24 +244,33 @@ def finetune(
         eval_datasets = [train_dataset]
     else:
         eval_datasets = task_config[task]["eval_datasets"] if eval_dataset is None else [eval_dataset]
+    # initialize tokenizer
+    tokenizer = AutoTokenizer.from_pretrained(
+            args.model,
+            model_max_length=args.max_length,
+            padding_side="right",
+            use_fast=False,
+        )
+    tokenizer.pad_token = tokenizer.unk_token
         
     ReftDataset = LoReftGLUEDataset if task == "glue" else LoReftSupervisedDataset 
+    path = os.path.join(data_dir, train_datasets[0]) if data_dir is not None else train_datasets[0]
     train_dataset = ReftDataset(
-        task, train_datasets[0] if task == "glue" else (os.path.join(data_dir, train_datasets[0]) if data_dir is not None else train_datasets[0]), 
+        task, train_datasets[0] if task == "glue" else path, 
         tokenizer, data_split="train", seed=seed, max_n_example=max_n_train_example,
         **{"num_interventions": len(layers), "position": position, 
            "share_weights": share_weights}
     )
     trigger_tokens = train_dataset.trigger_tokens
-    num_labels = train_dataset.num_labels
 
     all_eval_datasets = {}
     for eval_dataset in eval_datasets:
         test_splits = test_split.split(";")
         all_eval_datasets[eval_dataset] = {}
         for split in test_splits:
+            path = os.path.join(data_dir, eval_dataset) if data_dir is not None else eval_dataset
             raw_eval = ReftDataset(
-                task, eval_dataset if task == "glue" else os.path.join(data_dir, eval_dataset), 
+                task, eval_dataset if task == "glue" else path, 
                 tokenizer, data_split=split, seed=seed, max_n_example=max_n_eval_example,
                 **{"num_interventions": len(layers), "position": position, 
                    "share_weights": share_weights}
@@ -192,7 +282,7 @@ def finetune(
         # we repartition the eval_datatsets into [1] 50% validation + [2] 50% test
         # we select the best model on [1] during training
         # we test the selected model on [2] to ensure fairness
-        to_split_eval_datasets = eval_datasets[train_dataset_str][test_split][0]
+        to_split_eval_datasets = eval_datasets[args.train_dataset][test_split][0]
         if len(to_split_eval_datasets) > 5000:
             in_train_n_eval_sample = 1000
         else:
@@ -203,12 +293,12 @@ def finetune(
         )
         
         in_test_eval_datasets, in_train_eval_datasets = new_splits[0], new_splits[1]
-        eval_datasets[train_dataset_str][test_split][0] = in_test_eval_datasets
+        eval_datasets[args.train_dataset][test_split][0] = in_test_eval_datasets
         print("GLUE validation split (in training): ", len(in_train_eval_datasets))
-        print("GLUE validation split (testing): ", len(eval_datasets[train_dataset_str][test_split][0]))
+        print("GLUE validation split (testing): ", len(eval_datasets[args.train_dataset][test_split][0]))
 
-        is_regression = train_dataset_str == "stsb"
-        metric = evaluate.load("glue", train_dataset_str)
+        is_regression = args.train_dataset == "stsb"
+        metric = evaluate.load("glue", args.train_dataset)
         # You can define your custom compute_metrics function. It takes an `EvalPrediction` object (a namedtuple with a
         # predictions and label_ids field) and has to return a dictionary string to float.
         def in_training_compute_metrics(p: EvalPrediction):
@@ -219,41 +309,6 @@ def finetune(
                 result["combined_score"] = np.mean(list(result.values())).item()
             return result
 
-    # load model based on task type.
-    if task in classification_tasks:
-        config = AutoConfig.from_pretrained(
-            model, num_labels=num_labels,
-            finetuning_task=train_dataset_str,
-            load_in_8bit=True if dtype == "float8" else False,
-            device_map=device
-        )
-        # full precision loading since usually for small models
-        model = AutoModelForSequenceClassification.from_pretrained(
-            model,
-            config=config, # just providing the label
-            torch_dtype=dtype if dtype != "float8" else None,
-            load_in_8bit=True if dtype == "float8" else False,
-            device_map=device,
-            attn_implementation="flash_attention_2"
-        )
-    else:
-        model = AutoModelForCausalLM.from_pretrained(
-            model,
-            torch_dtype=dtype if dtype != "float8" else None,  # save memory
-            load_in_8bit=True if dtype == "float8" else False,
-            device_map=device,
-            attn_implementation="flash_attention_2"
-        )
-        config = model.config
-    if args.monarch:
-        init_monarch_layers(model, peft_config)
-    param_stats(model)
-    if intervention_type == "LoreftIntervention":
-        intervention_type = LoreftIntervention
-    elif intervention_type == "NoreftIntervention":
-        intervention_type = NoreftIntervention
-    else:
-        intervention_type = NoIntervention
         
     # select collator based on the type
     if task in classification_tasks:
@@ -271,64 +326,35 @@ def finetune(
         
     data_collator = ReftDataCollator(data_collator=data_collator_fn)
 
-    # intervention config based on model type
-    intervention_dtype = torch.bfloat16 if isinstance(dtype, str) else dtype
-    model_arch = model.config.architectures[0].lower()
-    if model_arch in residual_stream_component_mapping:
-        representations = [{
-            "component": residual_stream_component_mapping[model_arch] % l,
-            "intervention": intervention_type(
-                embed_dim=config.hidden_size, low_rank_dimension=rank,
-                dropout=dropout, dtype=intervention_dtype, act_fn=act_fn, device=device,
-                add_bias=add_bias
-            )
-        } for l in layers]
-        task_type=TaskType.SEQ_CLS
-    else:
-        representations = [{
-            "layer": l, "component": "block_output",
-            "low_rank_dimension": rank,
-            "intervention": intervention_type(
-                embed_dim=config.hidden_size, low_rank_dimension=rank,
-                dropout=dropout, dtype=intervention_dtype, act_fn=act_fn, device=device,
-                add_bias=add_bias
-            )
-        } for l in layers]
-        task_type=TaskType.CAUSAL_LM
-    
-    model.enable_input_require_grads()
-    reft_config = ReftConfig(representations=representations)
-    reft_model = get_reft_model(model, reft_config, set_device=not isinstance(dtype, str))
-    reft_model.print_trainable_parameters()
-    try:
-        reft_model.model.enable_input_require_grads()
-    except:
-        pass
+
     # for GLUE tasks, we enable gradients on the classifier head.
     # the parameter will be counted as well.
-    if task == "glue" and allow_cls_grad:
-        for param in reft_model.model.classifier.parameters():
-            # reft_model with HF trainer will automatically pick up these params to optimize
-            param.requires_grad = True
+    # if task == "glue" and allow_cls_grad:
+    #     for param in reft_model.model.classifier.parameters():
+    #         # reft_model with HF trainer will automatically pick up these params to optimize
+    #         param.requires_grad = True
 
     # train enables dropout but no grads.
     # this line might not be necessary since HF trainer enables this by default.
+    reft_model = model_init()
     reft_model.model.train()
     n_params = reft_model.count_parameters(include_model=False)
 
     # start wandb logging
-    run_name = args.notes + "_" + run_name
+    if args.notes != "":
+        run_name = args.notes + "_" + run_name
+    group = "tune" + "_" + now if args.do_tune else None
     if use_wandb:
         run = wandb.init(
             project=f"reft-monarch-{task}", 
-            # entity=wandb_name,
             name=run_name,
             dir=wandb_dir,
+            group=group,
         )
         run.summary.update(vars(args))
         wandb.log(
             {"train/n_params": n_params})
-
+        
     # # training args
     training_args = TrainingArguments(
         output_dir=f"{output_dir}/{run_name}",
@@ -342,7 +368,7 @@ def finetune(
         metric_for_best_model=metric_for_best_model if task == "glue" else None,
         load_best_model_at_end=True if task == "glue" else False,
         logging_strategy="steps",
-        save_total_limit=1, # for GLUE, it will save 2 at max.
+        save_total_limit=7, # for GLUE, it will save 2 at max.
         logging_steps=logging_steps,
         lr_scheduler_type=schedule,
         learning_rate=lr,
@@ -353,13 +379,16 @@ def finetune(
         use_cpu=False if device == "cuda" else True,
         seed=seed,
         # until HF supports ReFT, this remains False! :)
-        remove_unused_columns=False
+        remove_unused_columns=False,
+        do_eval=True
     )
+
     # make trainer
     trainer_class = ReftTrainerForSequenceClassification \
         if task in classification_tasks else ReftTrainerForCausalLM
     trainer = trainer_class(
-        model=reft_model,
+        # model=reft_model,
+        model_init=model_init,
         tokenizer=tokenizer,
         args=training_args,
         train_dataset=train_dataset,
@@ -367,18 +396,85 @@ def finetune(
         data_collator=data_collator,
         compute_metrics=in_training_compute_metrics if task == "glue" else None,
     )
-    trainer.train()
+    
+    if args.do_tune:
+        # Save full tune group name for resuming
+        with open(os.path.join(training_args.output_dir, "full_group.txt"), "w") as f:
+            f.write(group)
+        
+        _args = deepcopy(trainer.args)
+        
+        # Avoid flooding the disk during HPO
+        trainer.args.save_total_limit = 0 
+        trainer.args.load_best_model_at_end = False
+        trainer.args.save_strategy = "no"
+        trainer.args.evaluation_strategy = "steps" # Requried for Ray Tune
+        # Eval twice every epoch
+        trainer.args.eval_steps = len(train_dataset) // (_args.per_device_train_batch_size * _args.gradient_accumulation_steps * 2)
+        # PEFT monarch search space
+        param_space = {
+            # "nblocks": tune.choice(['sqrt(n)', 4]),
+            "seed": training_args.seed,
+            # "num_train_epochs": tune.choice([20, 25]),
+            "learning_rate": tune.quniform(1.2e-4, 9e-4, 2e-5), 
+            "gradient_accumulation_steps": tune.choice([16, 32]), # Will OOM if tune batch size
+            "weight_decay": tune.choice([0]),
+            "lr_scheduler_type": tune.choice(["cosine", "linear"]), # mostly linear underperforms
+            "blk_r": peft_config["blk_r"],
+            "nblocks": peft_config["nblocks"],
+        }
+        n_trials = args.n_trials 
+        
+        # Set up scheduler and reporter etc.
+        direction = "min"
+        tune_unit = "iter"
+        max_t = 40 * 60  if "tune_unit" == "time" else 14 # 7 epochs. The original paper tuned for 12 epochs
+        metric = f'eval_loss'
+        grade_period = 4 * 60  if tune_unit == "time" else 2
+        time_attr = "time_total_s" if tune_unit == "time" else "training_iteration"
+        
+        scheduler = ASHAScheduler(
+            time_attr=time_attr,
+            max_t=max_t,
+            metric = metric,
+            mode = direction,
+            grace_period=grade_period,
+        )
+        # Do hyperparam optimization with Ray Tune
+        best_run = trainer.hyperparameter_search(hp_space=lambda _: param_space,
+            backend="ray",
+            n_trials=n_trials, # under the hood it calls ray.tune.run(num_samples=n_trials, ...)
+            scheduler=scheduler,
+            keep_checkpoints_num=None,
+            resources_per_trial={"cpu": 1, "gpu": 1},
+            name=group,
+            max_failures=9999, # tolerate OOM
+            direction="maximize" if direction == "max" else "minimize",
+            compute_objective=partial(get_hpo_metric, metric),
+            resume=args.resume 
+        )
+        del trainer.model; model = None; free_memory() # Re-init model
+        trainer.args = _args
+        best_hyperparams = best_run.hyperparameters
+        # Save the best HP for full training 
+        print("Best hyperparameters: ", best_hyperparams)
+        # Save in the run dir
+        cur_tune_path = os.path.join(training_args.output_dir, "best_hyperparams.json")
+        json.dump(best_hyperparams, open(cur_tune_path, "w"))
+    
+    if args.do_train:
+        load_best_hp(training_args.output_dir)
+        trainer.train()
+        # dump config
+        args_dict = vars(args)
+        args_dict["n_params"] = n_params
+        json_file_name = f"{output_dir}/{run_name}/args.json"
+        with open(json_file_name, 'w') as json_file:
+            json.dump(args_dict, json_file, indent=4)
 
-    # dump config
-    args_dict = vars(args)
-    args_dict["n_params"] = n_params
-    json_file_name = f"{output_dir}/{run_name}/args.json"
-    with open(json_file_name, 'w') as json_file:
-        json.dump(args_dict, json_file, indent=4)
-
-    # save model
-    if save_model:
-        reft_model.save(f"{output_dir}/{run_name}")
+        # save model
+        if save_model:
+            reft_model.save(f"{output_dir}/{run_name}")
 
     # ensure everything is in eval mode
     reft_model.model.eval()
@@ -459,16 +555,25 @@ def main():
     parser.add_argument('-wandb_proj', '--wandb_proj', type=str, default='MyReFT')
     parser.add_argument('-sw', '--share_weights', action='store_true')
     parser.add_argument('-gd', '--greedy_decoding', action='store_true')
+    
+    # Monarch
     parser.add_argument("--monarch", default=True, type=eval)
+    parser.add_argument("--blk_r", default=4, type=int)
+    parser.add_argument("--do_tune", action="store_true")
+    parser.add_argument("--do_train", default=True, type=eval)
+    # Ray Tune
+    parser.add_argument("--n_trials", default=30, type=int)
+    parser.add_argument("--resume", default=False, type=eval)
     # decoding params
     parser.add_argument('-t', '--temperature', type=float, default=None)
     parser.add_argument('-top_p', '--top_p', type=float, default=None)
     parser.add_argument('-top_k', '--top_k', type=float, default=None)
 
     parser.add_argument("--notes", type=str, default="")
+    global args
     args = parser.parse_args()
 
-    finetune(**vars(args), args=args)
+    finetune(**vars(args))
 
 
 if __name__ == "__main__":

@@ -90,7 +90,10 @@ def getattr_for_torch_module(model, parameter_name):
                 int(param.split("[")[-1].strip("]"))
             ]
         else:
-            current_module = getattr(current_module, param)
+            try:
+                current_module = getattr(current_module, param)
+            except:
+                breakpoint()
     return current_module
 
 

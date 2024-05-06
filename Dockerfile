@@ -106,3 +106,4 @@ RUN pip install ray==2.7
 #     echo 'export PATH=$CONDA_DIR/bin:$PATH' > /etc/profile.d/conda.sh && \
 #     /bin/bash /tmp/miniconda.sh -b -p $CONDA_DIR && \
 #     rm -rf /tmp/*
+RUN chmod -R 777 .

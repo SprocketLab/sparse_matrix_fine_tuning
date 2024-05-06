@@ -1,3 +1,23 @@
+# Initialize an array for flags
+FLAGS=()
+
+# Loop through all the arguments
+for arg in "$@"
+do
+    # Check if the argument is in --key=value format
+    if [[ $arg == --* ]]; then
+        # Append the argument to FLAGS array, preserving the quoting
+        FLAGS+=("$arg")
+    fi
+done
+
+# Check if FLAGS array is not empty
+if [ ${#FLAGS[@]} -ne 0 ]; then
+    echo "Using flags ${FLAGS[@]} from the command line."
+else
+    echo "Using no additional flags."
+fi
+
 python train.py -task math \
 -data_dir dataset \
 -model yahma/llama-7b-hf \
@@ -12,4 +32,5 @@ python train.py -task math \
 --use_normalized_template \
 --share_weights \
 --warmup_ratio 0.1 \
---greedy_decoding
+--greedy_decoding \
+"${FLAGS[@]}"

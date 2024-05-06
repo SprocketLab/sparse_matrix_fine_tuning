@@ -18,12 +18,11 @@ else
     echo "Using no additional flags."
 fi
 
-python train.py -task commonsense \
--data_dir dataset \
+python train.py -task tune_math \
 -model yahma/llama-7b-hf \
 -seed 42 \
--l all -r 8 -p f7+l7 -e 6 -lr 5e-4 \
---intervention_type nothing \
+-l all -r 8 -p f7+l7 -e 12 -lr 5e-4 \
+--intervention_type Nothing \
 -gradient_accumulation_steps 16 \
 -batch_size 2 \
 -eval_batch_size 4 \
@@ -33,4 +32,6 @@ python train.py -task commonsense \
 --share_weights \
 --warmup_ratio 0.1 \
 --greedy_decoding \
-"${FLAGS[@]}"
+"${FLAGS[@]}" \
+# --do_tune \
+#-data_dir dataset \

@@ -137,7 +137,6 @@ def main(config: dict = None):
     peft_config = json.load(open(PEFT_ROBERTA_PATH, "r"))  # load monarch config
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
     model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(args.config_path))
-    
     # NOTE: Extra args can override all training configs (best HP, peft_config, etc.)
     extra_args = override_config([model_args, data_args, training_args, peft_config], sys.argv[2:])
     use_monarch = args.use_monarch
@@ -156,7 +155,7 @@ def main(config: dict = None):
     if peft_config["mlp"]:
         peft_config["layers_to_adapt"] += ["dense"]
 
-    training_args.disable_tqdm=True, # EDIT
+    # training_args.disable_tqdm=True, # EDIT
     # Do NOT use loss as saving metric, maximize eval metric instead
     training_args.metric_for_best_model = task_to_metric[data_args.task_name] 
     training_args.greater_is_better = True 
@@ -191,16 +190,14 @@ def main(config: dict = None):
     os.makedirs(training_args.output_dir, exist_ok=True)
 
     # For resuming HPO    
-    if args.resume_tune or args.load_group:
+    if args.resume or args.load_group:
         path = os.path.join(training_args.output_dir, "full_group.txt")
         if os.path.exists(path):
             full_group = os.environ["WANDB_RUN_GROUP"] = open(path, "r").readline().strip()
-            if "tune" in full_group:
-                project = "monarch_glue_tune" 
             print("Loading wandb run group: ", os.environ["WANDB_RUN_GROUP"])
         else:
             logging.warning("No full_group.txt found in the output dir. Won't resume HPO/put this training run in the same wandb group.")
-            args.resume_tune = args.load_group = False
+            args.resume = args.load_group = False
 
     # Logging and checkpointing
     last_checkpoint = setup_logging_ckpt(training_args, logger, do_tune)
@@ -527,7 +524,12 @@ def main(config: dict = None):
     # Wandb config 
     if use_wandb:
         training_args.run_name = "glue_" + data_args.task_name # wandb run name
-        os.environ["WANDB_PROJECT"] = "monarch_hf" + "_peft" if use_monarch else "GLUE_FT" 
+        
+        if do_tune:
+            os.environ["WANDB_PROJECT"] = "monarch_glue_tune"
+        else:
+            os.environ["WANDB_PROJECT"] = "monarch_hf_peft" 
+            
         os.environ["WANDB_PROJECT"] = project if project else os.environ["WANDB_PROJECT"] # Override if provided
         
         # group runs within the same hour
@@ -579,7 +581,7 @@ def main(config: dict = None):
                 "blk_r": peft_config["blk_r"],
                 "nblocks": peft_config["nblocks"],
             }
-            n_trials = args.n_trials # 36 by default
+            n_trials = args.n_trials 
                 # block size = {256, 128, 64}
                 # block rank = {4, 2, 8}
                 # n_trials = 40
@@ -603,7 +605,7 @@ def main(config: dict = None):
         
         
         # Set up scheduler and reporter etc.
-        direction = "max"
+        mode = "max"
         max_t = 40 * 60 if tune_unit == "time" else 15 # mins or eval iterations
         if data_args.task_name == "mrpc":
             max_t = 30 * 60 if tune_unit == "time" else 12
@@ -618,7 +620,7 @@ def main(config: dict = None):
             time_attr=time_attr,
             max_t=max_t,
             metric = task_to_metric[data_args.task_name],
-            mode = direction,
+            mode = mode,
             grace_period=grade_period,
         )
         reporter = CLIReporter(
@@ -633,16 +635,15 @@ def main(config: dict = None):
             backend="ray",
             n_trials=n_trials, # under the hood it calls ray.tune.run(num_samples=n_trials, ...)
             scheduler=scheduler,
-            keep_checkpoints_num=0,
-            checkpoint_score_attr="min-" + task_to_metric[data_args.task_name], # rank in decreasing order
+            keep_checkpoints_num=None,
+            checkpoint_score_attr="max-" + task_to_metric[data_args.task_name], # rank in decreasing order
             progress_reporter=reporter,
             resources_per_trial={"cpu": 1, "gpu": args.gpus_per_trial},
-            local_dir="ray_results",
             name=os.environ["WANDB_RUN_GROUP"],
-            max_failures=100, # tolerate OOM
-            direction="maximize" if direction == "max" else "minimize",
+            max_failures=999, # tolerate OOM
+            direction="maximize" if mode == "max" else "minimize",
             compute_objective=partial(get_hpo_metric, task_to_metric[data_args.task_name]),
-            resume=args.resume_tune 
+            resume=args.resume 
         )
         best_hp = best_run.hyperparameters
             
@@ -701,7 +702,7 @@ def main(config: dict = None):
         )
         metrics["train_samples"] = min(max_train_samples, len(train_dataset))
 
-        trainer.save_model()  # Saves the tokenizer too for easy upload
+        trainer.save_model() 
         trainer.log_metrics("train", metrics)
         trainer.save_metrics("train", metrics)
         trainer.save_state()

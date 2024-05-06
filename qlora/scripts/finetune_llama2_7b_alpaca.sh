@@ -1,7 +1,7 @@
 python qlora.py \
     --model_name_or_path meta-llama/Llama-2-7b-hf \
     --use_auth \
-    --output_dir ./output/llama-2-guanaco-7b \
+    --output_dir /fly/results/qlora \
     --logging_steps 10 \
     --save_strategy steps \
     --data_seed 42 \
@@ -29,7 +29,7 @@ python qlora.py \
     --warmup_ratio 0.03 \
     --lr_scheduler_type constant \
     --gradient_checkpointing \
-    --dataset oasst1 \
+    --dataset alpaca \
     --source_max_len 16 \
     --target_max_len 512 \
     --per_device_train_batch_size 1 \
@@ -42,3 +42,4 @@ python qlora.py \
     --lora_dropout 0.1 \
     --weight_decay 0.0 \
     --seed 0 \
+    --mmlu_split test

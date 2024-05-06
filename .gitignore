@@ -1,21 +1,10 @@
 # Ignore everything in results
 results/**
 
-# But do not ignore HPs searched 
-!results/monarch_roberta_glue/
-!results/monarch_roberta_glue/AX.tsv
-!results/monarch_roberta_glue/*
-results/monarch_roberta_glue/*.zip
-results/monarch_roberta_glue/*.tsv
-!results/monarch_roberta_glue/*/best_hyperparams.json
-!results/monarch_roberta_glue/*/*
-results/monarch_roberta_glue/*/*.tsv
-!results/monarch_roberta_glue/*/*/best_hyperparams.json
+# Allow best_hyperparams.json anywhere under results
+!results/**/best_hyperparams.json
 
-!results/llama_mmlu/
-!results/llama_mmlu/*/
-!results/llama_mmlu/*/best_hyperparams.json
-!results/llama_mmlu/*/*/best_hyperparams.json
+# Specific includes/excludes for loreft dataset
 !pyreft/examples/loreft/dataset
 # Ignore other directories and file patterns
 wandb/**

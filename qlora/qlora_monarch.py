@@ -19,6 +19,7 @@ from train_utils import (
     override_config,
     load_best_hp,
     watch_layers,
+    set_merged,
     MySeq2SeqTrainer
 )
 from typing import Optional, Dict, Sequence
@@ -222,13 +223,9 @@ class GenerationArguments:
     no_repeat_ngram_size: Optional[int] = field(default=0)
 
 
-def model_init(hyperparams: dict = None):
+def model_init(hyperparams: dict = best_hyperparams):
     global peft_config, model
     set_seed(args.seed)
-    if hyperparams is None:
-        global best_hyperparams
-    else:
-        hyperparams = best_hyperparams
     
     # Hyperparameter search
     if hyperparams is not None:
@@ -271,8 +268,7 @@ def model_init(hyperparams: dict = None):
     # Monarch adaptation
     init_monarch_layers(model, peft_config)
     param_stats(model)
-    if not args.do_tune:
-        watch_layers(model)
+    watch_layers(model)
     setattr(model, 'model_parallel', True)
     setattr(model, 'is_parallelizable', True)
 
@@ -751,16 +747,6 @@ def train():
             "nblocks": peft_config["nblocks"],
         }
         n_trials = args.n_trials 
-            # block size = {256, 128, 64}
-            # block rank = {4, 2, 8}
-            # n_trials = 40
-        # if args.tune_blk_config:
-        #     # TODO: Search a larger space, and fail the runs over the budget (~1.2M param)
-        #     # Do NAS 
-        #     param_space["blk_r"] = tune.choice([1, 2, 4, 8])
-        #     param_space["blk_sz"] = tune.choice([64, 128, 512])
-        #     param_space["lr_scheduler_type"] = "cosine"
-        #     n_trials += 10
         
         # Set up scheduler and reporter etc.
         direction = "min"
@@ -790,11 +776,7 @@ def train():
             n_trials=n_trials, # under the hood it calls ray.tune.run(num_samples=n_trials, ...)
             scheduler=scheduler,
             keep_checkpoints_num=None,
-            # num_to_keep=None,
-            # checkpoint_score_attr="min-" + metric, # rank in decreasing order
-            # progress_reporter=reporter,
             resources_per_trial={"cpu": 1, "gpu": 1},
-            # local_dir="./ray_results",
             name=os.environ["WANDB_RUN_GROUP"],
             max_failures=9999, # tolerate OOM
             direction="maximize" if direction == "max" else "minimize",
@@ -809,8 +791,7 @@ def train():
         # Save in the run dir
         cur_tune_path = os.path.join(training_args.output_dir, "best_hyperparams.json")
         json.dump(best_hyperparams, open(cur_tune_path, "w"))
-        # if args.as_base_hp or args.group == "":
-        #     json.dump(best_hp, open(os.path.join(args, "best_hyperparams.json"), "w"))
+
     
     # Training
     if args.do_train:
@@ -833,12 +814,11 @@ def train():
         last_checkpoint, _ = get_last_checkpoint(args.output_dir)
         print(f"Loading checkpoint from {last_checkpoint}")
         load_checkpoint_and_dispatch(trainer.model, last_checkpoint) 
-        breakpoint()
         # NOTE: to avoid merging monarch weights twice
         # 1. models are often saved in safetensors instead of pickle, which don't store variables or code like self.merged
         # 2. load_checkpoint_and_dispatch actually loads the merged state dict; we shouldn't re-merge it.
         # We would NOT need this if we only save the monarch weights, not the merged dense weights
-        # set_merged(trainer.model)
+        set_merged(trainer.model)
         
         logger.info("*** Evaluate ***")
         trainer.add_callback(MMLUEvalCallback)

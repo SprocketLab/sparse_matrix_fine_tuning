@@ -18,6 +18,7 @@ from typing import Dict, List, Union
 from functools import partial
 import json
 import wandb, ray
+from ray import tune
 import glob
 from collections import defaultdict
 
@@ -36,7 +37,7 @@ def parse_args():
     parser.add_argument("--use_wandb", default=True, type=eval, help="Use Weights & Biases for logging")
     parser.add_argument("--adapter", default=True, type=eval, help="Use lora adapter style. If false will project dense to sparse ")
     parser.add_argument("--tune_unit", default="eval_iter", help="Budget unit for HPO.", choices=["time", "eval_iter"])
-    parser.add_argument("--n_trials", default=36, type=int, help="Number of trials for HPO")
+    parser.add_argument("--n_trials", default=25, type=int, help="Number of trials for HPO")
     parser.add_argument("--gpus_per_trial", default=0.5, type=float, help="Number of GPUs to use per HPO trial")
     parser.add_argument("--tune_blk_config", default=False, type=eval, help="Whether to tune block sizes & rank ")
     # Wandb grouping args
@@ -47,13 +48,13 @@ def parse_args():
     parser.add_argument("--time", default=None, help="For grouping wandb groups and runs. If not provided will use current time")
     parser.add_argument("--as_base_hp", default=False, type=eval, help="For HP tuning only. \
                                 Whether to save an extra copy in the dataset folder, which will be used by other un-tuned runs default")
-    parser.add_argument("--resume_tune", default=False, type=eval, help="Whether to resume Ray Tune from error")
+    parser.add_argument("--resume", default=False, type=eval, help="Whether to resume Ray Tune from error")
     parser.add_argument("--load_group", default=False, type=eval, help="Whether to load the full group name from group dir's full_group.txt")
     parser.add_argument("--move_ckpt", default=False, type=eval, help="Replace the final checkpoints with symlinks to another disk to save space")
     args, unknown = parser.parse_known_args()
     return args
 
-def load_best_hp(run_dir, task_dir):
+def load_best_hp(run_dir, task_dir="nonexistent"):
     best_hyperparams = None
     best_hp_path = os.path.join(run_dir, "best_hyperparams.json")
     base_hp_path = os.path.join(task_dir, "best_hyperparams.json")
@@ -205,8 +206,10 @@ def get_run_group(task_name: str=None, do_tune: bool=False, group: str=None, cur
     return run_group
 
 class MySeq2SeqTrainer(Seq2SeqTrainer):
-    def save_model(self, output_dir, _internal_call=False):
+    def save_model(self, output_dir=None, _internal_call=False):
         """Only save trainable params"""
+        if output_dir is None:
+            output_dir = self.args.output_dir
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
         state_dict = {}
@@ -246,7 +249,9 @@ class MyAwesomeTrainer(Trainer):
         self.train_step += 1
         return super().training_step(model, inputs)
     
-    def save_model(self, output_dir, _internal_call=False):
+    def save_model(self, output_dir=None, _internal_call=False):
+        if output_dir is None:
+            output_dir = self.args.output_dir
         """Only save trainable params"""
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
@@ -419,7 +424,8 @@ def get_hpo_metric(target_metric: str, metrics: dict):
     return metrics[target_metric]
 
 def watch_layers(model, max_per_module=2):
-    if wandb.run != None or ray.tune.is_session_enabled():
+    """Monitor how weights are updated"""
+    if wandb.run != None or tune.is_session_enabled():
         return
     print("Enabling wandb watch")
     watch_count = defaultdict(int)
@@ -435,7 +441,7 @@ def watch_layers(model, max_per_module=2):
         print(f"Watched {count} {layer_name} layers  ")
     
     # Log all py files for reference
-    files_to_log = ["modeling_roberta.py", "monarch_linear.py", "train_utils.py"]
+    files_to_log = ["qlora_monarch.py", "monarch_linear.py", "train_utils.py"]
 
     for file in glob.glob("/fly/**/*.py", recursive=True):
         if any([file.endswith(f) for f in files_to_log]):
