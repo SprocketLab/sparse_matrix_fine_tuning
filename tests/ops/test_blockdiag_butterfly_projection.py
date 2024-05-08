@@ -14,13 +14,13 @@ from src.models.layers.monarch_linear import MonarchLinear
 @pytest.mark.parametrize('device', ['cpu', 'cuda'])
 @pytest.mark.parametrize('nblocks', [2, 3, 4])
 @pytest.mark.parametrize('rank', [1, 2])
-@pytest.mark.parametrize('sdict_path', ["results/monarch_roberta_glue/cola/dense rank 32/checkpoint-3750/pytorch_model.bin"])
+@pytest.mark.parametrize('sdict_path', ["results/llama_mmlu/checkpoint-1683/pytorch_model-00001-of-00002.bin"])
 def test_trained_weight_approx(device, rank, nblocks, sdict_path):
     torch.random.manual_seed(0)
     
     assert os.path.exists(sdict_path), "you should finetune the model first"
     state_dict = torch.load(sdict_path, map_location=device)
-    layers_to_test = ["query.dense", "key.dense"]
+    layers_to_test = set(["q_proj.dense", "k_proj.dense"])
     monarch_out = []
     dense_out = []
     atol = 1e-4
@@ -28,7 +28,8 @@ def test_trained_weight_approx(device, rank, nblocks, sdict_path):
 
     # avg error across all layers
     for name, weights in state_dict.items():
-        if any([layer in name for layer in layers_to_test]):
+        if any([layer_name in name for layer_name in layers_to_test]):
+            layers_to_test.remove(name)
             m, n = weights.shape
             x = torch.eye(n, device=device)
             layer = MonarchLinear(in_features=n, out_features=m, nblocks=nblocks, blk_r=rank, weights=weights, bias=False, device=device)

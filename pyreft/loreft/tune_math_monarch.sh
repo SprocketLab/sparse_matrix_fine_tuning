@@ -21,7 +21,7 @@ fi
 python train.py -task tune_math \
 -model yahma/llama-7b-hf \
 -seed 42 \
--l all -r 8 -p f7+l7 -e 12 -lr 5e-4 \
+-l all -r 8 -p f7+l7 -e 8 -lr 5e-4 \
 --intervention_type Nothing \
 -gradient_accumulation_steps 16 \
 -batch_size 2 \
@@ -33,5 +33,9 @@ python train.py -task tune_math \
 --warmup_ratio 0.1 \
 --greedy_decoding \
 "${FLAGS[@]}" \
-# --do_tune \
+--do_tune \
+--do_train=False \
 #-data_dir dataset \
+
+# Do training on different datasets
+bash math_monarch.sh "${FLAGS[@]}"

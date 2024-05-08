@@ -778,6 +778,7 @@ def train():
             keep_checkpoints_num=None,
             resources_per_trial={"cpu": 1, "gpu": 1},
             name=os.environ["WANDB_RUN_GROUP"],
+            local_dir="/fly/ray_results",
             max_failures=9999, # tolerate OOM
             direction="maximize" if direction == "max" else "minimize",
             compute_objective=partial(get_hpo_metric, metric),

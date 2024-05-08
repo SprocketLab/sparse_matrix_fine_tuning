@@ -64,7 +64,7 @@ def load_best_hp(run_dir, task_dir="nonexistent"):
         print(f"Using best hp: {best_hyperparams}")
     elif os.path.exists(base_hp_path):
         best_hyperparams = json.load(open(base_hp_path))
-        print(f"Using best hp for from the base setup: {best_hyperparams}")
+        print(f"Using best hp for from the base task dir: {best_hyperparams}")
     else:
         print("No best hyperparameters found.")
     print("+++++++++++++++++++++++++++++++++++++++++++++++++++")

@@ -1323,6 +1323,7 @@ class IntervenableModel(nn.Module):
         labels: Optional[torch.LongTensor] = None,
         output_original_output: Optional[bool] = False,
         return_dict: Optional[bool] = None,
+        **kwargs
     ):
         """
         Main forward function that serves a wrapper to

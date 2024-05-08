@@ -157,10 +157,11 @@ class LoReftSupervisedDataset(ReftDataset):
                 task = "gsm8k"
                 task_dataset = load_dataset("gsm8k", "main")["train"]
                 # Use the last 300 examples for evaluation
-                if data_split == "train": 
-                    task_dataset = task_dataset.select(range(len(task_dataset) - 300))
-                else:
+                if kwargs.pop("is_eval", False): 
                     task_dataset = task_dataset.select(range(len(task_dataset) - 300, len(task_dataset)))
+                else:
+                    task_dataset = task_dataset.select(range(len(task_dataset) - 300))
+                    
             else:
                 task_dataset = load_dataset(data_path)[data_split]
         if max_n_example is not None:
