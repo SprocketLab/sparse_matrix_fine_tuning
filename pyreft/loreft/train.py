@@ -346,15 +346,22 @@ def finetune(
     # start wandb logging
     if task == "tune_math": # Now datasets are set up, use the actual task name
         task = "math"
-    if args.notes != "":
+    task_dir = os.path.join(output_dir, task)
+    output_dir = os.path.join(task_dir, args.group) if args.group else task_dir
+    
+    if args.notes:
         run_name = args.notes + "_" + run_name
+        
     # Must set env variables to carry to them ray tune workers!
     if args.use_wandb == False:
         os.environ["WANDB_MODE"] = "offline"
-    if args.do_tune:
-        os.environ["WANDB_RUN_GROUP"] = group = ("_").join(["tune", task, now])
+    if args.resume:
+        os.environ["WANDB_RUN_GROUP"] = group = open(os.path.join(output_dir, "full_group.txt"), "r").read().strip()
+    elif args.do_tune:
+        os.environ["WANDB_RUN_GROUP"] = group = get_run_group(group=args.group, notes=args.notes, do_tune=True)
     else:
         group = None
+
     os.environ["WANDB_PROJECT"] = f"reft-monarch-{task}"
     run = wandb.init(
         project=os.environ["WANDB_PROJECT"], 
@@ -365,11 +372,10 @@ def finetune(
     run.summary.update(vars(args))
     wandb.log(
         {"train/n_params": n_params})
-        
+    
     # # training args
-    task_dir = os.path.join(output_dir, task)
     training_args = TrainingArguments(
-        output_dir=os.path.join(task_dir, run_name),
+        output_dir=output_dir,
         run_name=run_name,
         num_train_epochs=epochs,
         per_device_train_batch_size=batch_size,
@@ -423,7 +429,6 @@ def finetune(
             f.write(group)
         
         _args = deepcopy(trainer.args)
-        
         trainer.args.save_total_limit = 0 # Avoid flooding the disk during HPO
         trainer.args.load_best_model_at_end = False
         trainer.args.save_strategy = "no"
@@ -595,10 +600,11 @@ def main():
     parser.add_argument("--do_tune", action="store_true")
     parser.add_argument("--do_train", default=True, type=eval)
     
-    # Ray Tune
+    # Ray Tune & wandb
     parser.add_argument("--n_trials", default=35, type=int)
-    parser.add_argument("--resume", default=False, type=eval)
+    parser.add_argument("--resume", action="store_true")
     parser.add_argument("--evals_per_epoch", default=2, type=int)
+    parser.add_argument("--group", type=str, default=None, help="Wandb run group for different model config etc.")
     # decoding params
     parser.add_argument('-t', '--temperature', type=float, default=None)
     parser.add_argument('-top_p', '--top_p', type=float, default=None)

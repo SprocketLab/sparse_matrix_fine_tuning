@@ -34,8 +34,7 @@ python train.py -task tune_math \
 --greedy_decoding \
 "${FLAGS[@]}" \
 --do_tune \
---do_train=False \
-#-data_dir dataset \
+--do_train=False;
 
 # Do training on different datasets
 bash math_monarch.sh "${FLAGS[@]}"

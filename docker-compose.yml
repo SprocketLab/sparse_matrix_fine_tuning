@@ -9,6 +9,7 @@ services:
     volumes:
       - .:/fly
       - /data:/data
+      - ~/.cache/huggingface:/home/user/.cache/huggingface
     working_dir: /fly
     environment: 
     # Remove before publishing the repo

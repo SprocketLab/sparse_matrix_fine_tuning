@@ -722,7 +722,7 @@ def main(config: dict = None):
         trainer_model_internal.init_monarch_layers(peft_config) 
         
         trainer.model.eval()
-        trainer.model.load_state_dict(torch.load(last_checkpoint))
+        trainer.model.load_state_dict(torch.load(last_checkpoint), strict=False)
             
         # Loop to handle MNLI double evaluation (matched, mis-matched)
         tasks = [data_args.task_name]
