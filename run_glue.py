@@ -59,7 +59,8 @@ from transformers import (
     TrainingArguments,
     default_data_collator,
     set_seed,
-    DebertaForSequenceClassification
+    DebertaForSequenceClassification,
+    AutoModel,
 )
 from transformers.models.roberta.modeling_roberta import RobertaSelfAttention, RobertaIntermediate
 from src.models.modeling_roberta import RobertaForSequenceClassification
@@ -80,6 +81,7 @@ from train_utils import (
     init_monarch_layers,
     get_hpo_metric,
     PEFT_ROBERTA_PATH,
+    PEFT_DEBERTA_PATH,
     print_dtypes,
     load_best_hp
 )
@@ -134,9 +136,15 @@ def override_dict(dict_new, dict_old):
 def main(config: dict = None):
     ############################## Command line args ##############################
     args = parse_args()
-    peft_config = json.load(open(PEFT_ROBERTA_PATH, "r"))  # load monarch config
+    # peft_config = json.load(open(PEFT_ROBERTA_PATH, "r"))  # load monarch config    
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
     model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(args.config_path))
+    # EDIT
+    if "deberta" in model_args.model_name_or_path:
+        peft_config = json.load(open(PEFT_DEBERTA_PATH, "r"))  # load monarch config
+    else: # default roberta  
+        peft_config = json.load(open(PEFT_ROBERTA_PATH, "r"))  # load monarch config
+    
     # NOTE: Extra args can override all training configs (best HP, peft_config, etc.)
     extra_args = override_config([model_args, data_args, training_args, peft_config], sys.argv[2:])
     use_monarch = args.use_monarch
@@ -151,11 +159,11 @@ def main(config: dict = None):
     
     # Adapter settings
     if peft_config["q_v"]:
-        peft_config["layers_to_adapt"] = ["query", "value"]
+        peft_config["layers_to_adapt"] = ["query_proj", "value_proj"] if "deberta" in model_args.model_name_or_path else ["query", "value"]
     if peft_config["mlp"]:
         peft_config["layers_to_adapt"] += ["dense"]
 
-    # training_args.disable_tqdm=True, # EDIT
+    training_args.disable_tqdm=True, # EDIT
     # Do NOT use loss as saving metric, maximize eval metric instead
     training_args.metric_for_best_model = task_to_metric[data_args.task_name] 
     training_args.greater_is_better = True 
@@ -332,6 +340,7 @@ def main(config: dict = None):
             model = DebertaForSequenceClassification(
                 config
             )
+            model.deberta = AutoModel.from_pretrained(model_args.config_name if model_args.config_name else model_args.model_name_or_path) # hacky loading of backbone pretrained; "microsoft/deberta-v3-base"
         else: # Default to roberta
             model = RobertaForSequenceClassification.from_pretrained(
                         pretrained_model_name_or_path=model_args.model_name_or_path,
@@ -526,7 +535,7 @@ def main(config: dict = None):
         training_args.run_name = "glue_" + data_args.task_name # wandb run name
         
         if do_tune:
-            os.environ["WANDB_PROJECT"] = "monarch_glue_tune"
+            os.environ["WANDB_PROJECT"] = "monarch_glue_tune_" + data_args.task_name
         else:
             os.environ["WANDB_PROJECT"] = "monarch_hf_peft" 
             

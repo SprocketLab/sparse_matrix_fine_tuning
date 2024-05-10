@@ -23,6 +23,7 @@ import glob
 from collections import defaultdict
 
 PEFT_ROBERTA_PATH = "/fly/task_configs/glue_peft_configs/peft_config.json"
+PEFT_DEBERTA_PATH = "/fly/task_configs/glue_deberta/peft_monarch_deberta.json"
 
 def parse_args():
     # Create the parser
