@@ -227,9 +227,7 @@ def finetune(
     Generic Representation Finetuning.
     """
     global tokenizer, reft_model
-    assert task in {
-        "commonsense", "math", "alpaca", "instruct", "ultrafeedback", "glue", "gsm8k", "tune_math"
-    }
+    assert task in task_config
     if data_dir is not None:
         assert os.path.exists(data_dir), f"Data directory {data_dir} does not exist."
     
@@ -283,7 +281,7 @@ def finetune(
         all_eval_datasets[eval_dataset] = {}
         for split in test_splits:
             if args.do_tune: 
-                split = "train" # Ensure eval_loop doesn't throw a bug.. need to change later
+                split = "train" # TODO: Ensure eval_loop doesn't throw a bug.. need to change later
                 
             path = os.path.join(data_dir, eval_dataset) if data_dir is not None else eval_dataset
             raw_eval = ReftDataset(
@@ -344,8 +342,11 @@ def finetune(
     data_collator = ReftDataCollator(data_collator=data_collator_fn)
 
     # start wandb logging
-    if task == "tune_math": # Now datasets are set up, use the actual task name
-        task = "math"
+    # if task == "tune_math": 
+        # task = "math"
+    # Now datasets are set up, use the actual task name
+    if "tune" in task:
+        task = task.split("_")[-1]
     task_dir = os.path.join(output_dir, task)
     output_dir = os.path.join(task_dir, args.group) if args.group else task_dir
     
@@ -358,7 +359,7 @@ def finetune(
     if args.resume:
         os.environ["WANDB_RUN_GROUP"] = group = open(os.path.join(output_dir, "full_group.txt"), "r").read().strip()
     elif args.do_tune:
-        os.environ["WANDB_RUN_GROUP"] = group = get_run_group(group=args.group, notes=args.notes, do_tune=True)
+        os.environ["WANDB_RUN_GROUP"] = group = get_run_group(task, group=args.group, notes=args.notes, do_tune=True)
     else:
         group = None
 
@@ -386,7 +387,7 @@ def finetune(
         metric_for_best_model=metric_for_best_model if task == "glue" else None,
         load_best_model_at_end=True if task == "glue" else False,
         logging_strategy="steps",
-        save_total_limit=7, # for GLUE, it will save 2 at max.
+        save_total_limit=5, # for GLUE, it will save 2 at max.
         logging_steps=logging_steps,
         lr_scheduler_type=schedule,
         learning_rate=lr,
@@ -409,7 +410,7 @@ def finetune(
     # Ray Tune requires eval. Otherwise the authors didn't use eval
     elif args.do_tune:
         assert len(eval_datasets) == 1, "Use only one eval set for HPO!"
-        raw_eval = list(list(eval_datasets.values())[0].values())[0][0] # Ridiculous code from the authors..
+        raw_eval = list(list(eval_datasets.values())[0].values())[0][0] # TODO: beautify
         eval_dataset = raw_eval
     else:
         eval_dataset = None
@@ -423,6 +424,7 @@ def finetune(
         data_collator=data_collator,
         compute_metrics=in_training_compute_metrics if task == "glue" else None,
     )
+
     if args.do_tune:
         # Save full tune group name for resuming
         with open(os.path.join(training_args.output_dir, "full_group.txt"), "w") as f:
@@ -434,12 +436,15 @@ def finetune(
         trainer.args.save_strategy = "no"
         trainer.args.evaluation_strategy = "steps" # Requried for Ray Tune
     
+        ######################### Need to change for each task #########################
         # Set up eval steps and batch size
         evals_per_epoch = args.evals_per_epoch
         trainer.args.eval_steps = len(train_dataset) \
             // (training_args.per_device_train_batch_size * training_args.gradient_accumulation_steps * evals_per_epoch)
         # PEFT monarch search space
         if task == "math":
+            real_bs = [16, 32, 64]
+        elif task == "commonsense":
             real_bs = [16, 32, 64]
         else:
             raise NotImplementedError(f"Don't forget to manually pick bs for task {task} !")
@@ -466,6 +471,7 @@ def finetune(
         max_t = 40 * 60  if "tune_unit" == "time" else args.epochs * evals_per_epoch
         grade_period = 4 * 60  if tune_unit == "time" else 2
         time_attr = "time_total_s" if tune_unit == "time" else "training_iteration"
+        ############################## End of task specific ##############################
         
         scheduler = ASHAScheduler(
             time_attr=time_attr,
@@ -502,17 +508,22 @@ def finetune(
     
     if args.do_train:
         load_best_hp(training_args.output_dir, task_dir)
-        trainer.train()
+        if args.resume:
+            last_ckpt, _ = get_last_checkpoint(training_args.output_dir)
+            last_ckpt = os.path.join(last_ckpt, "intervenable_model")
+        else:
+            last_ckpt = None
+        trainer.train(resume_from_checkpoint=last_ckpt)
         # dump config
         args_dict = vars(args)
         args_dict["n_params"] = n_params
-        json_file_name = f"{output_dir}/{run_name}/args.json"
+        json_file_name = f"{output_dir}/args.json"
         with open(json_file_name, 'w') as json_file:
             json.dump(args_dict, json_file, indent=4)
 
         # save model
         if save_model:
-            reft_model.save(f"{output_dir}/{run_name}")
+            reft_model.save(output_dir)
 
     # ensure everything is in eval mode
     reft_model.model.eval()

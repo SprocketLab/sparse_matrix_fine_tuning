@@ -6,7 +6,7 @@ import copy
 import json
 import os
 os.environ["PYTHONPATH"] = "/fly"
-from os.path import exists, join, isdir
+from os.path import exists, join
 from dataclasses import dataclass, field
 import sys
 from copy import deepcopy
@@ -20,7 +20,8 @@ from train_utils import (
     load_best_hp,
     watch_layers,
     set_merged,
-    MySeq2SeqTrainer
+    MySeq2SeqTrainer,
+    get_last_checkpoint
 )
 from typing import Optional, Dict, Sequence
 import numpy as np
@@ -570,19 +571,6 @@ def make_data_module(tokenizer: transformers.PreTrainedTokenizer, args) -> Dict:
     )
 
 
-def get_last_checkpoint(checkpoint_dir):
-    if isdir(checkpoint_dir):
-        is_completed = exists(join(checkpoint_dir, 'completed'))
-        if is_completed: return None, True # already finished
-        max_step = 0
-        for filename in os.listdir(checkpoint_dir):
-            if isdir(join(checkpoint_dir, filename)) and filename.startswith('checkpoint'):
-                max_step = max(max_step, int(filename.replace('checkpoint-', '')))
-        if max_step == 0: return None, is_completed # training started, but no checkpoint
-        checkpoint_dir = join(checkpoint_dir, f'checkpoint-{max_step}')
-        print(f"Found a previous checkpoint at: {checkpoint_dir}")
-        return checkpoint_dir, is_completed # checkpoint found!
-    return None, False # first training
 
 
 def train():

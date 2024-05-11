@@ -25,17 +25,17 @@ if [ -d "./sparse_matrix_finetuning" ]; then
 fi
 
 time=$(date "+%m-%d-%H")
-python run_glue.py /fly/task_configs/glue_peft_configs/cola.json   --time=$time "${FLAGS[@]}" &
+python run_glue.py /fly/task_configs/roberta_glue/cola.json   --time=$time "${FLAGS[@]}" &
 # wait for the previous job to occupy GPU memory to pick the correct vacant device for the next
-# sleep 25; python run_glue.py /fly/task_configs/glue_peft_configs/mrpc.json   --time=$time "${FLAGS[@]}" 
-# sleep 25; python run_glue.py /fly/task_configs/glue_peft_configs/qnli.json   --time=$time "${FLAGS[@]}" &
-# sleep 25; python run_glue.py /fly/task_configs/glue_peft_configs/rte.json    --time=$time "${FLAGS[@]}" &
-# sleep 25; python run_glue.py /fly/task_configs/glue_peft_configs/sst-2.json  --time=$time "${FLAGS[@]}" 
-# sleep 25; python run_glue.py /fly/task_configs/glue_peft_configs/stsb.json   --time=$time "${FLAGS[@]}"&
+# sleep 25; python run_glue.py /fly/task_configs/roberta_glue/mrpc.json   --time=$time "${FLAGS[@]}" 
+# sleep 25; python run_glue.py /fly/task_configs/roberta_glue/qnli.json   --time=$time "${FLAGS[@]}" &
+# sleep 25; python run_glue.py /fly/task_configs/roberta_glue/rte.json    --time=$time "${FLAGS[@]}" &
+# sleep 25; python run_glue.py /fly/task_configs/roberta_glue/sst-2.json  --time=$time "${FLAGS[@]}" 
+# sleep 25; python run_glue.py /fly/task_configs/roberta_glue/stsb.json   --time=$time "${FLAGS[@]}"&
 
-# sleep 25; python run_glue.py /fly/task_configs/glue_peft_configs/qqp.json    --time=$time "${FLAGS[@]}" 
-# sleep 25; python run_glue.py /fly/task_configs/glue_peft_configs/mnli.json   --time=$time "${FLAGS[@]}" 
-# sleep 25; python run_glue.py /fly/task_configs/glue_peft_configs/wnli.json  --time=$time "${FLAGS[@]}"
+# sleep 25; python run_glue.py /fly/task_configs/roberta_glue/qqp.json    --time=$time "${FLAGS[@]}" 
+# sleep 25; python run_glue.py /fly/task_configs/roberta_glue/mnli.json   --time=$time "${FLAGS[@]}" 
+# sleep 25; python run_glue.py /fly/task_configs/roberta_glue/wnli.json  --time=$time "${FLAGS[@]}"
 
 out_path="results/monarch_roberta_glue"
 # find all .tsv files in results/monarch_roberta_glue and zip them

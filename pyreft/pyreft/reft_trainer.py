@@ -25,6 +25,7 @@ import evaluate
 import numpy as np
 from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss
 from transformers.utils import logging
+from accelerate import load_checkpoint_and_dispatch
 
 logger = logging.get_logger(__name__)
 
@@ -71,7 +72,7 @@ class ReftTrainer(Trainer):
             f"{self.state.best_model_checkpoint}/intervenable_model", 
             include_model=True
         )
-
+        
     def compute_loss(
         self,
         intervenable: pv.IntervenableModel,

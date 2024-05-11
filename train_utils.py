@@ -17,12 +17,12 @@ from ast import literal_eval
 from typing import Dict, List, Union
 from functools import partial
 import json
-import wandb, ray
+import wandb
 from ray import tune
 import glob
 from collections import defaultdict
-
-PEFT_ROBERTA_PATH = "/fly/task_configs/glue_peft_configs/peft_config.json"
+from os.path import exists, join, isdir
+PEFT_ROBERTA_PATH = "/fly/task_configs/roberta_glue/peft_config.json"
 PEFT_DEBERTA_PATH = "/fly/task_configs/glue_deberta/peft_monarch_deberta.json"
 
 def parse_args():
@@ -30,7 +30,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Run GLUE with additional arguments", )
 
     # Add the positional argument for the config path
-    parser.add_argument("config_path", help="path to the GLUE task config file under task_configs/glue_peft_configs")
+    parser.add_argument("config_path", help="path to the GLUE task config file under task_configs/roberta_glue")
 
     # Add optional arguments
     parser.add_argument("--use_monarch", default=True, type=eval, help="Use monarch. Mostly you want this (default: True)")
@@ -41,7 +41,8 @@ def parse_args():
     parser.add_argument("--n_trials", default=25, type=int, help="Number of trials for HPO")
     parser.add_argument("--gpus_per_trial", default=0.5, type=float, help="Number of GPUs to use per HPO trial")
     parser.add_argument("--tune_blk_config", default=False, type=eval, help="Whether to tune block sizes & rank ")
-    # Wandb grouping args
+    
+    # Wandb & Ray Tune
     parser.add_argument("--group", default="", help="For grouping wandb runs")
     parser.add_argument("--notes", default="", help="Notes to add to wandb run name. This won't mess up best HP group" )
     parser.add_argument("--project", default=None, help="For grouping wandb groups and runs")
@@ -51,7 +52,8 @@ def parse_args():
                                 Whether to save an extra copy in the dataset folder, which will be used by other un-tuned runs default")
     parser.add_argument("--resume", default=False, type=eval, help="Whether to resume Ray Tune from error")
     parser.add_argument("--load_group", default=False, type=eval, help="Whether to load the full group name from group dir's full_group.txt")
-    parser.add_argument("--move_ckpt", default=False, type=eval, help="Replace the final checkpoints with symlinks to another disk to save space")
+    parser.add_argument("--profile", default=False, type=eval, help="Whether to profile performance")
+    parser.add_argument("--disable_tqdm", default=False, type=eval, help="Disable trainer progress bar")
     args, unknown = parser.parse_known_args()
     return args
 
@@ -481,3 +483,17 @@ def set_merged(model):
         if isinstance(module, MonarchLinear):
             module.merged = True 
             
+            
+def get_last_checkpoint(checkpoint_dir):
+    if isdir(checkpoint_dir):
+        is_completed = exists(join(checkpoint_dir, 'completed'))
+        if is_completed: return None, True # already finished
+        max_step = 0
+        for filename in os.listdir(checkpoint_dir):
+            if isdir(join(checkpoint_dir, filename)) and filename.startswith('checkpoint'):
+                max_step = max(max_step, int(filename.replace('checkpoint-', '')))
+        if max_step == 0: return None, is_completed # training started, but no checkpoint
+        checkpoint_dir = join(checkpoint_dir, f'checkpoint-{max_step}')
+        print(f"Found a previous checkpoint at: {checkpoint_dir}")
+        return checkpoint_dir, is_completed # checkpoint found!
+    return None, False # first training

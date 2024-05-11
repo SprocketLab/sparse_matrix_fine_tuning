@@ -26,6 +26,31 @@ task_config = {
             }
         }
     },
+    "tune_commonsense": {
+        "train_datasets": [
+            "commonsense_170k"
+        ],
+        "eval_datasets": [
+            "gsm8k"
+        ],
+        "task_prompt_template": "%s\n",
+        "trigger_tokens": "the correct answer is ",
+        "generation_args": {
+            # align with https://github.com/AGI-Edgerunners/LLM-Adapters
+            True: {
+                "max_new_tokens": 32,
+                "do_sample": False,
+            },
+            False: {
+                "max_new_tokens": 32,
+                "temperature": 0.1,
+                "top_p": 0.75,
+                "top_k": 40,
+                "num_beams": 4,
+                "do_sample": True,
+            }
+        }
+    },
     "tune_math":{
         "train_datasets":[
             "gsm8k"

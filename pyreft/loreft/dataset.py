@@ -160,8 +160,17 @@ class LoReftSupervisedDataset(ReftDataset):
                 if kwargs.pop("is_eval", False): 
                     task_dataset = task_dataset.select(range(len(task_dataset) - 300, len(task_dataset)))
                 else:
+                    # Use 1000 examples as the training set is large
+                    task_dataset = task_dataset.select(range(len(task_dataset) - 1000, len(task_dataset)))
+            elif task == "tune_commonsense":
+                if kwargs.pop("is_eval", False):
+                    task = "gsm8k"
+                    task_prompt_template = alpaca_prompt_template
+                    task_dataset = load_dataset("gsm8k", "main")["train"]
                     task_dataset = task_dataset.select(range(len(task_dataset) - 300))
-                    
+                else:
+                    task = "commonsense"
+                    task_dataset = load_dataset(data_path)[data_split]
             else:
                 task_dataset = load_dataset(data_path)[data_split]
         if max_n_example is not None:

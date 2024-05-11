@@ -1,8 +1,8 @@
 
 """ 
 Finetuning the library models for sequence classification on GLUE.
-Ex. training usage: python run_glue.py /fly/task_configs/glue_peft_configs/cola.json 
-Ex. Hyperparameter tuning usage: python run_glue.py /fly/task_configs/glue_peft_configs/cola.json --do_tune=True
+Ex. training usage: python run_glue.py /fly/task_configs/roberta_glue/cola.json 
+Ex. Hyperparameter tuning usage: python run_glue.py /fly/task_configs/roberta_glue/cola.json --do_tune=True
 """
 def warn(*args, **kwargs):
     pass
@@ -10,7 +10,7 @@ import warnings
 warnings.warn = warn
 import os, sys
 import pynvml
-
+from contextlib import nullcontext
 def select_gpu(exclude=[]):
     """
     Select the GPU with maximum free memory
@@ -49,6 +49,7 @@ import random
 import copy
 import numpy as np
 from datasets import load_dataset, load_metric
+from torch import profiler
 from transformers import (
     AutoConfig,
     AutoTokenizer,
@@ -73,18 +74,7 @@ from src.hf_setup import (
 from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version
 from transformers.utils.versions import require_version
-from train_utils import (
-    override_config,
-    MyAwesomeTrainer,
-    get_run_group,
-    parse_args,
-    init_monarch_layers,
-    get_hpo_metric,
-    PEFT_ROBERTA_PATH,
-    PEFT_DEBERTA_PATH,
-    print_dtypes,
-    load_best_hp
-)
+from train_utils import *
 
 import torch
 from ray import tune
@@ -163,7 +153,7 @@ def main(config: dict = None):
     if peft_config["mlp"]:
         peft_config["layers_to_adapt"] += ["dense"]
 
-    training_args.disable_tqdm=True, # EDIT
+    training_args.disable_tqdm = args.disable_tqdm
     # Do NOT use loss as saving metric, maximize eval metric instead
     training_args.metric_for_best_model = task_to_metric[data_args.task_name] 
     training_args.greater_is_better = True 
@@ -704,7 +694,20 @@ def main(config: dict = None):
             checkpoint = training_args.resume_from_checkpoint
         elif last_checkpoint is not None:
             checkpoint = last_checkpoint
-        train_result = trainer.train(resume_from_checkpoint=checkpoint)
+        if args.profile:
+            ctx = profiler.profile(
+                schedule=profiler.schedule(wait=1, warmup=1, active=1, repeat=1),
+                on_trace_ready=profiler.tensorboard_trace_handler("./profile_log"),
+                record_shapes=True,
+                profile_memory=True,
+                with_stack=True,
+            ) 
+            trainer.add_callback(ProfCallback(prof=ctx))
+        else:
+            ctx = nullcontext()
+
+        with ctx:
+            train_result = trainer.train(resume_from_checkpoint=checkpoint)
         metrics = train_result.metrics
         max_train_samples = (
             data_args.max_train_samples if data_args.max_train_samples is not None else len(train_dataset)
