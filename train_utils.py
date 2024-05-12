@@ -248,7 +248,7 @@ class MyAwesomeTrainer(Trainer):
             print("Recreating optimizer for monarch params")
         # Check param count
         if self.train_step % self.log_param_steps == 0:
-            param_stats(self.model, training=True, print_trainable=False, skip_cls=True)
+            param_stats(self.model, training=True, print_trainable=True, skip_cls=True)
         self.train_step += 1
         return super().training_step(model, inputs)
     
@@ -366,9 +366,10 @@ class peft_module():
                     new_layer.bias = layer.bias
                 
                 # Disable dense grads
-                new_layer.requires_grad_(True) 
                 if hasattr(new_layer, "dense"):
                     new_layer.dense.requires_grad_(False)
+                if new_layer.bias is not None:
+                    new_layer.bias.requires_grad_(False)
                 setattr(module, name, new_layer)
                 
                 # For printing info
@@ -464,6 +465,9 @@ class ProfCallback(TrainerCallback):
         self.prof = prof
     def on_step_end (self, args, state, control, **kwargs):
         self.prof.step()
+        # peak memory
+        # print(f"Peak memory: {torch.cuda.max_memory_allocated() / 1024 ** 2:.2f} MB")
+        
 # Example:
 # with torch.profiler.profile(activities=[torch.profiler.ProfilerActivity.CPU,
 #                                         torch.profiler.ProfilerActivity.CUDA], 

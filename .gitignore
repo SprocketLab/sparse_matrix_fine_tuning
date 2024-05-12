@@ -21,3 +21,6 @@ req.txt
 *.pt
 log.txt
 logs.txt
+mihomo/**
+test/**
+**/profile_log/**

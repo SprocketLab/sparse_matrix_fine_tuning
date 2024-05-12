@@ -107,7 +107,6 @@ class MonarchLinear(StructuredLinear):
         self.nblocks = nblocks
         self.blk_r = peft_config["blk_r"] if "blk_r" not in kwargs  else kwargs["blk_r"]
         self.blk_sz = peft_config["blk_sz"] if "blk_sz" not in kwargs else kwargs["blk_sz"]
-        
         if self.blk_sz is None:
             self.blk_sz = int(math.ceil(self.in_features / nblocks))
         self.in_blksz = self.blk_sz
@@ -128,7 +127,7 @@ class MonarchLinear(StructuredLinear):
         # Get peft configs
         self.device = device
         self.peft_config = peft_config
-        self.use_adapter = peft_config["adapter"]
+        self.as_adapter = peft_config["adapter"] and kwargs.pop("as_adapter", peft_config["adapter"])
         self.use_scaler = peft_config.get("scaler", False)
         self.lora_style_init = peft_config.get("lora_style_init", False)
         self.scaler_type = peft_config.get("scaler_type", "scaler")
@@ -162,7 +161,7 @@ class MonarchLinear(StructuredLinear):
         # initialize frozen dense weights
         self.reset_parameters()
         if weights is not None:
-            if self.use_adapter:
+            if self.as_adapter:
                 self.dense = nn.Parameter(weights, requires_grad=False)
             else:
                 self.set_weights_from_dense_init(weights, self.blk_r)
@@ -247,7 +246,7 @@ class MonarchLinear(StructuredLinear):
         """
         super().train(mode)
         if mode:
-            if self.use_adapter:
+            if self.as_adapter:
                 if self.merged:
                     # split out monarch for separate training
                     # (out, in) - (in, out).T
@@ -258,7 +257,7 @@ class MonarchLinear(StructuredLinear):
                 if self.bias is not None:
                     self.bias.requires_grad_(False)
         else:
-            if self.use_adapter and not self.merged:
+            if self.as_adapter and not self.merged:
                 # Merge the adapter weights and mark it
                 merged_weights = self.monarch_forward(torch.eye(self.in_features, device=self.device)).T
                 self.dense.data += merged_weights
@@ -266,8 +265,9 @@ class MonarchLinear(StructuredLinear):
 
 
     def forward(self, x):
-        if self.use_adapter:
-            out = F.linear(x, self.dense) if hasattr(self, "dense") else x
+        if self.as_adapter:
+            assert getattr(self, "dense", None) is not None, "You should either set dense weights or set as_adapter=False"
+            out = F.linear(x, self.dense)
             if self.use_mult_factor:
                 out = single_monarch_mult(out, self.blkdiag_mult)
                 

@@ -227,14 +227,12 @@ class GenerationArguments:
 def model_init(hyperparams: dict = best_hyperparams):
     global peft_config, model
     set_seed(args.seed)
-    
-    # Hyperparameter search
+
     if hyperparams is not None:
         for k in peft_config.keys():
             if k in hyperparams.keys() and hyperparams[k] != peft_config[k]:
                 print("Overriding {} = {} from best HP".format(k, hyperparams[k]))
                 peft_config[k] = hyperparams[k]
-                
     if torch.cuda.is_available():
         # n_gpus = torch.cuda.device_count()
         n_gpus = 1
@@ -621,7 +619,7 @@ def train():
     if completed_training:
         print('Detected that training was already completed!')
 
-    _ = model_init(args)
+    _ = model_init(vars(args))
     import gc
     gc.collect()
     torch.cuda.empty_cache()

@@ -16,6 +16,7 @@ services:
       - WANDB_API_KEY=16d21dc747a6f33247f1e9c96895d4ffa5ea0b27
       - HF_TOKEN=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
       - CUBLAS_WORKSPACE_CONFIG=:16:8
+      - HF_ENDPOINT=https://hf-mirror.com
     command: bash -c " git config --global --add safe.directory /fly && exec bash"
         # rm /opt/conda/lib/python3.8/site-packages/transformers/models/roberta/modeling_roberta.py && ln -s /fly/src/models/modeling_roberta.py /opt/conda/lib/python3.8/site-packages/transformers/models/roberta/ "
 
@@ -34,7 +35,9 @@ services:
     container_name: peft
     ports:
       - "5050:5050"
-      
+#export https_proxy=http://127.0.0.1:7890/
+#export http_proxy=http://127.0.0.1:7890/
+
 # docker run -it --name peft \
 #     -v "$(pwd)":/fly \
 #     -w /fly \

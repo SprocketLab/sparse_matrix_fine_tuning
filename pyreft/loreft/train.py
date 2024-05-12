@@ -510,15 +510,9 @@ def finetune(
     last_ckpt, _ = get_last_checkpoint(training_args.output_dir)
     last_ckpt = os.path.join(last_ckpt, "intervenable_model")
     if args.do_train:
-        # load_best_hp(training_args.output_dir, task_dir)
-        # if args.resume:
-        #     last_ckpt, _ = get_last_checkpoint(training_args.output_dir)
-        #     last_ckpt = os.path.join(last_ckpt, "intervenable_model")
-        #     wrapper = trainer.model
-        #     trainer.model = trainer.model.model
-        # else:
-        #     last_ckpt = None
-        trainer.train(resume_from_checkpoint=last_ckpt)
+        load_best_hp(training_args.output_dir, task_dir)
+        wandb.run.summary.update(trainer.training_args)
+        trainer.train()
             
         # dump config
         args_dict = vars(args)

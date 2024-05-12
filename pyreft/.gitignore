@@ -17,7 +17,6 @@ datasets/
 !examples/*
 memo_*.json
 task_steer.py
-templates.py
 trainer.py
 tmp/
 *.DS_Store

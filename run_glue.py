@@ -696,7 +696,7 @@ def main(config: dict = None):
             checkpoint = last_checkpoint
         if args.profile:
             ctx = profiler.profile(
-                schedule=profiler.schedule(wait=1, warmup=1, active=2, repeat=1),
+                schedule=profiler.schedule(wait=1, warmup=3, active=4, repeat=1),
                 on_trace_ready=profiler.tensorboard_trace_handler("./profile_log"),
                 record_shapes=True,
                 profile_memory=True,
@@ -723,7 +723,8 @@ def main(config: dict = None):
     # Evaluation
     if training_args.do_eval and not do_tune:
         logger.info("*** Evaluate ***")
-        last_checkpoint = os.path.join(get_last_checkpoint(training_args.output_dir),"pytorch_model.bin")
+        ckpt, _ = get_last_checkpoint(training_args.output_dir)
+        last_checkpoint = os.path.join(ckpt,"pytorch_model.bin")
         override_dict(best_hyperparams, peft_config)
         # trainer.model.roberta.init_monarch_layers() # OLD version
         # EDIT
