@@ -31,7 +31,7 @@ task_config = {
             "commonsense_170k"
         ],
         "eval_datasets": [
-            "gsm8k"
+            "commonsense_170k"
         ],
         "task_prompt_template": "%s\n",
         "trigger_tokens": "the correct answer is ",
@@ -53,10 +53,10 @@ task_config = {
     },
     "tune_math":{
         "train_datasets":[
-            "gsm8k"
+            "math_10k"
         ],
-        "eval_datasets": ["gsm8k"],
-        "task_prompt_template": alpaca_prompt_template,
+        "eval_datasets": ["math_10k"],
+        "task_prompt_template": alpaca_prompt_no_input_template,
         "trigger_tokens": "### Response:",
             True: {
                 "max_new_tokens": 512,

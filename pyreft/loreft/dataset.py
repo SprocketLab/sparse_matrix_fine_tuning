@@ -153,26 +153,28 @@ class LoReftSupervisedDataset(ReftDataset):
                 task_dataset = load_dataset("tatsu-lab/alpaca_eval", "alpaca_eval")["eval"]
             elif data_path.endswith(".json"):
                 task_dataset = load_dataset("json", data_files=data_path)[data_split]
+            # NOTE: create eval sets for HPO
             elif task == "tune_math":
-                task = "gsm8k"
-                task_dataset = load_dataset("gsm8k", "main")["train"]
-                # Use the last 300 examples for evaluation
+                task_dataset = load_dataset(data_path)["train"]
+                num_eval = 800 # For Math10k
+                task = "math"
                 if kwargs.pop("is_eval", False): 
-                    task_dataset = task_dataset.select(range(len(task_dataset) - 300, len(task_dataset)))
+                    task_dataset = task_dataset.select(range(len(task_dataset) - num_eval, len(task_dataset)))
                 else:
-                    # Use 1000 examples as the training set is large
-                    task_dataset = task_dataset.select(range(len(task_dataset) - 1000, len(task_dataset)))
+                    task_dataset = task_dataset.select(range(len(task_dataset) - num_eval))
+                    
             elif task == "tune_commonsense":
+                task_dataset = load_dataset(data_path)["train"]
+                # Commonsense 170k
+                num_eval = 10000
+                task = "commonsense"
                 if kwargs.pop("is_eval", False):
-                    task = "gsm8k"
-                    task_prompt_template = alpaca_prompt_template
-                    task_dataset = load_dataset("gsm8k", "main")["train"]
-                    task_dataset = task_dataset.select(range(len(task_dataset) - 300))
+                    task_dataset = task_dataset.select(range(len(task_dataset) - num_eval, len(task_dataset)))
                 else:
-                    task = "commonsense"
-                    task_dataset = load_dataset(data_path)[data_split]
+                    task_dataset = task_dataset.select(range(len(task_dataset) - num_eval))
             else:
                 task_dataset = load_dataset(data_path)[data_split]
+                
         if max_n_example is not None:
             task_dataset = task_dataset.shuffle(seed=seed)
             task_dataset = task_dataset.select(range(max_n_example))

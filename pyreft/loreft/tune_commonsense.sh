@@ -35,4 +35,5 @@ python train.py -task tune_commonsense \
 --warmup_ratio 0.1 \
 --greedy_decoding \
 --evals_per_epoch 4 \
+--data_dir dataset \
 "${FLAGS[@]}"

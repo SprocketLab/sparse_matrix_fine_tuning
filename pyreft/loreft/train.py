@@ -3,7 +3,7 @@ import sys
 sys.path.append("/fly")
 sys.path.append("/fly/pyreft/pyvene")
 sys.path.append("/fly/pyreft")
-os.environ["PYTHONPATH"] = "/fly" # Allow ray tune to copy dependencies
+os.environ["PYTHONPATH"] = "/fly:/fly/pyreft:/fly/pyreft/pyreft/:/fly/pyreft/pyvene" # Allow ray tune to copy dependencies
 from train_utils import *
 import torch
 import argparse
@@ -511,7 +511,7 @@ def finetune(
     last_ckpt = os.path.join(last_ckpt, "intervenable_model")
     if args.do_train:
         load_best_hp(training_args.output_dir, task_dir)
-        wandb.run.summary.update(trainer.training_args)
+        wandb.run.summary.update(training_args)
         trainer.train()
             
         # dump config
