@@ -19,6 +19,7 @@ from transformers import (
     set_seed,
     TrainingArguments
 )
+from accelerate import load_checkpoint_and_dispatch
 from transformers.trainer_utils import EvalPrediction
 import wandb
 import evaluate
@@ -506,14 +507,19 @@ def finetune(
         json.dump(best_hyperparams, open(run_hp_path, "w"))
         json.dump(best_hyperparams, open(task_hp_path, "w"))
     
+    last_ckpt, _ = get_last_checkpoint(training_args.output_dir)
+    last_ckpt = os.path.join(last_ckpt, "intervenable_model")
     if args.do_train:
-        load_best_hp(training_args.output_dir, task_dir)
-        if args.resume:
-            last_ckpt, _ = get_last_checkpoint(training_args.output_dir)
-            last_ckpt = os.path.join(last_ckpt, "intervenable_model")
-        else:
-            last_ckpt = None
+        # load_best_hp(training_args.output_dir, task_dir)
+        # if args.resume:
+        #     last_ckpt, _ = get_last_checkpoint(training_args.output_dir)
+        #     last_ckpt = os.path.join(last_ckpt, "intervenable_model")
+        #     wrapper = trainer.model
+        #     trainer.model = trainer.model.model
+        # else:
+        #     last_ckpt = None
         trainer.train(resume_from_checkpoint=last_ckpt)
+            
         # dump config
         args_dict = vars(args)
         args_dict["n_params"] = n_params
@@ -524,7 +530,9 @@ def finetune(
         # save model
         if save_model:
             reft_model.save(output_dir)
-
+    else:
+        trainer.model.load_intervention(last_ckpt, include_model=True)
+        
     # ensure everything is in eval mode
     reft_model.model.eval()
     for k,v in reft_model.interventions.items():
@@ -549,12 +557,12 @@ def finetune(
             if use_wandb:
                 wandb.log(stats)
             generations = stats if generations is None else generations
-            result_json_file_name = f"{output_dir}/{run_name}/{dataset_name}_{split}_outputs.json"
+            result_json_file_name = f"{output_dir}/{dataset_name}_{split}_outputs.json"
             with open(result_json_file_name, 'w') as json_file:
                 json.dump(generations, json_file, indent=4)
 
     # log final eval stats
-    result_json_file_name = f"{output_dir}/{run_name}/eval_results.json"
+    result_json_file_name = f"{output_dir}/eval_results.json"
     eval_results["n_params"] = n_params
     with open(result_json_file_name, 'w') as json_file:
         json.dump(eval_results, json_file, indent=4)
