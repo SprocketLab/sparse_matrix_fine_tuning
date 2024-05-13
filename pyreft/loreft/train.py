@@ -80,7 +80,9 @@ def model_init(hyperparams: dict = best_hyperparams):
             if k in hyperparams.keys() and hyperparams[k] != peft_config[k]:
                 print("Overriding {} = {} from best HP".format(k, hyperparams[k]))
                 peft_config[k] = hyperparams[k]
-                
+    if wandb.run is not None:
+        wandb.run.config.update(peft_config)
+        wandb.run.config.update({"dtype": args.dtype})
     # which layers to intervene on
     if isinstance(args.layers, str):
         if args.layers != "all":
@@ -507,11 +509,10 @@ def finetune(
         json.dump(best_hyperparams, open(run_hp_path, "w"))
         json.dump(best_hyperparams, open(task_hp_path, "w"))
     
-    last_ckpt, _ = get_last_checkpoint(training_args.output_dir)
-    last_ckpt = os.path.join(last_ckpt, "intervenable_model")
+
     if args.do_train:
         load_best_hp(training_args.output_dir, task_dir)
-        wandb.run.summary.update(training_args)
+        # TODO:enable resume
         trainer.train()
             
         # dump config
@@ -525,6 +526,8 @@ def finetune(
         if save_model:
             reft_model.save(output_dir)
     else:
+        last_ckpt, _ = get_last_checkpoint(training_args.output_dir)
+        last_ckpt = os.path.join(last_ckpt, "intervenable_model")
         trainer.model.load_intervention(last_ckpt, include_model=True)
         
     # ensure everything is in eval mode

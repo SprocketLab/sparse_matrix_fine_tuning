@@ -358,13 +358,12 @@ def main(config: dict = None):
             # model.roberta.peft_config = peft_config
             # EDIT
             if hasattr(model, "roberta"):
-                model_internal = model.roberta
+                model.roberta.init_monarch_layers = partial(init_monarch_layers, model.roberta)
+                model.roberta.peft_config = peft_config
             elif hasattr(model, "deberta"):
-                model_internal = model.deberta
+                init_monarch_layers(model.deberta, peft_config)
             else:
                 raise NotImplementedError
-            model_internal.init_monarch_layers = partial(init_monarch_layers, model_internal)
-            model_internal.peft_config = peft_config
             
         # NOTE: Ray doesn't support torch.compile, plus a bug with trainer...
         # if torch.__version__.startswith("2") and not do_tune:
