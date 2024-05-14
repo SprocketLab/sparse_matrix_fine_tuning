@@ -270,6 +270,8 @@ def finetune(
         
     ReftDataset = LoReftGLUEDataset if task == "glue" else LoReftSupervisedDataset 
     path = os.path.join(data_dir, train_datasets[0]) if data_dir is not None else train_datasets[0]
+    if not args.do_train:
+        max_n_train_example = 1
     train_dataset = ReftDataset(
         task, train_datasets[0] if task == "glue" else path, 
         tokenizer, data_split="train", seed=seed, max_n_example=max_n_train_example,
@@ -360,7 +362,9 @@ def finetune(
     if args.use_wandb == False:
         os.environ["WANDB_MODE"] = "offline"
     if args.resume:
-        os.environ["WANDB_RUN_GROUP"] = group = open(os.path.join(output_dir, "full_group.txt"), "r").read().strip()
+        group_path = os.path.join(output_dir, "full_group.txt")
+        if os.path.exists(group_path):
+            os.environ["WANDB_RUN_GROUP"] = group = open(group_path, "r").read().strip()
     elif args.do_tune:
         os.environ["WANDB_RUN_GROUP"] = group = get_run_group(task, group=args.group, notes=args.notes, do_tune=True)
     else:

@@ -104,6 +104,7 @@ class MonarchLinear(StructuredLinear):
             blk_sz (int, optional): Size of each block. If None, will be calculated from in_features
         """
         super().__init__(in_features, out_features, *args, **kwargs)
+        self.device = device
         self.nblocks = nblocks
         self.blk_r = peft_config["blk_r"] if "blk_r" not in kwargs  else kwargs["blk_r"]
         self.blk_sz = peft_config["blk_sz"] if "blk_sz" not in kwargs else kwargs["blk_sz"]
@@ -124,14 +125,15 @@ class MonarchLinear(StructuredLinear):
         align_factor = int(math.ceil(self.out_features / self.in_features)) # Useful for the blocks in the two monarch factors to exactly match  
         self.out_blksz = self.in_blksz * align_factor
         
-        # Get peft configs
-        self.device = device
+        # Custom peft configs
+        
         self.peft_config = peft_config
         self.as_adapter = peft_config["adapter"] and kwargs.pop("as_adapter", peft_config["adapter"])
         self.use_scaler = peft_config.get("scaler", False)
         self.lora_style_init = peft_config.get("lora_style_init", False)
         self.scaler_type = peft_config.get("scaler_type", "scaler")
         self.use_mult_factor = peft_config.get("use_mult_factor", False)
+        self.svd_init = peft_config.get("svd_init", False)
         self.merged = False
         self.use_scaler = self.use_scaler or self.use_mult_factor
         dropout_rate = peft_config.get("dropout", 0.0)
@@ -161,7 +163,7 @@ class MonarchLinear(StructuredLinear):
         # initialize frozen dense weights
         self.reset_parameters()
         if weights is not None:
-            if self.as_adapter:
+            if self.as_adapter and not self.svd_init:
                 self.dense = nn.Parameter(weights, requires_grad=False)
             else:
                 self.set_weights_from_dense_init(weights, self.blk_r)
@@ -238,6 +240,12 @@ class MonarchLinear(StructuredLinear):
             "Projected monarch shapes mismatch original shapes. Check you dense weight shape!"
         self.blkdiag1 = nn.Parameter(blkdiag1)
         self.blkdiag2 = nn.Parameter(blkdiag2)
+
+        if self.svd_init:
+            i = torch.eye(self.in_features)
+            # Residual SVD components
+            w -= blockdiag_butterfly_multiply(i, blkdiag1, blkdiag2)
+            self.dense = nn.Parameter(w, requires_grad=False)
         
         
     def train(self, mode: bool = True):

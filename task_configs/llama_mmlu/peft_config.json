@@ -12,6 +12,7 @@
     ],
     "q_v": false,
     "adapter": true, 
+    "svd_init": false,
     
     "scaler": false,
     "layernorm": true,

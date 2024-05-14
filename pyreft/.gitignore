@@ -1,5 +1,8 @@
 experiments/run_glue_base_cls.sh
 *result*/
+!loreft/official_results
+!loreft/official_results/**/best_hyperparams.json
+
 datasets/ultrafeedback
 wandb/
 *.out

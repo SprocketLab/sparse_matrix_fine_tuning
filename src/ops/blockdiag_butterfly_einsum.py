@@ -111,11 +111,12 @@ def blockdiag_butterfly_multiply_einsum_rank(x, w1_bfly, w2_bfly):
     return rearrange(out, 'b l j -> b (l j)')
 
 #@Wenxuan: use for rectangular weights and see how rank affects param count
-def blockdiag_butterfly_project_einsum_rank(M, nblocks1, nblocks2, rank):
+def blockdiag_butterfly_project_einsum_rank(M, nblocks1, nblocks2, rank, reverse=False):
     """
     Maximum rank is min(l, i), which is min(m / nblocks1, n / nblocks2)  (look inside low_rank_project)
     Arguments:
         M: (m, n)
+        reverse: Whether to take the least significant singular vectors
     Outputs:
         w1_bfly: (nblocks1, r * nblocks2, i)
         w2_bfly: (nblocks2, l, nblocks1 * r)
@@ -123,7 +124,15 @@ def blockdiag_butterfly_project_einsum_rank(M, nblocks1, nblocks2, rank):
     m, n = M.shape
     k, j = nblocks1, nblocks2
     M_permuted_batched = rearrange(M, '(l j) (k i) -> k j l i', k=nblocks1, j=nblocks2)
-    U, Vt = low_rank_project(M_permuted_batched, rank=rank) 
-    w1_bfly = rearrange(Vt, 'k j r i -> k (r j) i')
-    w2_bfly = rearrange(U, 'k j l r -> j l (k r)')
-    return w1_bfly, w2_bfly
+    if not reverse:
+        U, Vt = low_rank_project(M_permuted_batched, rank=rank, reverse=reverse) 
+        w1_bfly = rearrange(Vt, 'k j r i -> k (r j) i')
+        w2_bfly = rearrange(U, 'k j l r -> j l (k r)')
+        return w1_bfly, w2_bfly
+    else:
+        U, Vt, U_rev, Vt_rev = low_rank_project(M_permuted_batched, rank=rank, reverse=reverse) 
+        w1_bfly = rearrange(Vt, 'k j r i -> k (r j) i')
+        w2_bfly = rearrange(U, 'k j l r -> j l (k r)')
+        w1_bfly_rev = rearrange(Vt_rev, 'k j r i -> k (r j) i')
+        w2_bfly_rev = rearrange(U_rev, 'k j l r -> j l (k r)')
+        return w1_bfly, w2_bfly, w1_bfly_rev, w2_bfly_rev

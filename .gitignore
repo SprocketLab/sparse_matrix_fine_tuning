@@ -1,8 +1,15 @@
 # Ignore everything in results
 results/**
 
-# Allow best_hyperparams.json anywhere under results
-!results/**/best_hyperparams.json
+# Unignore the specific path directories so that contents can be checked
+!pyreft/
+!pyreft/loreft/
+!pyreft/loreft/official_results/
+!pyreft/loreft/official_results/**/
+
+# Re-ignore everything else inside the result directories
+pyreft/loreft/official_results/**
+!*result*/**/best_hyperparams.json
 
 # Specific includes/excludes for loreft dataset
 !pyreft/examples/loreft/dataset
