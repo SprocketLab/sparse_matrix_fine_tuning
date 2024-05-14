@@ -180,7 +180,6 @@ def override_config(old_configs: List[Dict], new_args: Union[List[str], Dict]):
             if type(config) is not dict:
                 # Trying fetching dict from HF config                
                 config = config.__dict__
-                
             if key in config.keys():
                 if not(isinstance(attempt, type(config[key])) or config[key] is None):
                     warnings.warn(f"wrong type for {key}, expected {type(config[key])}, got {type(attempt)}")

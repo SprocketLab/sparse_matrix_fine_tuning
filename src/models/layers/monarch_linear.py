@@ -8,7 +8,6 @@ from einops import rearrange
 import torch.nn.functional as F
 from src.models.layers.structured_linear import StructuredLinear
 from src.models.layers.blockdiag_butterfly_multiply import blockdiag_butterfly_multiply, single_monarch_mult
-from src.utils.utils import get_logger
 
 # NOTE converting weights to monarch matrices
 from src.ops.blockdiag_butterfly_projection import (
@@ -19,7 +18,6 @@ from src.ops.blockdiag_butterfly_einsum import (
     blockdiag_butterfly_project_einsum_simple,  # for rectangular, rank 1
 )
 
-logger = get_logger()
 
 hooked = False
 hooked_module = None
@@ -179,7 +177,6 @@ class MonarchLinear(StructuredLinear):
         else:
             self.scaler = nn.Identity()
         self.scaler.to(self.device)
-        logger.info(f"Linear class {self.__class__}: saving={self.saving}")
 
 
     def reset_parameters(self) -> None:
@@ -231,20 +228,19 @@ class MonarchLinear(StructuredLinear):
             rank (int, optional): SVD rank
         """
         assert w.ndim == 2, "w must be a 2D weight matrix"
-        # project to monarch matrix
-        # blkdiag1, blkdiag2 = blockdiag_butterfly_project(w)
+        # project to monarch factors
         blkdiag1, blkdiag2 = blockdiag_butterfly_project_einsum_rank(
-            w, self.nblocks, self.nblocks, rank
+            w.T, self.nblocks, self.nblocks, rank
         )
-        assert blkdiag1.shape == self.blkdiag1.shape and blkdiag2.shape == self.blkdiag2.shape, \
-            "Projected monarch shapes mismatch original shapes. Check you dense weight shape!"
-        self.blkdiag1 = nn.Parameter(blkdiag1)
-        self.blkdiag2 = nn.Parameter(blkdiag2)
+        # assert blkdiag1.shape == self.blkdiag1.shape and blkdiag2.shape == self.blkdiag2.shape, \
+            # "Projected monarch shapes mismatch original shapes. Check you dense weight shape!"
+        self.blkdiag1 = nn.Parameter(blkdiag1.to(self.device))
+        self.blkdiag2 = nn.Parameter(blkdiag2.to(self.device))
 
         if self.svd_init:
-            i = torch.eye(self.in_features)
+            i = torch.eye(self.in_features, device=self.device)
             # Residual SVD components
-            w -= blockdiag_butterfly_multiply(i, blkdiag1, blkdiag2)
+            w.data -= blockdiag_butterfly_multiply(i, blkdiag1, blkdiag2)
             self.dense = nn.Parameter(w, requires_grad=False)
         
         

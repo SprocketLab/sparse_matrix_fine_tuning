@@ -785,7 +785,6 @@ def train():
         logger.info("*** Train ***")
         # Note: `resume_from_checkpoint` not supported for adapter checkpoints by HF.
         # Currently adapter checkpoint is reloaded as expected but optimizer/scheduler states are not.
-        trainer.args.load_best_model_at_end = True        
         ckpt = checkpoint_dir if args.resume else checkpoint_dir
         train_result = trainer.train(resume_from_checkpoint=ckpt)
         metrics = train_result.metrics
@@ -797,15 +796,18 @@ def train():
 
     # Evaluation
     if args.do_eval:
-        # manually load best checkpoint as hf often fails to
-        last_checkpoint, _ = get_last_checkpoint(args.output_dir)
-        print(f"Loading checkpoint from {last_checkpoint}")
-        load_checkpoint_and_dispatch(trainer.model, last_checkpoint) 
-        # NOTE: to avoid merging monarch weights twice
+        if args.do_train:
+            trainer._load_best_model()
+        else:
+            last_checkpoint, _ = get_last_checkpoint(args.output_dir)
+            print(f"Loading checkpoint from {last_checkpoint}")
+            load_checkpoint_and_dispatch(trainer.model, last_checkpoint) 
+        # NOTE: to avoid merging monarch weights twice. Removed due to using 'MySeq2SeqTrainer'
+        
         # 1. models are often saved in safetensors instead of pickle, which don't store variables or code like self.merged
         # 2. load_checkpoint_and_dispatch actually loads the merged state dict; we shouldn't re-merge it.
         # We would NOT need this if we only save the monarch weights, not the merged dense weights
-        set_merged(trainer.model)
+        # set_merged(trainer.model)
         
         logger.info("*** Evaluate ***")
         trainer.add_callback(MMLUEvalCallback)
