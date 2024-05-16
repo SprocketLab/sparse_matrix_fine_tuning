@@ -123,6 +123,7 @@ def blockdiag_butterfly_project_einsum_rank(M, nblocks1, nblocks2, rank, reverse
     """
     m, n = M.shape
     k, j = nblocks1, nblocks2
+    # (nblocks, nblocks, l, i) -> (4, 4, 1024)
     M_permuted_batched = rearrange(M, '(l j) (k i) -> k j l i', k=nblocks1, j=nblocks2)
     if not reverse:
         U, Vt = low_rank_project(M_permuted_batched, rank=rank, reverse=reverse) 

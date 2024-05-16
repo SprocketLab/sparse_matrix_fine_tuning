@@ -175,7 +175,6 @@ def model_init(hyperparams: dict = best_hyperparams):
         if args.monarch:
             peft_config["blk_r"] = args.blk_r
             init_monarch_layers(reft_model, peft_config)
-            
     param_stats(reft_model)
     reft_model.print_trainable_parameters()
     return reft_model
@@ -377,6 +376,8 @@ def finetune(
         dir=wandb_dir,
         group=group,
     )
+    if not args.do_tune:
+        watch_layers(reft_model.model)
     run.summary.update(vars(args))
     wandb.log(
         {"train/n_params": n_params})
@@ -389,10 +390,10 @@ def finetune(
         per_device_train_batch_size=batch_size,
         per_device_eval_batch_size=eval_batch_size,
         gradient_accumulation_steps=gradient_accumulation_steps,
-        evaluation_strategy="epoch" if task == "glue" else "no",
-        save_strategy="epoch" if task == "glue" else "steps",
+        evaluation_strategy="steps",
+        save_strategy="steps",
         metric_for_best_model=metric_for_best_model if task == "glue" else None,
-        load_best_model_at_end=True if task == "glue" else False,
+        # load_best_model_at_end=True if task == "glue" else False,
         logging_strategy="steps",
         save_total_limit=5, # for GLUE, it will save 2 at max.
         logging_steps=logging_steps,
@@ -419,8 +420,14 @@ def finetune(
         assert len(eval_datasets) == 1, "Use only one eval set for HPO!"
         raw_eval = list(list(eval_datasets.values())[0].values())[0][0] # TODO: beautify
         eval_dataset = raw_eval
-    else:
-        eval_dataset = None
+    elif task == "commonsense":
+        eval_dataset = ReftDataset(
+            task,  train_datasets[0], 
+            tokenizer, data_split="train", seed=seed, max_n_example=max_n_eval_example,
+            **{"num_interventions": len(args.layers), "position": position, 
+                "share_weights": share_weights}, is_eval=True
+        )
+        
     trainer = trainer_class(
         model=reft_model,
         model_init=model_init,
@@ -431,7 +438,11 @@ def finetune(
         data_collator=data_collator,
         compute_metrics=in_training_compute_metrics if task == "glue" else None,
     )
-
+    # Eval more than once per epoch
+    evals_per_epoch = args.evals_per_epoch
+    trainer.args.eval_steps = len(train_dataset) \
+        // (training_args.per_device_train_batch_size * training_args.gradient_accumulation_steps * evals_per_epoch)
+        
     if args.do_tune:
         # Save full tune group name for resuming
         with open(os.path.join(training_args.output_dir, "full_group.txt"), "w") as f:
@@ -444,10 +455,6 @@ def finetune(
         trainer.args.evaluation_strategy = "steps" # Requried for Ray Tune
     
         ######################### Need to change for each task #########################
-        # Set up eval steps and batch size
-        evals_per_epoch = args.evals_per_epoch
-        trainer.args.eval_steps = len(train_dataset) \
-            // (training_args.per_device_train_batch_size * training_args.gradient_accumulation_steps * evals_per_epoch)
         # PEFT monarch search space
         if task == "math":
             real_bs = [16, 32, 64]
@@ -513,11 +520,15 @@ def finetune(
         json.dump(best_hyperparams, open(run_hp_path, "w"))
         json.dump(best_hyperparams, open(task_hp_path, "w"))
     
-
+    last_ckpt, _ = get_last_checkpoint(training_args.output_dir)
+    # last_ckpt = os.path.join(last_ckpt, "intervenable_model")
     if args.do_train:
         load_best_hp(training_args.output_dir, task_dir)
         # TODO:enable resume
-        trainer.train()
+        if args.resume:
+            trainer.train(resume_from_checkpoint=last_ckpt)
+        else:
+            trainer.train()
             
         # dump config
         args_dict = vars(args)
@@ -529,9 +540,9 @@ def finetune(
         # save model
         if save_model:
             reft_model.save(output_dir)
+        # NOTE: force load best
+        trainer._load_best_model()
     else:
-        last_ckpt, _ = get_last_checkpoint(training_args.output_dir)
-        last_ckpt = os.path.join(last_ckpt, "intervenable_model")
         trainer.model.load_intervention(last_ckpt, include_model=True)
         
     # ensure everything is in eval mode

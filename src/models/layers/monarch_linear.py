@@ -306,3 +306,7 @@ class MonarchLinear(StructuredLinear):
         return (self.blkdiag1.numel() + self.blkdiag2.numel()) / (
             self.in_features * self.out_features
         )
+        
+    
+class MonarchFactor(nn.Module):
+    """A single block-diagonal monarch factor matrix"""
