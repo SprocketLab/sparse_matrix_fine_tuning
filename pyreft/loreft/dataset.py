@@ -172,6 +172,14 @@ class LoReftSupervisedDataset(ReftDataset):
                     task_dataset = task_dataset.select(range(len(task_dataset) - num_eval, len(task_dataset)))
                 else:
                     task_dataset = task_dataset.select(range(len(task_dataset) - num_eval))
+            elif task == "commonsense":
+                task_dataset = load_dataset(data_path)["train"]
+                num_eval = 1000
+                if kwargs.pop("is_eval", False):
+                    task_dataset = task_dataset.select(range(len(task_dataset) - num_eval, len(task_dataset)))
+                else:
+                    task_dataset = task_dataset.select(range(len(task_dataset) - num_eval))
+                    
             else:
                 task_dataset = load_dataset(data_path)[data_split]
                 
