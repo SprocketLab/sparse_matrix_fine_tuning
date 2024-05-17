@@ -130,14 +130,23 @@ def main(config: dict = None):
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
     model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(args.config_path))
     # EDIT
+    assert not (args.use_monarch==args.use_boft) # xor
+    print(model_args.model_name_or_path)
     if "deberta" in model_args.model_name_or_path:
-        peft_config = json.load(open(PEFT_DEBERTA_PATH, "r"))  # load monarch config
+        if args.use_monarch: # NOTE use_monarch will take precendence over 
+            peft_config = json.load(open(PEFT_DEBERTA_PATH, "r"))  # load monarch config
+        elif args.use_boft:
+            peft_config =  json.load(open(PEFT_DEBERTA_BOFT_PATH, "r"))
     else: # default roberta  
-        peft_config = json.load(open(PEFT_ROBERTA_PATH, "r"))  # load monarch config
+        if args.use_monarch:
+            peft_config = json.load(open(PEFT_ROBERTA_PATH, "r"))  # load monarch config
+        elif args.use_boft:
+            peft_config =  json.load(open(PEFT_ROBERTA_BOFT_PATH, "r"))
     
     # NOTE: Extra args can override all training configs (best HP, peft_config, etc.)
     extra_args = override_config([model_args, data_args, training_args, peft_config], sys.argv[2:])
     use_monarch = args.use_monarch
+    use_boft = args.use_boft
     do_tune = args.do_tune
     use_wandb = args.use_wandb
     adapter = args.adapter
@@ -148,9 +157,9 @@ def main(config: dict = None):
     full_group = args.full_group
     
     # Adapter settings
-    if peft_config["q_v"]:
+    if peft_config.get("q_v"):
         peft_config["layers_to_adapt"] = ["query_proj", "value_proj"] if "deberta" in model_args.model_name_or_path else ["query", "value"]
-    if peft_config["mlp"]:
+    if peft_config.get("mlp"):
         peft_config["layers_to_adapt"] += ["dense"]
 
     training_args.disable_tqdm = args.disable_tqdm
@@ -270,7 +279,8 @@ def main(config: dict = None):
     if data_args.task_name is not None:
         is_regression = data_args.task_name == "stsb"
         if not is_regression:
-            labels_path = "/fly/task_configs/labels.json"
+            # labels_path = "/fly/task_configs/labels.json"
+            labels_path = "/workspace/private/sparse_matrix_fine_tuning/task_configs/labels.json"
             label_list = json.load(open(labels_path, "r"))[data_args.task_name]
             # label_list = raw_datasets["train"].features["label"].names
             num_labels = len(label_list)
@@ -358,12 +368,16 @@ def main(config: dict = None):
             # model.roberta.peft_config = peft_config
             # EDIT
             if hasattr(model, "roberta"):
-                model.roberta.init_monarch_layers = partial(init_monarch_layers, model.roberta)
-                model.roberta.peft_config = peft_config
+                model_internal = model.roberta
             elif hasattr(model, "deberta"):
-                init_monarch_layers(model.deberta, peft_config)
+                model_internal = model.deberta
             else:
                 raise NotImplementedError
+            # model_internal.init_monarch_layers = partial(init_monarch_layers, model_internal)
+            # model_internal.peft_config = peft_config
+            init_monarch_layers(model_internal, peft_config)
+        elif use_boft:
+            model = init_boft(model, peft_config)
             
         # NOTE: Ray doesn't support torch.compile, plus a bug with trainer...
         # if torch.__version__.startswith("2") and not do_tune:
@@ -569,7 +583,7 @@ def main(config: dict = None):
             param_space = {
                 # "nblocks": tune.choice(['sqrt(n)', 4]),
                 "seed": training_args.seed,
-                # "large_lr": tune.sample_from(lambda _: np.random.uniform() > 0.4),
+                "large_lr": tune.sample_from(lambda _: np.random.uniform() > 0.4),
                 "large_lr": False,
                 # "num_train_epochs": tune.choice([20, 25]),
                 "learning_rate": tune.quniform(1e-4, 6.6e-4, 2e-5), 
@@ -591,6 +605,23 @@ def main(config: dict = None):
                 param_space["blk_sz"] = tune.choice([64, 128, 512])
                 param_space["lr_scheduler_type"] = "cosine"
                 n_trials += 10
+        elif use_boft:
+            param_space = {
+                # "nblocks": tune.choice(['sqrt(n)', 4]),
+                "seed": training_args.seed,
+                # "large_lr": tune.sample_from(lambda _: np.random.uniform() > 0.4),
+                "large_lr": False,
+                "num_train_epochs": tune.choice([20, 25]),
+                "learning_rate": tune.quniform(1e-4, 6.6e-4, 2e-5), 
+                "per_device_train_batch_size": tune.choice([16, 32]), # In Monarch-Mixer they mixed 32 and 16 
+                "weight_decay": training_args.weight_decay,
+                "lr_scheduler_type": "cosine", # mostly linear underperforms
+                # "blk_r": peft_config["blk_r"],
+                # "nblocks": peft_config["nblocks"],
+            }
+            n_trials = args.n_trials 
+
+            # NO BLOCK TUNING (YET)
         else:
             # Vanilla finetuning
             param_space = {
@@ -633,7 +664,7 @@ def main(config: dict = None):
             backend="ray",
             n_trials=n_trials, # under the hood it calls ray.tune.run(num_samples=n_trials, ...)
             scheduler=scheduler,
-            keep_checkpoints_num=None,
+            # keep_checkpoints_num=None,
             checkpoint_score_attr="max-" + task_to_metric[data_args.task_name], # rank in decreasing order
             progress_reporter=reporter,
             resources_per_trial={"cpu": 1, "gpu": args.gpus_per_trial},
@@ -727,11 +758,12 @@ def main(config: dict = None):
         override_dict(best_hyperparams, peft_config)
         # trainer.model.roberta.init_monarch_layers() # OLD version
         # EDIT
-        if hasattr(trainer.model, "roberta"):
-            trainer_model_internal = trainer.model.roberta
-        elif hasattr(trainer.model, "deberta"):
-            trainer_model_internal = trainer.model.deberta
-        trainer_model_internal.init_monarch_layers(peft_config) 
+        # if hasattr(trainer.model, "roberta"):
+        #     trainer_model_internal = trainer.model.roberta
+        # elif hasattr(trainer.model, "deberta"):
+        #     trainer_model_internal = trainer.model.deberta
+        # trainer_model_internal.init_monarch_layers(peft_config) 
+        # ^ monarch should already be inited
         
         trainer.model.eval()
         trainer.model.load_state_dict(torch.load(last_checkpoint), strict=False)

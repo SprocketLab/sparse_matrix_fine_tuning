@@ -22,8 +22,14 @@ from ray import tune
 import glob
 from collections import defaultdict
 from os.path import exists, join, isdir
+
+from peft import BOFTConfig, get_peft_model
+
 PEFT_ROBERTA_PATH = "/fly/task_configs/roberta_glue/peft_config.json"
 PEFT_DEBERTA_PATH = "/fly/task_configs/glue_deberta/peft_monarch_deberta.json"
+# PEFT_DEBERTA_PATH = "/workspace/private/sparse_matrix_fine_tuning/task_configs/glue_deberta/peft_monarch_deberta.json"
+PEFT_DEBERTA_BOFT_PATH = "./task_configs/glue_deberta/peft_boft_deberta.json"
+PEFT_ROBERTA_BOFT_PATH = "./task_configs/roberta_glue/peft_boft_roberta.json"
 
 def parse_args():
     # Create the parser
@@ -34,6 +40,7 @@ def parse_args():
 
     # Add optional arguments
     parser.add_argument("--use_monarch", default=True, type=eval, help="Use monarch. Mostly you want this (default: True)")
+    parser.add_argument("--use_boft", default=False, type=bool, help="Use BOFT")
     parser.add_argument("--do_tune", default=False, type=eval, help="Whether to do Hyperparameter optimization (HPO) using ray tune.")
     parser.add_argument("--use_wandb", default=True, type=eval, help="Use Weights & Biases for logging")
     parser.add_argument("--adapter", default=True, type=eval, help="Use lora adapter style. If false will project dense to sparse ")
@@ -236,15 +243,16 @@ class MyAwesomeTrainer(Trainer):
         super().__init__(*args, **kwargs)
         # if hasattr(self.model, "roberta") and self.train_dataset is not None: 
         if (hasattr(self.model, "roberta") or hasattr(self.model, "deberta")) and self.train_dataset is not None:  # EDIT
+        # if self.train_dataset is not None:
             len_dataloader = len(self.get_train_dataloader()) // self.args.gradient_accumulation_steps
             self.num_training_steps = math.ceil(len_dataloader * self.args.num_train_epochs)
 
         
     def training_step(self, model, inputs):
         param_shapes = [param.shape for param_group in self.optimizer.param_groups for param in param_group["params"]]
-        if not any([len(shape) == 3 for shape in param_shapes]):
-            self.create_optimizer_and_scheduler(self.num_training_steps)
-            print("Recreating optimizer for monarch params")
+        # if not any([len(shape) == 3 for shape in param_shapes]):
+        #     self.create_optimizer_and_scheduler(self.num_training_steps)
+        #     print("Recreating optimizer for monarch params")
         # Check param count
         if self.train_step % self.log_param_steps == 0:
             param_stats(self.model, training=True, print_trainable=True, skip_cls=True)
@@ -318,6 +326,26 @@ class MyAwesomeTrainer(Trainer):
     
     
 ########################## PEFT module replacement helpers ##########################
+def init_boft(model, 
+              peft_config,
+             ):
+    boft_config = BOFTConfig(
+        boft_block_size=peft_config["boft_block_size"], # These are mutually exclusive
+        boft_block_num=peft_config["boft_block_num"], 
+        boft_n_butterfly_factor=peft_config["boft_n_butterfly_factor"],
+        target_modules= peft_config["layers_to_adapt"],
+        boft_dropout=peft_config["boft_dropout"],
+        bias=peft_config["bias"],
+    )
+    model = get_peft_model(model, boft_config)
+    model = model.base_model.model # remove the wrappers
+    # Unfreeze the classification head; pooler and classifier
+    for n, p in model.named_parameters():
+        n_split = n.split(".")
+        if ("pooler" in n_split) or ("classifier" in n_split): # will be deberta.pooler / deberta.classifier
+            print("Unfroze ", n)
+            p.requires_grad = True
+    return model
 
 adapted_layers = set()
 class peft_module():
@@ -380,7 +408,6 @@ class peft_module():
         if peft_config["monarch"]:
             self.rank = peft_config["blk_r"]
             self.nblocks = peft_config["nblocks"]
-
 
 def init_monarch_layers(model: nn.Module, peft_config: Dict, target_classes: Union[List[str], List[nn.Module]] = []):
     """

@@ -1,0 +1,27 @@
+{
+    "boft_block_size": 4,
+    "boft_block_num": 0, 
+    "boft_n_butterfly_factor": 4,
+    "boft_dropout": 0.1,
+    "bias": "boft_only",
+    "layers_to_adapt": [
+        "query_proj", 
+        "value_proj", 
+        "key_proj"
+    ],
+    "q_v": false,
+    "adapter": true, 
+    
+    "scaler": false,
+    "layernorm": true,
+    "large_lr": false,
+    "new_lr": 5e-3,
+    "scaler_type": "scaler",
+    "from_lora": "",
+    
+    "mlp": false,
+    "lora_style_init": false,
+    "use_mult_factor": false,
+    "affine": false
+
+}
