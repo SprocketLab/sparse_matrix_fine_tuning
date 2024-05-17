@@ -11,18 +11,7 @@ from dataclasses import dataclass, field
 import sys
 from copy import deepcopy
 sys.path.append("/fly")
-from train_utils import (
-    param_stats,
-    init_monarch_layers,
-    get_hpo_metric,
-    get_run_group,
-    override_config,
-    load_best_hp,
-    watch_layers,
-    set_merged,
-    MySeq2SeqTrainer,
-    get_last_checkpoint
-)
+from train_utils import *
 from typing import Optional, Dict, Sequence
 import numpy as np
 from tqdm import tqdm
@@ -33,6 +22,7 @@ from functools import partial
 from packaging.version import parse
 
 import torch
+from torch import profiler
 import transformers
 from torch.nn.utils.rnn import pad_sequence
 from huggingface_hub import login
@@ -50,7 +40,7 @@ import evaluate
 import wandb
 from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
 from accelerate import load_checkpoint_and_dispatch
-
+from contextlib import nullcontext
 from ray import tune
 from ray.tune import CLIReporter
 from ray.tune.schedulers import ASHAScheduler
@@ -172,6 +162,7 @@ class TrainingArguments(transformers.Seq2SeqTrainingArguments):
         metadata={"help": "To use wandb or something else for reporting."}
     )
     use_wandb: bool = field(default=True)
+    profile: bool = field(default=False)
     output_dir: str = field(default='./output', metadata={"help": 'The output dir for logs and checkpoints'})
     optim: str = field(default='adamw_torch', metadata={"help": 'The optimizer to be used'})
     per_device_train_batch_size: int = field(default=1, metadata={"help": 'The training batch size per GPU. Increase for better speed.'})
@@ -251,7 +242,7 @@ def model_init(hyperparams: dict = best_hyperparams):
 
 
     compute_dtype = (torch.float16 if args.fp16 else (torch.bfloat16 if args.bf16 else torch.float32))
-    if model is None:
+    if model is None or getattr(args, "force_reinit", False):
         model = AutoModelForCausalLM.from_pretrained(
             args.model_name_or_path,
             cache_dir=args.cache_dir,
@@ -785,8 +776,20 @@ def train():
         logger.info("*** Train ***")
         # Note: `resume_from_checkpoint` not supported for adapter checkpoints by HF.
         # Currently adapter checkpoint is reloaded as expected but optimizer/scheduler states are not.
-        ckpt = checkpoint_dir if args.resume else checkpoint_dir
-        train_result = trainer.train(resume_from_checkpoint=ckpt)
+        ckpt = checkpoint_dir if args.resume else None
+        ctx = nullcontext()
+        if args.profile:
+            ctx = profiler.profile(
+                schedule=profiler.schedule(wait=1, warmup=3, active=3, repeat=1),
+                on_trace_ready=profiler.tensorboard_trace_handler("./llama_mmlu_log"),
+                record_shapes=True,
+                profile_memory=True,
+                with_stack=True,
+            ) 
+            trainer.add_callback(ProfCallback(prof=ctx))
+        with ctx:
+            train_result = trainer.train(resume_from_checkpoint=ckpt)
+            
         metrics = train_result.metrics
         trainer.log_metrics("train", metrics)
         trainer.save_metrics("train", metrics)
@@ -797,6 +800,7 @@ def train():
     # Evaluation
     if args.do_eval:
         if args.do_train:
+            args.force_reinit = True
             trainer._load_best_model()
         else:
             last_checkpoint, _ = get_last_checkpoint(args.output_dir)

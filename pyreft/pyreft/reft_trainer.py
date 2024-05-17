@@ -68,6 +68,10 @@ class ReftTrainer(Trainer):
 
     def _load_best_model(self):
         logger.warning(f"Loading best model from {self.state.best_model_checkpoint} (score: {self.state.best_metric}).")
+        if self.state.best_model_checkpoint is None:
+            print("No best model checkpoint found in trainer state!")
+            return 
+        
         self.model.load_intervention(
             f"{self.state.best_model_checkpoint}/intervenable_model", 
             include_model=True

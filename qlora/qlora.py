@@ -22,6 +22,7 @@ from packaging.version import parse
 
 import torch
 import transformers
+from torch import profiler 
 from torch.nn.utils.rnn import pad_sequence
 import argparse
 from transformers import (
@@ -817,7 +818,15 @@ def train():
         logger.info("*** Train ***")
         # Note: `resume_from_checkpoint` not supported for adapter checkpoints by HF.
         # Currently adapter checkpoint is reloaded as expected but optimizer/scheduler states are not.
-        train_result = trainer.train()
+        with profiler.profile(
+            schedule=profiler.schedule(wait=1, warmup=1, active=3, repeat=1),
+            on_trace_ready=profiler.tensorboard_trace_handler("./qlora_log"),
+            record_shapes=True,
+            profile_memory=True,
+            with_stack=True,
+        ) as prof:
+            trainer.add_callback(ProfCallback(prof=prof))
+            train_result = trainer.train()
         metrics = train_result.metrics
         trainer.log_metrics("train", metrics)
         trainer.save_metrics("train", metrics)

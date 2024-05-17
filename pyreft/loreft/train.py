@@ -17,7 +17,8 @@ from transformers import (
     DataCollatorWithPadding,
     get_linear_schedule_with_warmup,
     set_seed,
-    TrainingArguments
+    TrainingArguments,
+    RobertaForSequenceClassification
 )
 from accelerate import load_checkpoint_and_dispatch
 from transformers.trainer_utils import EvalPrediction
@@ -43,6 +44,7 @@ from pyreft import (
     NoreftIntervention,
     LoreftIntervention,
     NoIntervention,
+    MoReIntervention,
     ReftDataCollator,
     ReftModel
 )
@@ -80,47 +82,35 @@ def model_init(hyperparams: dict = best_hyperparams):
             if k in hyperparams.keys() and hyperparams[k] != peft_config[k]:
                 print("Overriding {} = {} from best HP".format(k, hyperparams[k]))
                 peft_config[k] = hyperparams[k]
+    peft_config["blk_r"] = args.blk_r
     if wandb.run is not None:
         wandb.run.config.update(peft_config)
-        wandb.run.config.update({"dtype": args.dtype})
-    # which layers to intervene on
-    if isinstance(args.layers, str):
-        if args.layers != "all":
-            args.layers = [int(l) for l in args.layers.split(";")]
-        else:
-            temp_config = AutoConfig.from_pretrained(args.model)
-            args.layers = [l for l in range(temp_config.num_hidden_layers)]
-
-        # position str takes the following formats:
-        # f1 -> first token; f2 -> first two tokens.
-        # f1+l1 -> first and last tokens; f2+l2 -> first and last two tokens.
-        # fn or ln shares the same intervention.
-        if "+" in args.position and not args.share_weights:
-            args.layers += args.layers
+        wandb.run.config.update({"dtype": dtype})
 
     if reft_model is None:
         if args.task in classification_tasks:
             config = AutoConfig.from_pretrained(
                 model_name, num_labels=args.num_labels,
                 finetuning_task=args.train_dataset,
-                load_in_8bit=True if dtype == "float8" else False,
+                load_in_8bit=True if args.dtype == "float8" else False,
                 device_map=device
             )
             # full precision loading since usually for small models
             reft_model = AutoModelForSequenceClassification.from_pretrained(
                 model_name,
                 config=config, # just providing the label
-                torch_dtype=dtype if dtype != "float8" else None,
-                load_in_8bit=True if dtype == "float8" else False,
+                torch_dtype=dtype if args.dtype != "float8" else None,
+                load_in_8bit=True if args.dtype == "float8" else False,
                 device_map=device,
                 max_memory={0: 0.8}, 
-                attn_implementation="flash_attention_2"
+                # attn_implementation="flash_attention_2"
             )
+
         else:
             reft_model = AutoModelForCausalLM.from_pretrained(
                 model_name,
-                torch_dtype=dtype if dtype != "float8" else None,  # save memory
-                load_in_8bit=True if dtype == "float8" else False,
+                torch_dtype=dtype if args.dtype != "float8" else None,  # save memory
+                load_in_8bit=True if args.dtype == "float8" else False,
                 device_map=device,
                 max_memory={0: 0.8}, # device: memory
                 attn_implementation="flash_attention_2"
@@ -133,6 +123,8 @@ def model_init(hyperparams: dict = best_hyperparams):
             intervention_type = LoreftIntervention
         elif args.intervention_type == "NoreftIntervention":
             intervention_type = NoreftIntervention
+        elif args.intervention_type == "MoReIntervention":
+            intervention_type = partial(MoReIntervention, dtype=dtype, blk_r=args.blk_r, nblocks=args.nblocks)
         else:
             intervention_type = NoIntervention
         
@@ -173,9 +165,10 @@ def model_init(hyperparams: dict = best_hyperparams):
         
         # Monarch adaptation
         if args.monarch:
-            peft_config["blk_r"] = args.blk_r
+            peft_config["dtype"] = dtype
             init_monarch_layers(reft_model, peft_config)
-    param_stats(reft_model)
+
+    param_stats(reft_model, training=False)
     reft_model.print_trainable_parameters()
     return reft_model
     
@@ -263,9 +256,20 @@ def finetune(
             use_fast=False,
         )
     tokenizer.pad_token = tokenizer.unk_token
-    # Initialize model, which also init dataset arguments
-    reft_model = model_init()
-    n_params = reft_model.count_parameters(include_model=False)
+    # which layers to intervene on
+    if isinstance(args.layers, str):
+        if args.layers != "all":
+            args.layers = [int(l) for l in args.layers.split(";")]
+        else:
+            temp_config = AutoConfig.from_pretrained(args.model)
+            args.layers = [l for l in range(temp_config.num_hidden_layers)]
+
+        # position str takes the following formats:
+        # f1 -> first token; f2 -> first two tokens.
+        # f1+l1 -> first and last tokens; f2+l2 -> first and last two tokens.
+        # fn or ln shares the same intervention.
+        if "+" in args.position and not args.share_weights:
+            args.layers += args.layers
         
     ReftDataset = LoReftGLUEDataset if task == "glue" else LoReftSupervisedDataset 
     path = os.path.join(data_dir, train_datasets[0]) if data_dir is not None else train_datasets[0]
@@ -278,7 +282,8 @@ def finetune(
            "share_weights": share_weights}
     )
     trigger_tokens = train_dataset.trigger_tokens
-
+    args.num_labels = train_dataset.num_labels
+    
     all_eval_datasets = {}
     for eval_dataset in eval_datasets:
         test_splits = test_split.split(";")
@@ -296,7 +301,10 @@ def finetune(
             )
             all_eval_datasets[eval_dataset][split] = [raw_eval, raw_eval.raw_dataset]
     eval_datasets = all_eval_datasets
-
+    # Initialize model
+    reft_model = model_init()
+    n_params = reft_model.count_parameters(include_model=False)
+    
     if task == "glue":
         # we repartition the eval_datatsets into [1] 50% validation + [2] 50% test
         # we select the best model on [1] during training
@@ -627,6 +635,7 @@ def main():
     
     # Monarch
     parser.add_argument("--monarch", default=True, type=eval)
+    parser.add_argument("--nblocks", default=4, type=int)
     parser.add_argument("--blk_r", default=4, type=int)
     parser.add_argument("--do_tune", action="store_true")
     parser.add_argument("--do_train", default=True, type=eval)

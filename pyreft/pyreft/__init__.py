@@ -14,12 +14,7 @@ from .reft_trainer import (
 )
 
 # interventions
-from .interventions import (
-    NoreftIntervention,
-    LoreftIntervention,
-    ConsreftIntervention,
-    NoIntervention
-)
+from .interventions import *
 
 # dataloader helpers
 from .dataset import (

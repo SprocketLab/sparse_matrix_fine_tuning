@@ -9,8 +9,10 @@ from pyvene import (
 )
 from pyvene.models.layers import LowRankRotateLayer
 from transformers.activations import ACT2FN
-
-
+# import sys
+# sys.path.append("/fly")
+from src.models.layers.monarch_linear import MonarchFactor
+from src.models.layers.blockdiag_butterfly_multiply import single_monarch_mult
 class LoreftIntervention(
     SourcelessIntervention,
     TrainableIntervention, 
@@ -116,3 +118,46 @@ class NoIntervention(
         self, base, source=None, subspaces=None
     ):
         return self.proj_layer(base)
+
+class MoReIntervention(
+    SourcelessIntervention,
+    TrainableIntervention, 
+    DistributedRepresentationIntervention
+):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs, keep_last_dim=True)
+        self.rotate_layer = MonarchFactor(self.embed_dim, kwargs["low_rank_dimension"], ortho=True) # block-wise orthogonal
+        self.learned_source = MonarchFactor(
+            self.embed_dim, kwargs["low_rank_dimension"]).to(
+            kwargs["dtype"] if "dtype" in kwargs else torch.bfloat16) # Replace with Monarch
+        self.dropout = torch.nn.Dropout(kwargs["dropout"] if "dropout" in kwargs else 0.0)
+        self.act_fn = ACT2FN["linear"] if "act_fn" not in kwargs or kwargs["act_fn"] is None else ACT2FN[kwargs["act_fn"]]
+        
+    def forward(
+        self, base, source=None, subspaces=None
+    ):
+        rotated_base = self.rotate_layer(base.to(self.rotate_layer.weight.dtype))
+        output = base + single_monarch_mult(
+            (self.act_fn(self.learned_source(base)) - rotated_base), self.rotate_layer.weight.transpose(-1, -2)
+        )
+        return self.dropout(output.to(base.dtype))
+
+    def state_dict(self, *args, **kwargs):
+        """
+        Overwrite for data-efficiency.
+        """
+        state_dict = OrderedDict()
+        for k, v in self.learned_source.state_dict().items():
+            state_dict[k] = v
+        state_dict["rotate_layer"] = self.rotate_layer.weight.data
+        return state_dict
+
+    def load_state_dict(self, state_dict, *args, **kwargs):
+        """
+        Overwrite for data-efficiency.
+        """
+        super().load_state_dict(state_dict, strict=False)
+        overload_w = state_dict["rotate_layer"]
+        overload_w_width = overload_w.shape[-1]
+        self.rotate_layer.parametrizations.weight[0].base[:,:overload_w_width] = overload_w
+        return

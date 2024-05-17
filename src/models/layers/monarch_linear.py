@@ -306,7 +306,68 @@ class MonarchLinear(StructuredLinear):
         return (self.blkdiag1.numel() + self.blkdiag2.numel()) / (
             self.in_features * self.out_features
         )
-        
+class Block(nn.Module):
+    """Helper for orthogonal parameterization"""
+    pass
     
 class MonarchFactor(nn.Module):
-    """A single block-diagonal monarch factor matrix"""
+    def __init__(self,
+                 in_features: int,
+                 out_features: int,
+                 nblocks: int = 4,
+                 blk_r: int = 4,
+                 bias: bool = False,
+                 ortho: bool = False,
+                 dtype=torch.float,
+                 device="cuda"):
+        """Parameterizes a single monarch factor.
+        Args:
+            nblocks (int): number of blocks in the monarch factor
+            blk_r (int): rank of each block
+            ortho (bool): Whether to use orthogonal parameterization
+            dtype: Set to bf16 by default for flash attention compatibility
+        The final shape will be (nblocks, blk_r, in_features / nblocks), 
+        with a max obtainable rank of nblocks * blk_r
+        """
+        super().__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.nblocks = nblocks
+        self.blk_r = blk_r
+        assert in_features % nblocks == 0, "Input dimension must be divisible by nblocks"
+        self.in_blk_sz = in_features // nblocks
+        self.weight = nn.Parameter(
+            torch.zeros(nblocks, self.blk_r, self.in_blk_sz, device=device)
+        )  
+        self.ortho = ortho
+        self.dtype = dtype
+        if bias:
+            self.bias = nn.Parameter(torch.zeros(out_features, device=device))
+        
+        self.reset_parameters()
+        
+    def forward(self, x):
+        x = single_monarch_mult(x, self.weight)
+        if hasattr(self, "bias"):
+            x += self.bias
+        return x
+    
+    def reset_parameters(self):
+        if self.ortho:
+            self.dtype = torch.float # Otho parametrization doesn't support bf16
+
+            for block in self.weight:
+                torch.nn.init.orthogonal_(block)
+                # block.self = block
+                # block.training = True
+                # torch.nn.utils.parametrizations.orthogonal(block, name="self")
+        else:
+            fan_in = self.weight.shape[-1]
+            gain = init.calculate_gain(nonlinearity="leaky_relu", param=math.sqrt(5))
+            std = gain / math.sqrt(fan_in)
+            bound = math.sqrt(3.0) * std
+            with torch.no_grad():
+                self.weight.uniform_(-bound, bound)
+        
+        if hasattr(self, "bias"):
+            torch.nn.init.zeros_(self.bias)
