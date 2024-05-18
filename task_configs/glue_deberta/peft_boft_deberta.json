@@ -3,7 +3,7 @@
     "boft_block_num": 0, 
     "boft_n_butterfly_factor": 4,
     "boft_dropout": 0.1,
-    "bias": "boft_only",
+    "bias": "none",
     "layers_to_adapt": [
         "query_proj", 
         "value_proj", 

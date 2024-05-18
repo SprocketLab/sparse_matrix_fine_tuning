@@ -23,24 +23,26 @@ import glob
 from collections import defaultdict
 from os.path import exists, join, isdir
 
-from peft import BOFTConfig, get_peft_model
+from peft import BOFTConfig, get_peft_model, LoraConfig
 
-PEFT_ROBERTA_PATH = "/fly/task_configs/roberta_glue/peft_config.json"
+PEFT_ROBERTA_PATH = "/fly/task_configs/monarch_roberta_glue/peft_config.json"
 PEFT_DEBERTA_PATH = "/fly/task_configs/glue_deberta/peft_monarch_deberta.json"
+PEFT_ROBERTA_LORA_PATH = "/fly/task_configs/lora_roberta_glue/peft_config.json"
 # PEFT_DEBERTA_PATH = "/workspace/private/sparse_matrix_fine_tuning/task_configs/glue_deberta/peft_monarch_deberta.json"
 PEFT_DEBERTA_BOFT_PATH = "./task_configs/glue_deberta/peft_boft_deberta.json"
-PEFT_ROBERTA_BOFT_PATH = "./task_configs/roberta_glue/peft_boft_roberta.json"
+PEFT_ROBERTA_BOFT_PATH = "./task_configs/monarch_roberta_glue/peft_con/peft_boft_roberta.json"
 
 def parse_args():
     # Create the parser
     parser = argparse.ArgumentParser(description="Run GLUE with additional arguments", )
 
     # Add the positional argument for the config path
-    parser.add_argument("config_path", help="path to the GLUE task config file under task_configs/roberta_glue")
+    parser.add_argument("config_path", help="path to the GLUE task config file under task_configs/monarch_roberta_glue/peft_con")
 
     # Add optional arguments
     parser.add_argument("--use_monarch", default=True, type=eval, help="Use monarch. Mostly you want this (default: True)")
     parser.add_argument("--use_boft", default=False, type=bool, help="Use BOFT")
+    parser.add_argument("--use_lora", default=False, type=eval)
     parser.add_argument("--do_tune", default=False, type=eval, help="Whether to do Hyperparameter optimization (HPO) using ray tune.")
     parser.add_argument("--use_wandb", default=True, type=eval, help="Use Weights & Biases for logging")
     parser.add_argument("--adapter", default=True, type=eval, help="Use lora adapter style. If false will project dense to sparse ")
@@ -255,7 +257,7 @@ class MyAwesomeTrainer(Trainer):
         #     print("Recreating optimizer for monarch params")
         # Check param count
         if self.train_step % self.log_param_steps == 0:
-            param_stats(self.model, training=True, print_trainable=True, skip_cls=True)
+            param_stats(self.model, training=True, print_trainable=False, skip_cls=True)
         self.train_step += 1
         return super().training_step(model, inputs)
     
@@ -346,6 +348,11 @@ def init_boft(model,
             print("Unfroze ", n)
             p.requires_grad = True
     return model
+
+def init_lora(model, peft_config):
+    lora_config = LoraConfig(**peft_config)
+    model = get_peft_model(model, lora_config)
+    return model 
 
 adapted_layers = set()
 class peft_module():

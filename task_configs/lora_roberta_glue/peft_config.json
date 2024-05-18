@@ -1,0 +1,6 @@
+{
+    "r": 8,
+    "lora_alpha": 16,
+    "init_lora_weights": "gaussian",
+    "target_modules": ["query", "key", "value"]
+}

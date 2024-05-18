@@ -1,8 +1,8 @@
 
 """ 
 Finetuning the library models for sequence classification on GLUE.
-Ex. training usage: python run_glue.py /fly/task_configs/roberta_glue/cola.json 
-Ex. Hyperparameter tuning usage: python run_glue.py /fly/task_configs/roberta_glue/cola.json --do_tune=True
+Ex. training usage: python run_glue.py /fly/task_configs/monarch_roberta_glue/peft_con/cola.json 
+Ex. Hyperparameter tuning usage: python run_glue.py /fly/task_configs/monarch_roberta_glue/peft_con/cola.json --do_tune=True
 """
 def warn(*args, **kwargs):
     pass
@@ -36,7 +36,7 @@ def select_gpu(exclude=[]):
     
     print("Selected GPU:", max_gpu, "with max memory %.2f GB" % (max_mem / 1024 ** 3))
     return max_gpu
-
+############################# Move all torch libs down here #############################
 # A bit ugly...but this only works before all torch libs are imported
 if not "--do_tune=True" in sys.argv:
     os.environ["CUDA_VISIBLE_DEVICES"] = str(select_gpu())
@@ -75,7 +75,6 @@ from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version
 from transformers.utils.versions import require_version
 from train_utils import *
-
 import torch
 from ray import tune
 from ray.tune import CLIReporter
@@ -84,7 +83,6 @@ from ray.tune.schedulers import ASHAScheduler
 # Ensure reproducibility given the same hardware
 torch.use_deterministic_algorithms(True)
 torch.backends.cudnn.deterministic = True
-_DTYPES_PRINTED = False
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
 check_min_version("4.21.0.dev0")
 require_version("datasets>=1.8.0", "To fix: pip install -r examples/pytorch/text-classification/requirements.txt")
@@ -130,8 +128,9 @@ def main(config: dict = None):
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
     model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(args.config_path))
     # EDIT
-    assert not (args.use_monarch==args.use_boft) # xor
-    print(model_args.model_name_or_path)
+    assert not (args.use_monarch and args.use_boft) and not (args.use_lora and args.use_monarch) and not (args.use_lora and args.use_boft), "Can't use both monarch and boft"
+    print(f"base model: {model_args.model_name_or_path}")
+    
     if "deberta" in model_args.model_name_or_path:
         if args.use_monarch: # NOTE use_monarch will take precendence over 
             peft_config = json.load(open(PEFT_DEBERTA_PATH, "r"))  # load monarch config
@@ -142,11 +141,12 @@ def main(config: dict = None):
             peft_config = json.load(open(PEFT_ROBERTA_PATH, "r"))  # load monarch config
         elif args.use_boft:
             peft_config =  json.load(open(PEFT_ROBERTA_BOFT_PATH, "r"))
-    
+        elif args.use_lora:
+            peft_config = json.load(open(PEFT_ROBERTA_LORA_PATH, "r"))
+            
     # NOTE: Extra args can override all training configs (best HP, peft_config, etc.)
     extra_args = override_config([model_args, data_args, training_args, peft_config], sys.argv[2:])
-    use_monarch = args.use_monarch
-    use_boft = args.use_boft
+    args.use_boft = args.use_boft
     do_tune = args.do_tune
     use_wandb = args.use_wandb
     adapter = args.adapter
@@ -204,7 +204,6 @@ def main(config: dict = None):
             print("Loading wandb run group: ", os.environ["WANDB_RUN_GROUP"])
         else:
             logging.warning("No full_group.txt found in the output dir. Won't resume HPO/put this training run in the same wandb group.")
-            args.resume = args.load_group = False
 
     # Logging and checkpointing
     last_checkpoint = setup_logging_ckpt(training_args, logger, do_tune)
@@ -279,8 +278,8 @@ def main(config: dict = None):
     if data_args.task_name is not None:
         is_regression = data_args.task_name == "stsb"
         if not is_regression:
-            # labels_path = "/fly/task_configs/labels.json"
-            labels_path = "/workspace/private/sparse_matrix_fine_tuning/task_configs/labels.json"
+            labels_path = "/fly/task_configs/labels.json"
+            # labels_path = "/workspace/private/sparse_matrix_fine_tuning/task_configs/labels.json"
             label_list = json.load(open(labels_path, "r"))[data_args.task_name]
             # label_list = raw_datasets["train"].features["label"].names
             num_labels = len(label_list)
@@ -355,10 +354,7 @@ def main(config: dict = None):
             model = model.to("cuda")    
         # For Hyperparameter search
         override_dict(best_hyperparams, peft_config)
-        if not _DTYPES_PRINTED:
-            print_dtypes(model)
-            _DTYPES_PRINTED = True
-        if use_monarch:
+        if args.use_monarch:
             # For legacy purposes, don't init here. I ran some experiments with 
             # modules initialized in the 1st training step, so init here instead would
             # break the reproducibility. TODO: Try ensuring nothing breaks the random seed
@@ -376,9 +372,12 @@ def main(config: dict = None):
             # model_internal.init_monarch_layers = partial(init_monarch_layers, model_internal)
             # model_internal.peft_config = peft_config
             init_monarch_layers(model_internal, peft_config)
-        elif use_boft:
+        elif args.use_lora:
+            init_lora(model, peft_config)
+            print("Using LoRA")
+        elif args.use_boft:
             model = init_boft(model, peft_config)
-            
+            print("Using BOFT")
         # NOTE: Ray doesn't support torch.compile, plus a bug with trainer...
         # if torch.__version__.startswith("2") and not do_tune:
         #     model = torch.compile(model)
@@ -579,7 +578,7 @@ def main(config: dict = None):
             use_scaler=peft_config["scaler"],
         )
         # PEFT monarch search space
-        if use_monarch:
+        if args.use_monarch:
             param_space = {
                 # "nblocks": tune.choice(['sqrt(n)', 4]),
                 "seed": training_args.seed,
@@ -605,7 +604,7 @@ def main(config: dict = None):
                 param_space["blk_sz"] = tune.choice([64, 128, 512])
                 param_space["lr_scheduler_type"] = "cosine"
                 n_trials += 10
-        elif use_boft:
+        elif args.use_boft:
             param_space = {
                 # "nblocks": tune.choice(['sqrt(n)', 4]),
                 "seed": training_args.seed,
@@ -712,17 +711,16 @@ def main(config: dict = None):
         compute_metrics=compute_metrics,
         tokenizer=tokenizer,
         data_collator=data_collator,
-        large_lr=peft_config["large_lr"],
-        new_lr=peft_config["new_lr"],
-        use_scaler=peft_config["scaler"],
+        large_lr=peft_config.get("large_lr", False),
+        new_lr=peft_config.get("new_lr", 1e-4),
+        use_scaler=peft_config.get("scaler", False),
     )
 
     # # Training
     if training_args.do_train and not do_tune:
         checkpoint = None
-        if training_args.resume_from_checkpoint is not None:
-            checkpoint = training_args.resume_from_checkpoint
-        elif last_checkpoint is not None:
+        last_checkpoint, _ = get_last_checkpoint(training_args.output_dir)
+        if last_checkpoint is not None and args.resume:
             checkpoint = last_checkpoint
         if args.profile:
             ctx = profiler.profile(
@@ -753,8 +751,11 @@ def main(config: dict = None):
     # Evaluation
     if training_args.do_eval and not do_tune:
         logger.info("*** Evaluate ***")
-        ckpt, _ = get_last_checkpoint(training_args.output_dir)
-        last_checkpoint = os.path.join(ckpt,"pytorch_model.bin")
+        if not args.do_train:
+            ckpt, _ = get_last_checkpoint(training_args.output_dir)
+            last_checkpoint = os.path.join(ckpt,"pytorch_model.bin")
+        else:
+            trainer._load_best_model()
         override_dict(best_hyperparams, peft_config)
         # trainer.model.roberta.init_monarch_layers() # OLD version
         # EDIT

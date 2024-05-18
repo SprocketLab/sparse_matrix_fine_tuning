@@ -178,7 +178,10 @@ class MonarchLinear(StructuredLinear):
             self.scaler = nn.Identity()
         self.scaler.to(self.device)
 
-
+    def merge_weights(self):
+        """Merge Monarch adapters into dense weights"""
+        pass
+    
     def reset_parameters(self) -> None:
         """
         Initialize block-diagonal weights and biases

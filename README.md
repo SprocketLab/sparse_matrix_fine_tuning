@@ -32,5 +32,5 @@ Tune block size, rank, etc. in task_configs/peft_config.json.
 Or try run_glue_hf.py with default args below
 ```
 export WANDB_API_KEY="YOUR_KEY"
-python run_glue.py task_configs/roberta_glue/cola.json --do_tune=False --use_wandb=True 
+python run_glue.py task_configs/monarch_roberta_glue/peft_con/cola.json --do_tune=False --use_wandb=True 
 ```

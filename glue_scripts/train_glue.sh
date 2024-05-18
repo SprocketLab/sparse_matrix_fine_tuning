@@ -25,20 +25,18 @@ if [ -d "./sparse_matrix_finetuning" ]; then
 fi
 
 time=$(date "+%m-%d-%H")
-python run_glue.py /fly/task_configs/roberta_glue/cola.json   --time=$time "${FLAGS[@]}" &
+python run_glue.py /fly/task_configs/monarch_roberta_glue/cola.json   --time=$time "${FLAGS[@]}" &
 # wait for the previous job to occupy GPU memory to pick the correct vacant device for the next
-# sleep 25; python run_glue.py /fly/task_configs/roberta_glue/mrpc.json   --time=$time "${FLAGS[@]}" 
-# sleep 25; python run_glue.py /fly/task_configs/roberta_glue/qnli.json   --time=$time "${FLAGS[@]}" &
-# sleep 25; python run_glue.py /fly/task_configs/roberta_glue/rte.json    --time=$time "${FLAGS[@]}" &
-# sleep 25; python run_glue.py /fly/task_configs/roberta_glue/sst-2.json  --time=$time "${FLAGS[@]}" 
-# sleep 25; python run_glue.py /fly/task_configs/roberta_glue/stsb.json   --time=$time "${FLAGS[@]}"&
+sleep 20; python run_glue.py /fly/task_configs/monarch_roberta_glue/mrpc.json   --time=$time "${FLAGS[@]}" 
+sleep 20; python run_glue.py /fly/task_configs/monarch_roberta_glue/qnli.json   --time=$time "${FLAGS[@]}" &
+sleep 20; python run_glue.py /fly/task_configs/monarch_roberta_glue/rte.json    --time=$time "${FLAGS[@]}" 
+sleep 20; python run_glue.py /fly/task_configs/monarch_roberta_glue/sst-2.json  --time=$time "${FLAGS[@]}"& 
+sleep 20; python run_glue.py /fly/task_configs/monarch_roberta_glue/stsb.json   --time=$time "${FLAGS[@]}"
 
-# sleep 25; python run_glue.py /fly/task_configs/roberta_glue/qqp.json    --time=$time "${FLAGS[@]}" 
-# sleep 25; python run_glue.py /fly/task_configs/roberta_glue/mnli.json   --time=$time "${FLAGS[@]}" 
-# sleep 25; python run_glue.py /fly/task_configs/roberta_glue/wnli.json  --time=$time "${FLAGS[@]}"
+sleep 20; python run_glue.py /fly/task_configs/monarch_roberta_glue/qqp.json    --time=$time "${FLAGS[@]}" &
+sleep 20; python run_glue.py /fly/task_configs/monarch_roberta_glue/mnli.json   --time=$time "${FLAGS[@]}" 
 
-out_path="results/monarch_roberta_glue"
-# find all .tsv files in results/monarch_roberta_glue and zip them
-find results/monarch_roberta_glue -maxdepth 2 -name "*.tsv" | zip -j results/monarch_roberta_glue/glue_submit.zip -@
+out_path="results/monarch_monarch_roberta_glue"
+# find all .tsv files in results/monarch_monarch_roberta_glue and zip them
+find results/monarch_monarch_roberta_glue -maxdepth 2 -name "*.tsv" | zip -j results/monarch_monarch_roberta_glue/glue_submit.zip -@
 echo "Zipped all .tsv files in $out_path to glue_submit.zip. Ready for submission."
-mrpc_test w/ blk_sz 16 HPs_block size 64_02-20-15

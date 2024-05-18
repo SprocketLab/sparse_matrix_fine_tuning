@@ -24,7 +24,7 @@ def main():
             if not tasks:
                 break
             task = tasks.popleft()
-            command += [f"CUDA_VISIBLE_DEVICES={gpu}", "python", "run_glue.py", f"task_configs/roberta_glue/{task}.json"] + extra_args
+            command += [f"CUDA_VISIBLE_DEVICES={gpu}", "python", "run_glue.py", f"task_configs/monarch_roberta_glue/peft_con/{task}.json"] + extra_args
             
             # Run in parallel
             if gpu != gpus[-1]:
