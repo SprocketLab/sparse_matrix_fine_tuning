@@ -318,6 +318,7 @@ class MonarchFactor(nn.Module):
                  blk_r: int = 4,
                  bias: bool = False,
                  ortho: bool = False,
+                 all_zero: bool = False,
                  dtype=torch.float,
                  device="cuda"):
         """Parameterizes a single monarch factor.
@@ -340,6 +341,7 @@ class MonarchFactor(nn.Module):
             torch.zeros(nblocks, self.blk_r, self.in_blk_sz, device=device)
         )  
         self.ortho = ortho
+        self.all_zero = all_zero
         self.dtype = dtype
         if bias:
             self.bias = nn.Parameter(torch.zeros(out_features, device=device))
@@ -353,6 +355,8 @@ class MonarchFactor(nn.Module):
         return x
     
     def reset_parameters(self):
+        if self.all_zero:
+            torch.nn.init.zeros_(self.weight)
         if self.ortho:
             self.dtype = torch.float # Otho parametrization doesn't support bf16
 

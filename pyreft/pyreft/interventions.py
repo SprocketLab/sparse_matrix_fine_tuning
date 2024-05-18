@@ -128,7 +128,7 @@ class MoReIntervention(
         super().__init__(**kwargs, keep_last_dim=True)
         self.rotate_layer = MonarchFactor(self.embed_dim, kwargs["low_rank_dimension"], ortho=True) # block-wise orthogonal
         self.learned_source = MonarchFactor(
-            self.embed_dim, kwargs["low_rank_dimension"]).to(
+            self.embed_dim, kwargs["low_rank_dimension"], all_zero=False).to(
             kwargs["dtype"] if "dtype" in kwargs else torch.bfloat16) # Replace with Monarch
         self.dropout = torch.nn.Dropout(kwargs["dropout"] if "dropout" in kwargs else 0.0)
         self.act_fn = ACT2FN["linear"] if "act_fn" not in kwargs or kwargs["act_fn"] is None else ACT2FN[kwargs["act_fn"]]
