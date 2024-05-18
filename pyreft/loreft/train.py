@@ -72,17 +72,24 @@ peft_config = json.load(open("/fly/task_configs/llama_mmlu/peft_config.json", "r
 
 def model_init(hyperparams: dict = best_hyperparams):
     global peft_config, args, tokenizer, reft_model, config
+    if hyperparams == None:
+        hyperparams = {}
+        
     # everything is guarded by a single seed
     set_seed(args.seed)
     dtype = dtype_mapping[args.dtype]
     model_name = args.model
     # Hyperparameter search
+    if args.blk_r != -1:
+        hyperparams["blk_r"] = args.blk_r
+    if args.nblocks != -1:
+        hyperparams["nblocks"] = args.nblocks
     if hyperparams is not None:
         for k in peft_config.keys():
             if k in hyperparams.keys() and hyperparams[k] != peft_config[k]:
                 print("Overriding {} = {} from best HP".format(k, hyperparams[k]))
                 peft_config[k] = hyperparams[k]
-    peft_config["blk_r"] = args.blk_r
+
     if wandb.run is not None:
         wandb.run.config.update(peft_config)
         wandb.run.config.update({"dtype": dtype})
@@ -221,7 +228,8 @@ def finetune(
     """
     Generic Representation Finetuning.
     """
-    global tokenizer, reft_model
+    global tokenizer, reft_model, peft_config
+    
     assert task in task_config
     if data_dir is not None:
         assert os.path.exists(data_dir), f"Data directory {data_dir} does not exist."
@@ -635,8 +643,8 @@ def main():
     
     # Monarch
     parser.add_argument("--monarch", default=True, type=eval)
-    parser.add_argument("--nblocks", default=4, type=int)
-    parser.add_argument("--blk_r", default=4, type=int)
+    parser.add_argument("--nblocks", default=-1, type=int)
+    parser.add_argument("--blk_r", default=-1, type=int)
     parser.add_argument("--do_tune", action="store_true")
     parser.add_argument("--do_train", default=True, type=eval)
     

@@ -607,13 +607,22 @@ class IntervenableModel(nn.Module):
             intervention = v[0]
             binary_filename = f"intkey_{k}.bin"
             if isinstance(intervention, TrainableIntervention):
-                saved_state_dict = torch.load(os.path.join(load_directory, binary_filename))
+                path = os.path.join(load_directory, binary_filename)
+                if not os.path.exists(path):
+                    continue
+                saved_state_dict = torch.load(path)
                 intervention.load_state_dict(saved_state_dict)
 
         # load model's trainable parameters as well
         if include_model:
             model_binary_filename = "pytorch_model.bin"
-            saved_model_state_dict = torch.load(os.path.join(load_directory, model_binary_filename))
+            path = os.path.join(load_directory, model_binary_filename)
+            invervene_path = os.path.join(load_directory, "intervenable_model", model_binary_filename)
+            try:
+                saved_model_state_dict = torch.load(path)
+            except:
+                saved_model_state_dict = torch.load(invervene_path)
+                
             self.model.load_state_dict(saved_model_state_dict, strict=False)
 
     def _gather_intervention_output(
