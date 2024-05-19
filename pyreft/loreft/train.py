@@ -378,12 +378,11 @@ def finetune(
         os.environ["WANDB_MODE"] = "offline"
     if args.resume:
         group_path = os.path.join(output_dir, "full_group.txt")
+        group = None
         if os.path.exists(group_path):
             os.environ["WANDB_RUN_GROUP"] = group = open(group_path, "r").read().strip()
-    elif args.do_tune:
-        os.environ["WANDB_RUN_GROUP"] = group = get_run_group(task, group=args.group, notes=args.notes, do_tune=True)
     else:
-        group = None
+        os.environ["WANDB_RUN_GROUP"] = group = get_run_group(task, group=args.group, notes=args.notes, do_tune=args.do_tune)
 
     os.environ["WANDB_PROJECT"] = f"reft-monarch-{task}"
     run = wandb.init(

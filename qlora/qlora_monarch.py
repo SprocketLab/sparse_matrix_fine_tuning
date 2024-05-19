@@ -774,7 +774,7 @@ def train():
         ctx = nullcontext()
         if args.profile:
             ctx = profiler.profile(
-                schedule=profiler.schedule(wait=1, warmup=3, active=3, repeat=1),
+                schedule=profiler.schedule(wait=1, warmup=1, active=1, repeat=1),
                 on_trace_ready=profiler.tensorboard_trace_handler("./llama_mmlu_log"),
                 record_shapes=True,
                 profile_memory=True,
@@ -796,6 +796,7 @@ def train():
         if args.do_train:
             args.force_reinit = True
             # Reset base model; load trained adapters
+            # del trainer.model; model = None; torch.cuda.empty_cache()
             trainer.model_init() 
             trainer._load_best_model()
         else:

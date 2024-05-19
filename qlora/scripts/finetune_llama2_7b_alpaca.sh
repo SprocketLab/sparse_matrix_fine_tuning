@@ -25,7 +25,7 @@ python qlora.py \
     --double_quant \
     --quant_type nf4 \
     --bf16 \
-    --bits 4 \
+    --bits 16 \
     --warmup_ratio 0.03 \
     --lr_scheduler_type constant \
     --gradient_checkpointing \
@@ -33,7 +33,7 @@ python qlora.py \
     --source_max_len 16 \
     --target_max_len 512 \
     --per_device_train_batch_size 1 \
-    --gradient_accumulation_steps 16 \
+    --gradient_accumulation_steps 1 \
     --max_steps 1875 \
     --eval_steps 187 \
     --learning_rate 0.0002 \

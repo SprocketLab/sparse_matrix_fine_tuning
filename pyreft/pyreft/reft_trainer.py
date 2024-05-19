@@ -80,6 +80,7 @@ class ReftTrainer(Trainer):
     def _load_from_checkpoint(self, resume_from_checkpoint, model=None):
         if resume_from_checkpoint is not None:
             resume_from_checkpoint = os.path.join(resume_from_checkpoint, "intervenable_model")
+        self.model._keys_to_ignore_on_save = getattr(self.model, "_keys_to_ignore_on_save", None)
         super()._load_from_checkpoint(resume_from_checkpoint, model)
         
     def compute_loss(

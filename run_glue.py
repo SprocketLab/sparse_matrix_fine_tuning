@@ -751,7 +751,7 @@ def main(config: dict = None):
     # Evaluation
     if training_args.do_eval and not do_tune:
         logger.info("*** Evaluate ***")
-        if not args.do_train:
+        if not training_args.do_train:
             ckpt, _ = get_last_checkpoint(training_args.output_dir)
             last_checkpoint = os.path.join(ckpt,"pytorch_model.bin")
         else:
