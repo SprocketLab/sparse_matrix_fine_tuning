@@ -164,7 +164,7 @@ class MonarchLinear(StructuredLinear):
             if self.as_adapter and not self.svd_init:
                 self.dense = nn.Parameter(weights, requires_grad=False)
             else:
-                self.set_weights_from_dense_init(weights, self.blk_r)
+                self.set_weights_from_dense_init(weights, 1)
         self.to(device)
         
         # Initialize scaling (vector or a scaler)

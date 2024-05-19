@@ -724,8 +724,8 @@ def main(config: dict = None):
             checkpoint = last_checkpoint
         if args.profile:
             ctx = profiler.profile(
-                schedule=profiler.schedule(wait=1, warmup=3, active=4, repeat=1),
-                on_trace_ready=profiler.tensorboard_trace_handler("./profile_log"),
+                schedule=profiler.schedule(wait=1, warmup=3, active=2, repeat=1),
+                on_trace_ready=profiler.tensorboard_trace_handler("./boft_roberta_profile"),
                 record_shapes=True,
                 profile_memory=True,
                 with_stack=True,

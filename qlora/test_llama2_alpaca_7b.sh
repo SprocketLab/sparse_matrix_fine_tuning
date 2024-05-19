@@ -31,4 +31,4 @@ python /fly/qlora/qlora_monarch.py \
     --bf16 \
     --hf_token=$HF_TOKEN "${FLAGS[@]}" \
     --do_mmlu_eval \
-    --mmlu_split test  --resume
+    --mmlu_split test  --resume --do_train=False

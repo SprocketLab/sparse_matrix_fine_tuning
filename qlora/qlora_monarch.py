@@ -242,13 +242,14 @@ def model_init(hyperparams: dict = best_hyperparams):
 
 
     compute_dtype = (torch.float16 if args.fp16 else (torch.bfloat16 if args.bf16 else torch.float32))
+    torch_dtype = compute_dtype if not peft_config["svd_init"] else torch.float32
     if model is None or getattr(args, "force_reinit", False):
         model = AutoModelForCausalLM.from_pretrained(
             args.model_name_or_path,
             cache_dir=args.cache_dir,
             device_map=device_map,
             max_memory=max_memory,
-            # torch_dtype=(torch.float32 if args.fp16 else (torch.bfloat16 if args.bf16 else torch.float32)),
+            torch_dtype=torch_dtype,
             trust_remote_code=True,
             use_auth_token=True,
             attn_implementation="flash_attention_2"
@@ -257,6 +258,10 @@ def model_init(hyperparams: dict = best_hyperparams):
     model.enable_input_require_grads()
     # Monarch adaptation
     init_monarch_layers(model, peft_config)
+    # SVD doesn't support bf16
+    if peft_config["svd_init"]:
+        model = model.to(compute_dtype)
+        
     param_stats(model)
     watch_layers(model)
     setattr(model, 'model_parallel', True)
@@ -802,7 +807,10 @@ def train():
         else:
             last_checkpoint, _ = get_last_checkpoint(args.output_dir)
             print(f"Loading checkpoint from {last_checkpoint}")
-            load_checkpoint_and_dispatch(trainer.model, last_checkpoint) 
+            if last_checkpoint is not None:
+                load_checkpoint_and_dispatch(trainer.model, last_checkpoint) 
+            else:
+                warnings.warn("No checkpoint found!")
         # NOTE: to avoid merging monarch weights twice. Removed due to using 'MySeq2SeqTrainer'
         
         # 1. models are often saved in safetensors instead of pickle, which don't store variables or code like self.merged

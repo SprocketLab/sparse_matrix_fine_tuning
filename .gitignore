@@ -14,7 +14,7 @@ pyreft/loreft/official_results/**
 # Specific includes/excludes for loreft dataset
 !pyreft/examples/loreft/dataset
 # Ignore other directories and file patterns
-wandb/**
+**/wandb/**
 __pycache__/**
 glue_data/**
 .vscode/**
