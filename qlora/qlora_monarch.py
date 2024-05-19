@@ -740,12 +740,6 @@ def train():
             mode = direction,
             grace_period=grade_period,
         )
-        reporter = CLIReporter(
-            parameter_columns=["learning_rate", "per_device_train_batch_size", "weight_decay"],
-            metric_columns=["train_loss", "eval_loss", metric, "training_iteration"],
-            max_progress_rows=9,
-            max_report_frequency=9,
-        )   
         # Do hyperparam optimization with Ray Tune
         best_run = trainer.hyperparameter_search(
             hp_space=lambda _: param_space,
@@ -801,6 +795,8 @@ def train():
     if args.do_eval:
         if args.do_train:
             args.force_reinit = True
+            # Reset base model; load trained adapters
+            trainer.model_init() 
             trainer._load_best_model()
         else:
             last_checkpoint, _ = get_last_checkpoint(args.output_dir)

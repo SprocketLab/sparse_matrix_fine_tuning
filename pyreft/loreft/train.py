@@ -443,6 +443,9 @@ def finetune(
             **{"num_interventions": len(args.layers), "position": position, 
                 "share_weights": share_weights}, is_eval=True
         )
+    else:
+        eval_dataset = None
+        training_args.evaluation_strategy = "no"
         
     trainer = trainer_class(
         model=reft_model,

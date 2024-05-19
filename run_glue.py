@@ -716,7 +716,6 @@ def main(config: dict = None):
         new_lr=peft_config.get("new_lr", 1e-4),
         use_scaler=peft_config.get("scaler", False),
     )
-
     # # Training
     if training_args.do_train and not do_tune:
         checkpoint = None
