@@ -55,5 +55,4 @@ python qlora_monarch.py \
     --do_mmlu_eval \
     --mmlu_split test \
     --load_best_model_at_end \
-    --max_steps 1875
-    # --num_train_epochs 2  # 
+    --num_train_epochs 2  # 

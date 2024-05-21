@@ -1,5 +1,5 @@
 {
-    "model_name_or_path": "microsoft/deberta-v3-base",
+    "model_name_or_path": "roberta-large",
     "task_name": "cola",
     "do_train": true,
     "do_eval": true,

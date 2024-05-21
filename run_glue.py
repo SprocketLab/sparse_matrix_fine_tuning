@@ -189,7 +189,17 @@ def main(config: dict = None):
     else:
         print("Full training for", data_args.task_name)
         
-    if not use_wandb:
+    # Wandb config 
+    if use_wandb:
+        training_args.run_name = "glue_" + data_args.task_name # wandb run name
+        os.environ["WANDB_PROJECT"] = "monarch_hf_peft" 
+        os.environ["WANDB_PROJECT"] = project if project else os.environ["WANDB_PROJECT"] # Override if provided
+        
+        # group runs within the same hour
+        print("Wandb project: ", os.environ["WANDB_PROJECT"])
+        print("Wandb run group: ", os.environ["WANDB_RUN_GROUP"])
+    else:
+        os.environ["WANDB_RUN_GROUP"] = os.environ["WANDB_PROJECT"] = "offline"
         print("Disabling wandb")
         os.environ["WANDB_MODE"] = "disabled"
         
@@ -533,22 +543,7 @@ def main(config: dict = None):
     if training_args.resume_from_checkpoint is not None:
         training_args.resume_from_checkpoint &= has_ckpt
 
-    # Wandb config 
-    if use_wandb:
-        training_args.run_name = "glue_" + data_args.task_name # wandb run name
-        
-        if do_tune:
-            os.environ["WANDB_PROJECT"] = "monarch_glue_tune_" + data_args.task_name
-        else:
-            os.environ["WANDB_PROJECT"] = "monarch_hf_peft" 
-            
-        os.environ["WANDB_PROJECT"] = project if project else os.environ["WANDB_PROJECT"] # Override if provided
-        
-        # group runs within the same hour
-        print("Wandb project: ", os.environ["WANDB_PROJECT"])
-        print("Wandb run group: ", os.environ["WANDB_RUN_GROUP"])
-    else:
-        os.environ["WANDB_RUN_GROUP"] = os.environ["WANDB_PROJECT"] = "offline"
+
         
     if not adapter:
         peft_config["adapter"] = False # Will not use merging adapter style
@@ -765,10 +760,7 @@ def main(config: dict = None):
         #     trainer_model_internal = trainer.model.deberta
         # trainer_model_internal.init_monarch_layers(peft_config) 
         # ^ monarch should already be inited
-        
-        trainer.model.eval()
-        trainer.model.load_state_dict(torch.load(last_checkpoint), strict=False)
-            
+                    
         # Loop to handle MNLI double evaluation (matched, mis-matched)
         tasks = [data_args.task_name]
         eval_datasets = [eval_dataset]
