@@ -42,3 +42,4 @@ python qlora.py \
     --lora_dropout 0.1 \
     --weight_decay 0.0 \
     --seed 0 \
+    --output_dir /fly/results/qlora

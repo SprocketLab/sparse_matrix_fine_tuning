@@ -33,4 +33,5 @@ python train.py -task math \
 --share_weights \
 --warmup_ratio 0.1 \
 --greedy_decoding \
+--save_steps 500 \
 "${FLAGS[@]}"

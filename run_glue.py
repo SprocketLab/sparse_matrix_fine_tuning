@@ -579,9 +579,6 @@ def main(config: dict = None):
             param_space = {
                 # "nblocks": tune.choice(['sqrt(n)', 4]),
                 "seed": training_args.seed,
-                "large_lr": tune.sample_from(lambda _: np.random.uniform() > 0.4),
-                "large_lr": False,
-                # "num_train_epochs": tune.choice([20, 25]),
                 "learning_rate": tune.quniform(1e-4, 6.6e-4, 2e-5), 
                 "per_device_train_batch_size": tune.choice([16, 32]), # In Monarch-Mixer they mixed 32 and 16 
                 "weight_decay": training_args.weight_decay,
@@ -590,9 +587,6 @@ def main(config: dict = None):
                 "nblocks": peft_config["nblocks"],
             }
             n_trials = args.n_trials 
-                # block size = {256, 128, 64}
-                # block rank = {4, 2, 8}
-                # n_trials = 40
     
             if args.tune_blk_config:
                 # TODO: Search a larger space, and fail the runs over the budget (~1.2M param)
@@ -605,8 +599,6 @@ def main(config: dict = None):
             param_space = {
                 # "nblocks": tune.choice(['sqrt(n)', 4]),
                 "seed": training_args.seed,
-                # "large_lr": tune.sample_from(lambda _: np.random.uniform() > 0.4),
-                "large_lr": False,
                 "learning_rate": tune.quniform(8e-5, 7e-4, 4e-5), 
                 # "blk_r": peft_config["blk_r"],
                 # "nblocks": peft_config["nblocks"],

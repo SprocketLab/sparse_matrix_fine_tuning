@@ -134,7 +134,7 @@ class TrainingArguments(transformers.Seq2SeqTrainingArguments):
         metadata={"help": "Whether to train on the input in addition to the target text."}
     )
     mmlu_split: Optional[str] = field(
-        default='eval',
+        default='test',
         metadata={"help": "The MMLU split to run on"}
     )
     mmlu_dataset: Optional[str] = field(

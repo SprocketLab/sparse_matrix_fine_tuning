@@ -22,7 +22,7 @@ python train.py -task commonsense \
 -data_dir dataset \
 -model yahma/llama-7b-hf \
 -seed 42 \
--l all -r 8 -p f7+l7 -e 6 -lr 5e-4 \
+-l all -r 8 -p f7+l7 -e 3 -lr 5e-4 \
 --intervention_type nothing \
 -gradient_accumulation_steps 16 \
 -batch_size 2 \

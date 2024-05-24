@@ -310,6 +310,9 @@ def finetune(
             all_eval_datasets[eval_dataset][split] = [raw_eval, raw_eval.raw_dataset]
     eval_datasets = all_eval_datasets
     # Initialize model
+    if args.all_linear:
+        peft_config["layers_to_adapt"] += ["o_proj", "up_proj", "down_proj", "gate_proj"]
+        
     reft_model = model_init()
     n_params = reft_model.count_parameters(include_model=False)
     
@@ -379,6 +382,7 @@ def finetune(
     if args.resume:
         group_path = os.path.join(output_dir, "full_group.txt")
         group = None
+        os.environ["WANDB_RUN_GROUP"] = group = get_run_group(task, group=args.group, notes=args.notes, do_tune=args.do_tune)
         if os.path.exists(group_path):
             os.environ["WANDB_RUN_GROUP"] = group = open(group_path, "r").read().strip()
     else:
@@ -407,10 +411,11 @@ def finetune(
         gradient_accumulation_steps=gradient_accumulation_steps,
         evaluation_strategy="steps",
         save_strategy="steps",
+        save_steps=args.save_steps,
         metric_for_best_model=metric_for_best_model if task == "glue" else None,
         # load_best_model_at_end=True if task == "glue" else False,
         logging_strategy="steps",
-        save_total_limit=5, # for GLUE, it will save 2 at max.
+        save_total_limit=6, 
         logging_steps=logging_steps,
         lr_scheduler_type=schedule,
         learning_rate=lr,
@@ -556,11 +561,12 @@ def finetune(
             json.dump(args_dict, json_file, indent=4)
 
         # save model
-        if save_model:
-            reft_model.save(output_dir)
+        reft_model.save(output_dir)
+        trainer.save_state(output_dir)
         # NOTE: force load best
         trainer._load_best_model()
     else:
+        print("Skipping training, loading last checkpoint...")
         trainer.model.load_intervention(last_ckpt, include_model=True)
         
     # ensure everything is in eval mode
@@ -613,7 +619,7 @@ def main():
     parser.add_argument('-e', '--epochs', type=int, help='1', default=1)
     parser.add_argument('-wandb', '--use_wandb', default=True, type=eval)
     parser.add_argument('-wandb_name', '--wandb_name', type=str, default="reft")
-    parser.add_argument('-save_model', '--save_model', action='store_true')
+    parser.add_argument('-save_model', '--save_model', default=True, type=eval)
     parser.add_argument('-max_n_train_example', '--max_n_train_example', type=int, default=None)
     parser.add_argument('-max_n_eval_example', '--max_n_eval_example', type=int, default=None)
     parser.add_argument(
@@ -649,7 +655,8 @@ def main():
     parser.add_argument("--blk_r", default=-1, type=int)
     parser.add_argument("--do_tune", action="store_true")
     parser.add_argument("--do_train", default=True, type=eval)
-    
+    parser.add_argument("--save_steps", default=1000, type=int)
+    parser.add_argument("--all_linear", action="store_true", help="adapt all linear layers")
     # Ray Tune & wandb
     parser.add_argument("--n_trials", default=35, type=int)
     parser.add_argument("--resume", action="store_true")

@@ -26,6 +26,7 @@ import numpy as np
 from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss
 from transformers.utils import logging
 from accelerate import load_checkpoint_and_dispatch
+from .reft_model import ReftModel
 
 logger = logging.get_logger(__name__)
 
@@ -81,6 +82,8 @@ class ReftTrainer(Trainer):
         if resume_from_checkpoint is not None:
             resume_from_checkpoint = os.path.join(resume_from_checkpoint, "intervenable_model")
         self.model._keys_to_ignore_on_save = getattr(self.model, "_keys_to_ignore_on_save", None)
+        if isinstance(self.model, ReftModel):
+            model = self.model.model
         super()._load_from_checkpoint(resume_from_checkpoint, model)
         
     def compute_loss(
