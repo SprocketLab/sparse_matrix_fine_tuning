@@ -127,7 +127,7 @@ def main(config: dict = None):
     args = parse_args()
     # peft_config = json.load(open(PEFT_ROBERTA_PATH, "r"))  # load monarch config    
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
-    model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(args.config_path))
+    model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(args.config_path), allow_extra_keys=True)
     # EDIT
     assert not (args.use_monarch and args.use_boft) and not (args.use_lora and args.use_monarch) and not (args.use_lora and args.use_boft), "Can't use both monarch and boft"
     print(f"base model: {model_args.model_name_or_path}")
@@ -387,6 +387,7 @@ def main(config: dict = None):
             init_lora(model, peft_config)
             print("Using LoRA")
         elif args.use_boft:
+            peft_config["boft_dropout"] = model_args.oft_dropout
             model = init_boft(model, peft_config)
             print("Using BOFT")
         # NOTE: Ray doesn't support torch.compile, plus a bug with trainer...
@@ -606,15 +607,11 @@ def main(config: dict = None):
                 "seed": training_args.seed,
                 # "large_lr": tune.sample_from(lambda _: np.random.uniform() > 0.4),
                 "large_lr": False,
-                "num_train_epochs": tune.choice([20, 25]),
-                "learning_rate": tune.quniform(1e-4, 6.6e-4, 2e-5), 
-                "per_device_train_batch_size": tune.choice([16, 32]), # In Monarch-Mixer they mixed 32 and 16 
-                "weight_decay": training_args.weight_decay,
-                "lr_scheduler_type": "cosine", # mostly linear underperforms
+                "learning_rate": tune.quniform(8e-5, 7e-4, 4e-5), 
                 # "blk_r": peft_config["blk_r"],
                 # "nblocks": peft_config["nblocks"],
             }
-            n_trials = args.n_trials 
+            n_trials = 12
 
             # NO BLOCK TUNING (YET)
         else:
