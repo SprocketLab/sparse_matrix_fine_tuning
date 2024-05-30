@@ -406,6 +406,7 @@ def finetune(
         output_dir=output_dir,
         run_name=run_name,
         num_train_epochs=epochs,
+        max_steps=args.max_steps,
         per_device_train_batch_size=batch_size,
         per_device_eval_batch_size=eval_batch_size,
         gradient_accumulation_steps=gradient_accumulation_steps,
@@ -562,7 +563,7 @@ def finetune(
 
         # save model
         reft_model.save(output_dir)
-        trainer.save_state(output_dir)
+        trainer.save_state()
         # NOTE: force load best
         trainer._load_best_model()
     else:
@@ -668,6 +669,7 @@ def main():
     parser.add_argument('-top_k', '--top_k', type=float, default=None)
 
     parser.add_argument("--notes", type=str, default="")
+    parser.add_argument("--max_steps", type=int, default=-1)
     global args
     args = parser.parse_args()
 

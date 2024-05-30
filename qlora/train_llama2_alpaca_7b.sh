@@ -26,7 +26,7 @@ python qlora_monarch.py \
     --logging_steps 40 \
     --save_strategy steps \
     --save_steps 187 \
-    --save_total_limit 2 \
+    --save_total_limit 10 \
     --evaluation_strategy steps \
     --per_device_eval_batch_size 1 \
     --max_new_tokens 32 \
@@ -50,9 +50,10 @@ python qlora_monarch.py \
     --adam_beta2 0.999 \
     --max_grad_norm 0.3 \
     --weight_decay 0.0 \
-    --seed 0 \
+    --seed 1 \
     --hf_token=$HF_TOKEN "${FLAGS[@]}" \
     --do_mmlu_eval \
     --mmlu_split test \
     --load_best_model_at_end \
-    --num_train_epochs 2  # 
+    --max_steps 1875 \
+    # --num_train_epochs 2  # 

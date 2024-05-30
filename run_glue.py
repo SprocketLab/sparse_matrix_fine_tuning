@@ -599,11 +599,11 @@ def main(config: dict = None):
             param_space = {
                 # "nblocks": tune.choice(['sqrt(n)', 4]),
                 "seed": training_args.seed,
-                "learning_rate": tune.quniform(8e-5, 7e-4, 4e-5), 
+                "learning_rate": tune.quniform(8e-5, 8e-4, 4e-5), 
                 # "blk_r": peft_config["blk_r"],
                 # "nblocks": peft_config["nblocks"],
             }
-            n_trials = 12
+            n_trials = 15
 
             # NO BLOCK TUNING (YET)
         else:
@@ -651,7 +651,7 @@ def main(config: dict = None):
             # keep_checkpoints_num=None,
             checkpoint_score_attr="max-" + task_to_metric[data_args.task_name], # rank in decreasing order
             progress_reporter=reporter,
-            resources_per_trial={"cpu": 1, "gpu": args.gpus_per_trial},
+            resources_per_trial={"cpu": 1, "gpu": args.gpus_per_trial if not args.use_boft else 1},
             name=os.environ["WANDB_RUN_GROUP"],
             max_failures=999, # tolerate OOM
             direction="maximize" if mode == "max" else "minimize",
@@ -730,7 +730,7 @@ def main(config: dict = None):
         trainer.log_metrics("train", metrics)
         trainer.save_metrics("train", metrics)
         trainer.save_state()
-        
+        wandb.run.config.update(peft_config)
 
     # Evaluation
     if training_args.do_eval and not do_tune:

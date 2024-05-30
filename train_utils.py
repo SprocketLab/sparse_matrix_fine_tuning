@@ -535,8 +535,8 @@ def get_last_checkpoint(checkpoint_dir):
         return checkpoint_dir, is_completed # checkpoint found!
     return None, False # first training
 
-def find_all_linear_names(args, model):
-    cls = bnb.nn.Linear4bit if args.bits == 4 else (bnb.nn.Linear8bitLt if args.bits == 8 else torch.nn.Linear)
+def find_all_linear_names(model, nbits=16):
+    cls = bnb.nn.Linear4bit if nbits == 4 else (bnb.nn.Linear8bitLt if nbits == 8 else torch.nn.Linear)
     lora_module_names = set()
     for name, module in model.named_modules():
         if isinstance(module, cls):

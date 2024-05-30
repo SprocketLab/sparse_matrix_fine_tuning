@@ -181,7 +181,7 @@ class TrainingArguments(transformers.Seq2SeqTrainingArguments):
     save_strategy: str = field(default='steps', metadata={"help": 'When to save checkpoints'})
     save_steps: int = field(default=250, metadata={"help": 'How often to save a model'})
     save_total_limit: int = field(default=40, metadata={"help": 'How many checkpoints to save before the oldest is overwritten'})
-
+    all_linear: bool = field(default=False, metadata={"help": 'Whether to adapt all linear layers'})
 @dataclass
 class GenerationArguments:
     # For more hyperparameters check:
@@ -256,7 +256,11 @@ def model_init(hyperparams: dict = best_hyperparams):
             # token=args.hf_token
         )
     model.enable_input_require_grads()
+    
     # Monarch adaptation
+    if args.all_linear:
+        peft_config["layers_to_adapt"] = find_all_linear_names(model)
+        print("Adapting all linear layers")
     init_monarch_layers(model, peft_config)
     # SVD doesn't support bf16
     if peft_config["svd_init"]:
@@ -700,7 +704,7 @@ def train():
                 json.dump(results, open(os.path.join(args.output_dir, f'mmlu_{args.mmlu_split}_results.json'), 'w'))
                 trainer.data_collator.source_max_len = source_max_len
 
-        # trainer.add_callback(MMLUEvalCallback)
+        trainer.add_callback(MMLUEvalCallback)
 
     all_metrics = {"run_name": args.run_name}
     

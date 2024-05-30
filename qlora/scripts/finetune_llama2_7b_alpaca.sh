@@ -1,5 +1,5 @@
 python qlora.py \
-    --model_name_or_path meta-llama/Llama-2-7b-hf \
+    --model_name_or_path huggyllama/llama-7b \
     --use_auth \
     --output_dir /fly/results/qlora \
     --logging_steps 10 \
@@ -33,7 +33,7 @@ python qlora.py \
     --source_max_len 16 \
     --target_max_len 512 \
     --per_device_train_batch_size 1 \
-    --gradient_accumulation_steps 1 \
+    --gradient_accumulation_steps 16 \
     --max_steps 1875 \
     --eval_steps 187 \
     --learning_rate 0.0002 \

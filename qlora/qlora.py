@@ -798,7 +798,7 @@ def train():
                 trainer.log(results)
                 trainer.data_collator.source_max_len = source_max_len
 
-        #trainer.add_callback(MMLUEvalCallback)
+        trainer.add_callback(MMLUEvalCallback)
 
     # Verifying the datatypes and parameter counts before training.
     param_stats(model, skip_cls=False, print_trainable=True)
