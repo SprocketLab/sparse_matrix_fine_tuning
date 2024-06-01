@@ -5,6 +5,12 @@
     "blk_r": 4,
     "blk_sz": null,
     "dropout": 0.1,
+    "boft": true,
+    "boft_block_size": 8,
+    "boft_block_num": 0, 
+    "boft_n_butterfly_factor": 2,
+    "boft_dropout": 0.1,
+    "bias": "none",
     "layers_to_adapt": [
         "q_proj",
         "v_proj",

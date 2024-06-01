@@ -169,11 +169,19 @@ def model_init(hyperparams: dict = best_hyperparams):
             for param in reft_model.model.classifier.parameters():
                 # reft_model with HF trainer will automatically pick up these params to optimize
                 param.requires_grad = True
-        
+        # EDIT
+        assert not (peft_config["monarch"] and peft_config["boft"])
         # Monarch adaptation
-        if args.monarch:
+        # if args.monarch:
+        if peft_config["monarch"]:
+            print("###### INIT MONARCH ######")
             peft_config["dtype"] = dtype
             init_monarch_layers(reft_model, peft_config)
+        # EDIT: BOFT adaptation
+        elif peft_config["boft"]:
+            print("###### INIT BOFT ######")
+            peft_config["dtype"] = dtype
+            reft_model = init_boft(reft_model, peft_config)
 
     param_stats(reft_model, training=False)
     reft_model.print_trainable_parameters()

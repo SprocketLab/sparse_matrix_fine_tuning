@@ -340,13 +340,13 @@ def init_boft(model,
         bias=peft_config["bias"],
     )
     model = get_peft_model(model, boft_config)
-    model = model.base_model.model # remove the wrappers
+    model = model.base_model.model.to(peft_config["dtype"]) # remove the wrappers
     # Unfreeze the classification head; pooler and classifier
     for n, p in model.named_parameters():
         n_split = n.split(".")
-        if ("pooler" in n_split) or ("classifier" in n_split): # will be deberta.pooler / deberta.classifier
-            print("Unfroze ", n)
+        if ("pooler" in n_split) or ("classifier" in n_split) or ("lm_head" in n_split): # will be deberta.pooler / deberta.classifier. lm_head for language models
             p.requires_grad = True
+            print("Unfroze ", n)
     return model
 
 def init_lora(model, peft_config):
