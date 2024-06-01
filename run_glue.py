@@ -709,7 +709,7 @@ def main(config: dict = None):
         if args.profile:
             ctx = profiler.profile(
                 schedule=profiler.schedule(wait=1, warmup=3, active=2, repeat=1),
-                on_trace_ready=profiler.tensorboard_trace_handler("./boft_roberta_profile"),
+                on_trace_ready=profiler.tensorboard_trace_handler("./roberta_profile" + time.strftime("%Y%m%d-%H%M%S")),
                 record_shapes=True,
                 profile_memory=True,
                 with_stack=True,

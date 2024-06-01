@@ -340,7 +340,7 @@ def init_boft(model,
         bias=peft_config["bias"],
     )
     model = get_peft_model(model, boft_config)
-    model = model.base_model.model.to(peft_config["dtype"]) # remove the wrappers
+    # model = model.base_model.model.to(peft_config["dtype"]) # remove the wrappers
     # Unfreeze the classification head; pooler and classifier
     for n, p in model.named_parameters():
         n_split = n.split(".")

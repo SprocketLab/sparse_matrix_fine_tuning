@@ -30,7 +30,8 @@ import numpy as np
 from torch.nn import CrossEntropyLoss
 from torch.utils.data import DataLoader
 from datasets import Dataset
-
+from torch import profiler
+from contextlib import nullcontext
 from task_config import task_config
 from dataset import LoReftGLUEDataset, LoReftSupervisedDataset
 from compute_metrics import compute_metrics
@@ -50,7 +51,7 @@ from pyreft import (
 )
 from ray import tune
 from ray.tune.schedulers import ASHAScheduler
-
+from peft import PeftModel
 
 args = None
 tokenizer = None
@@ -124,7 +125,7 @@ def model_init(hyperparams: dict = best_hyperparams):
             )
             config = reft_model.config
     
-    if not isinstance(reft_model, ReftModel):
+    if not isinstance(reft_model, (ReftModel, PeftModel)):
         # Optionally apply ReFT
         if args.intervention_type == "LoreftIntervention":
             intervention_type = LoreftIntervention
@@ -159,7 +160,7 @@ def model_init(hyperparams: dict = best_hyperparams):
                 )
             } for l in args.layers]
             task_type=TaskType.CAUSAL_LM
-    
+        
         reft_model.enable_input_require_grads()
         reft_config = ReftConfig(representations=representations)
         reft_model = get_reft_model(reft_model, reft_config, set_device=not isinstance(dtype, str))
@@ -555,11 +556,23 @@ def finetune(
     if args.do_train:
         load_best_hp(training_args.output_dir, task_dir)
         # TODO:enable resume
-        if args.resume:
-            trainer.train(resume_from_checkpoint=last_ckpt)
+        if args.profile:
+            ctx = profiler.profile(
+                schedule=profiler.schedule(wait=1, warmup=1, active=1, repeat=1),
+                on_trace_ready=profiler.tensorboard_trace_handler("./llama_reasoning_log"),
+                record_shapes=True,
+                profile_memory=True,
+                with_stack=True,
+            )
+            trainer.add_callback(ProfCallback(ctx))
         else:
-            trainer.train()
-            
+            ctx = nullcontext()
+        with ctx:
+            if args.resume:
+                trainer.train(resume_from_checkpoint=last_ckpt)
+            else:
+                trainer.train()
+                
         # dump config
         args_dict = vars(args)
         args_dict["n_params"] = n_params
@@ -665,6 +678,7 @@ def main():
     parser.add_argument("--do_train", default=True, type=eval)
     parser.add_argument("--save_steps", default=1000, type=int)
     parser.add_argument("--all_linear", action="store_true", help="adapt all linear layers")
+    parser.add_argument("--profile", action="store_true", help="profile the model")
     # Ray Tune & wandb
     parser.add_argument("--n_trials", default=35, type=int)
     parser.add_argument("--resume", action="store_true")

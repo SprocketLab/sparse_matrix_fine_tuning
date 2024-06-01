@@ -32,3 +32,4 @@ mihomo/**
 test/**
 **/profile_log/**
 **/**log**/
+**/*egg-info/**
