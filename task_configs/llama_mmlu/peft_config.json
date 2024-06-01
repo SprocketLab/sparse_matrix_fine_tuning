@@ -5,7 +5,7 @@
     "blk_r": 4,
     "blk_sz": null,
     "dropout": 0.1,
-    "boft": true,
+    "boft": false,
     "boft_block_size": 8,
     "boft_block_num": 0, 
     "boft_n_butterfly_factor": 2,

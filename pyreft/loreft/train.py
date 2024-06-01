@@ -169,16 +169,14 @@ def model_init(hyperparams: dict = best_hyperparams):
             for param in reft_model.model.classifier.parameters():
                 # reft_model with HF trainer will automatically pick up these params to optimize
                 param.requires_grad = True
-        # EDIT
-        assert not (peft_config["monarch"] and peft_config["boft"])
+        
         # Monarch adaptation
-        # if args.monarch:
-        if peft_config["monarch"]:
+        args.monarch = args.monarch ^ args.boft
+        if args.monarch:
             print("###### INIT MONARCH ######")
             peft_config["dtype"] = dtype
             init_monarch_layers(reft_model, peft_config)
-        # EDIT: BOFT adaptation
-        elif peft_config["boft"]:
+        else:
             print("###### INIT BOFT ######")
             peft_config["dtype"] = dtype
             reft_model = init_boft(reft_model, peft_config)
@@ -660,6 +658,7 @@ def main():
     
     # Monarch
     parser.add_argument("--monarch", default=True, type=eval)
+    parser.add_argument("--boft", default=False, type=eval)
     parser.add_argument("--nblocks", default=-1, type=int)
     parser.add_argument("--blk_r", default=-1, type=int)
     parser.add_argument("--do_tune", action="store_true")
