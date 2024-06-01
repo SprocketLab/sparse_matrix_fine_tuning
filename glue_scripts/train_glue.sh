@@ -19,10 +19,6 @@ else
     echo "Using no additional flags."
 fi
 
-# For moving copied inputs to cwd in CHTC jobs
-if [ -d "./sparse_matrix_finetuning" ]; then
-    mv ./sparse_matrix_finetuning/* .
-fi
 
 time=$(date "+%m-%d-%H")
 python run_glue.py /fly/task_configs/monarch_roberta_glue/cola.json   --time=$time "${FLAGS[@]}" &
