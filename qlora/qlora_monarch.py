@@ -20,7 +20,7 @@ import bitsandbytes as bnb
 import pandas as pd
 from functools import partial
 from packaging.version import parse
-
+from ray.air.integrations.wandb import WandbLoggerCallback
 import torch
 from torch import profiler
 import transformers
@@ -32,8 +32,8 @@ from transformers import (
     AutoModelForCausalLM,
     set_seed,
     Seq2SeqTrainer,
-    LlamaTokenizer
-
+    LlamaTokenizer,
+    EvalPrediction
 )
 from datasets import load_dataset, Dataset
 import evaluate
@@ -54,7 +54,6 @@ best_hyperparams = None
 args = None
 model = None
 peft_config = json.load(open("/fly/task_configs/llama_mmlu/peft_config.json", "r"))
-
 IGNORE_INDEX = -100
 DEFAULT_PAD_TOKEN = "[PAD]"
 
@@ -161,7 +160,7 @@ class TrainingArguments(transformers.Seq2SeqTrainingArguments):
         default='wandb',
         metadata={"help": "To use wandb or something else for reporting."}
     )
-    use_wandb: bool = field(default=True)
+    wandb: bool = field(default=True)
     profile: bool = field(default=False)
     output_dir: str = field(default='./output', metadata={"help": 'The output dir for logs and checkpoints'})
     optim: str = field(default='adamw_torch', metadata={"help": 'The optimizer to be used'})
@@ -224,8 +223,9 @@ def model_init(hyperparams: dict = best_hyperparams):
             if k in hyperparams.keys() and hyperparams[k] != peft_config[k]:
                 print("Overriding {} = {} from best HP".format(k, hyperparams[k]))
                 peft_config[k] = hyperparams[k]
+    if wandb.run is not None:
+        wandb.run.config.update(peft_config, allow_val_change=True)
     if torch.cuda.is_available():
-        # n_gpus = torch.cuda.device_count()
         n_gpus = 1
     else:
         n_gpus = 0
@@ -306,16 +306,6 @@ def model_init(hyperparams: dict = best_hyperparams):
                     ),
             })
 
-    # for name, module in model.named_modules():
-        # if isinstance(module, LoraLayer):
-        #     if args.bf16:
-        #         module = module.to(torch.bfloat16)
-        # if 'norm' in name:
-            # module = module.to(torch.float32)
-        # if 'lm_head' in name or 'embed_tokens' in name:
-        #     if hasattr(module, 'weight'):
-        #         if args.bf16 and module.weight.dtype == torch.float32:
-        #             module = module.to(torch.bfloat16)
     return model
 
 
@@ -596,7 +586,7 @@ def train():
     
     print(args)
     login(args.hf_token)
-    if not args.use_wandb:
+    if not args.wandb:
         os.environ["WANDB_MODE"] = "offline"
         
     group = "mmlu"
@@ -614,7 +604,6 @@ def train():
                 os.environ["WANDB_RUN_GROUP"] = f.read()
     wandb.init(project=os.environ["WANDB_PROJECT"], group=os.environ["WANDB_RUN_GROUP"], config=vars(args).update(peft_config)) 
     print(f"wandb group name: {os.environ['WANDB_RUN_GROUP']}")
-
     checkpoint_dir, completed_training = get_last_checkpoint(args.output_dir)
     if completed_training:
         print('Detected that training was already completed!')
@@ -635,9 +624,9 @@ def train():
         args=training_args,
         **{k:v for k,v in data_module.items() if k != 'predict_dataset'},
     )
+    
     # Callbacks
-    # if not args.full_finetune:
-    #     trainer.add_callback(SavePeftModelCallback)
+    coompute_metrics = None
     if args.do_mmlu_eval:
         if args.mmlu_dataset == 'mmlu-zs':
             mmlu_dataset = load_dataset("json", data_files={
@@ -662,50 +651,50 @@ def train():
             tokenizer("D", add_special_tokens=False).input_ids[0],
         ]
         accuracy = evaluate.load("accuracy")
-        class MMLUEvalCallback(transformers.TrainerCallback):
-            @torch.no_grad()
-            def on_evaluate(self, args, state, control, model, **kwargs):
-                data_loader = trainer.get_eval_dataloader(mmlu_dataset)
-                source_max_len = trainer.data_collator.source_max_len
-                trainer.data_collator.source_max_len = args.mmlu_source_max_len
-                trainer.model.eval()
-                preds, refs = [], []
-                loss_mmlu = 0
-                for batch in tqdm(data_loader, total=len(data_loader)):
-                    (loss, logits, labels) = trainer.prediction_step(trainer.model,batch,prediction_loss_only=False,)
-                    # There are two tokens, the output, and eos token.
-                    for i, logit in enumerate(logits):
-                        label_non_zero_id = (batch['labels'][i] != -100).nonzero()[0][0]
-                        logit_abcd = logit[label_non_zero_id-1][abcd_idx]
-                        preds.append(torch.argmax(logit_abcd).item())
-                    labels = labels[labels != IGNORE_INDEX].view(-1, 2)[:,0]
-                    refs += [abcd_idx.index(label) for label in labels.tolist()]
-                    loss_mmlu += loss.item()
-                # Extract results by subject.
-                results = {'mmlu_loss':loss_mmlu/len(data_loader)}
-                subject = mmlu_dataset['subject']
-                subjects = {s:{'refs':[], 'preds':[]} for s in set(subject)}
-                for s,p,r in zip(subject, preds, refs):
-                    subjects[s]['preds'].append(p)
-                    subjects[s]['refs'].append(r)
-                subject_scores = []
-                for subject in subjects:
-                    subject_score = accuracy.compute(
-                        references=subjects[subject]['refs'],
-                        predictions=subjects[subject]['preds']
-                    )['accuracy']
-                    results[f'mmlu_{args.mmlu_split}_accuracy_{subject}'] = subject_score
-                    subject_scores.append(subject_score)
+
+        def compute_metrics(eval_preds: EvalPrediction):
+            args = trainer.args
+            data_loader = trainer.get_eval_dataloader(mmlu_dataset)
+            source_max_len = trainer.data_collator.source_max_len
+            trainer.data_collator.source_max_len = args.mmlu_source_max_len
+            trainer.model.eval()
+            preds, refs = [], []
+            loss_mmlu = 0
+            for batch in tqdm(data_loader, total=len(data_loader)):
+                (loss, logits, labels) = trainer.prediction_step(trainer.model, batch, prediction_loss_only=False,)
+                # There are two tokens, the output, and eos token.
+                for i, logit in enumerate(logits):
+                    label_non_zero_id = (batch['labels'][i] != -100).nonzero()[0][0]
+                    logit_abcd = logit[label_non_zero_id-1][abcd_idx]
+                    preds.append(torch.argmax(logit_abcd).item())
+                labels = labels[labels != IGNORE_INDEX].view(-1, 2)[:,0]
+                refs += [abcd_idx.index(label) for label in labels.tolist()]
+                loss_mmlu += loss.item()
+            # Extract results by subject.
+            results = {'eval_mmlu_loss':loss_mmlu/len(data_loader)}
+            subject = mmlu_dataset['subject']
+            subjects = {s:{'refs':[], 'preds':[]} for s in set(subject)}
+            for s,p,r in zip(subject, preds, refs):
+                subjects[s]['preds'].append(p)
+                subjects[s]['refs'].append(r)
+            subject_scores = []
+            for subject in subjects:
+                subject_score = accuracy.compute(
+                    references=subjects[subject]['refs'],
+                    predictions=subjects[subject]['preds']
+                )['accuracy']
+                results[f'eval_mmlu_{args.mmlu_split}_accuracy_{subject}'] = subject_score
+                subject_scores.append(subject_score)
                 
-                # Average acc over all tasks?
-                results[f'mmlu_{args.mmlu_split}_accuracy'] = np.mean(subject_scores) 
-                trainer.log(results)
-                # save results locally
-                json.dump(results, open(os.path.join(args.output_dir, f'mmlu_{args.mmlu_split}_results.json'), 'w'))
-                trainer.data_collator.source_max_len = source_max_len
-
-        trainer.add_callback(MMLUEvalCallback)
-
+            # Average acc over all tasks?
+            results[f'eval_mmlu_{args.mmlu_split}_accuracy'] = np.mean(subject_scores)
+            trainer.log(results)
+            # save results locally
+            json.dump(results, open(os.path.join(args.output_dir, f'mmlu_{args.mmlu_split}_results.json'), 'w'))
+            trainer.data_collator.source_max_len = source_max_len
+            return results
+        
+    trainer.compute_metrics = compute_metrics
     all_metrics = {"run_name": args.run_name}
     
     if args.do_tune:
@@ -738,7 +727,7 @@ def train():
         direction = "min"
         tune_unit = "iter"
         max_t = 40 * 60  if "tune_unit" == "time" else 7
-        metric = f'eval_loss'
+        metric = f'train_mmlu_eval_accuracy'
         grade_period = 4 * 60  if tune_unit == "time" else 2
         time_attr = "time_total_s" if tune_unit == "time" else "training_iteration"
         
@@ -762,7 +751,8 @@ def train():
             max_failures=9999, # tolerate OOM
             direction="maximize" if direction == "max" else "minimize",
             compute_objective=partial(get_hpo_metric, metric),
-            resume=args.resume 
+            resume=args.resume,
+            callbacks=[WandbLoggerCallback(project=os.environ["WANDB_PROJECT"], group=os.environ["WANDB_RUN_GROUP"], log_config=True)]
         )
         trainer.args = _args
         best_hyperparams = best_run.hyperparameters
@@ -823,7 +813,7 @@ def train():
         # set_merged(trainer.model)
         
         logger.info("*** Evaluate ***")
-        trainer.add_callback(MMLUEvalCallback)
+        # trainer.add_callback(MMLUEvalCallback)
         metrics = trainer.evaluate(metric_key_prefix="eval")
         trainer.log_metrics("eval", metrics)
         trainer.save_metrics("eval", metrics)

@@ -82,11 +82,15 @@ class BlockdiagButterflyMultiply(torch.autograd.Function):
         assert l * r == k * q
         
         x_reshaped = x.reshape(batch_dim, k, p).transpose(0, 1)
-        out1 = torch.empty(batch_dim, k, q, device=x.device, dtype=x.dtype).transpose(0, 1) 
-        
+        out1 = torch.empty(k, batch_dim, q, device=x.device, dtype=x.dtype)
+        # out1 = torch.empty(batch_dim, k, q, device=x.device, dtype=x.dtype).transpose(0, 1)
         out1 = torch.bmm(x_reshaped, w1_bfly.transpose(-1, -2), out=out1) # (k, batch_dim, p) @ (k, p, q) -> (k, batch_dim, q)
-        out1 = out1.transpose(0, 1).reshape(batch_dim, r, l).transpose(-1, -2).contiguous().transpose(0, 1) # (batch_dim, k, q) -> (batch_dim, r, l) -> (batch_dim, l, r) -> (l, batch_dim, r)
-        out2 = torch.empty(batch_dim, l, s, device=x.device, dtype=x.dtype).transpose(0, 1)
+        # -> (batch_dim, k, q) -> (batch_dim, r, l) -> (batch_dim, l, r) -> (l, batch_dim, r)
+        # out1 = out1.transpose(0, 1).reshape(batch_dim, r, l).transpose(-1, -2).contiguous().transpose(0, 1) 
+        out1 = out1.transpose(0, 1).reshape(batch_dim, r, l).transpose(-1, -2).transpose(0, 1).contiguous()
+        
+        out2 = torch.empty(l, batch_dim, s, device=x.device, dtype=x.dtype)
+        # out2 = torch.empty(batch_dim, l, s, device=x.device, dtype=x.dtype).transpose(0, 1)
         out2 = torch.bmm(out1, w2_bfly.transpose(-1, -2), out=out2) # (l, batch_dim, r) @ (l, r, s) -> (l, batch_dim, s)
         out2 = out2.permute(1, 2, 0).reshape(*batch_shape, s * l) # (batch_dim, l, s) -> (batch_dim, s, l) -> (batch_dim, m = s * l)
         ctx.save_for_backward(x, w1_bfly, w2_bfly, out1)
@@ -109,7 +113,7 @@ class BlockdiagButterflyMultiply(torch.autograd.Function):
         if ctx.needs_input_grad[2]:
             # dw2_bfly = torch.empty(l, s, r, device=w2_bfly.device, dtype=w2_bfly.dtype)
             # dw2_bfly = torch.bmm(dout_reshaped.transpose(-1, -2), out1, out=dw2_bfly)
-            dw2_bfly = torch.bmm(dout_reshaped.transpose(-1, -2), out1.conj())
+            dw2_bfly = torch.bmm(dout_reshaped.transpose(-1, -2), out1.conj()) # (l, s, batch_dim) @ (l, batch_dim, r) -> (l, s, r)
         if ctx.needs_input_grad[1] or ctx.needs_input_grad[0]:
             dout1 = torch.empty(batch_dim, l, r, device=x.device, dtype=x.dtype).transpose(0, 1)
             dout1 = torch.bmm(dout_reshaped, w2_bfly.conj(), out=dout1)

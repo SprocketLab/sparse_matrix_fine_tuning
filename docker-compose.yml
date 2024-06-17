@@ -18,7 +18,7 @@ services:
       - CUBLAS_WORKSPACE_CONFIG=:4096:8
       # - https_proxy=http://127.0.0.1:7890/
       # - http_proxy=http://127.0.0.1:7890/
-    command: bash -c " git config --global --add safe.directory /fly && exec bash"
+    command: bash -c " git config --global --add safe.directory /fly && exec bash && chmod -R 777 /fly" 
 
     stdin_open: true
     tty: true 

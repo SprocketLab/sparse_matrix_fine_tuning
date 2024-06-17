@@ -4,7 +4,7 @@ docker compose build; docker compose up -d
 hostname > hostname.txt # to not confuse machines in wandb
 docker attach peft
 ```
-Full training configs and logs will be stored in wandb. (You can use your key or flag --use_wandb=False)
+Full training configs and logs will be stored in wandb. (You can use your key or flag --wandb=False)
 
 ## Repo guide
 Search for @Wenxuan in the comments for my code or important functions.\
@@ -32,5 +32,5 @@ Tune block size, rank, etc. in task_configs/peft_config.json.
 Or try run_glue_hf.py with default args below
 ```
 export WANDB_API_KEY="YOUR_KEY"
-python run_glue.py task_configs/monarch_roberta_glue/peft_con/cola.json --do_tune=False --use_wandb=True 
+python run_glue.py task_configs/monarch_roberta_glue/peft_con/cola.json --do_tune=False --wandb=True 
 ```

@@ -84,6 +84,7 @@ from ray.tune.schedulers import ASHAScheduler
 # Ensure reproducibility given the same hardware
 torch.use_deterministic_algorithms(True)
 torch.backends.cudnn.deterministic = True
+model = None # init later
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
 check_min_version("4.21.0.dev0")
 require_version("datasets>=1.8.0", "To fix: pip install -r examples/pytorch/text-classification/requirements.txt")
@@ -149,7 +150,7 @@ def main(config: dict = None):
     extra_args = override_config([model_args, data_args, training_args, peft_config], sys.argv[2:])
     args.use_boft = args.use_boft
     do_tune = args.do_tune
-    use_wandb = args.use_wandb
+    use_wandb = args.wandb
     adapter = args.adapter
     tune_unit = args.tune_unit
     # For grouping runs in wandb
@@ -326,16 +327,13 @@ def main(config: dict = None):
         revision=model_args.model_revision,
         use_auth_token=True if model_args.use_auth_token else None,
     )
-    
 
     # helper to init and set hyperparams for Ray Tune search
     def model_init(hyperparams: dict = None):
-        global best_hyperparams, _DTYPES_PRINTED
+        global best_hyperparams, model
         set_seed(training_args.seed)
         if hyperparams is not None:
             best_hyperparams = hyperparams
-        if training_args.fp16:
-            dtype = torch.float16
         
         # model = RobertaForSequenceClassification.from_pretrained(
         #     pretrained_model_name_or_path=model_args.model_name_or_path,
@@ -346,53 +344,49 @@ def main(config: dict = None):
         #     ignore_mismatched_sizes=model_args.ignore_mismatched_sizes,
         # )
         # EDIT
-        if "deberta" in model_args.model_name_or_path:
-            model = DebertaForSequenceClassification(
-                config
-            )
-            model.deberta = AutoModel.from_pretrained(model_args.config_name if model_args.config_name else model_args.model_name_or_path) # hacky loading of backbone pretrained; "microsoft/deberta-v3-base"
-        else: # Default to roberta
-            model = RobertaForSequenceClassification.from_pretrained(
-                        pretrained_model_name_or_path=model_args.model_name_or_path,
-                        config=config,
-                        cache_dir=model_args.cache_dir,
-                        revision=model_args.model_revision,
-                        use_auth_token=True if model_args.use_auth_token else None,
-                        ignore_mismatched_sizes=model_args.ignore_mismatched_sizes,
-            )
+        if model == None:
+            if "deberta" in model_args.model_name_or_path:
+                model = DebertaForSequenceClassification(
+                    config
+                )
+                model.deberta = AutoModel.from_pretrained(model_args.config_name if model_args.config_name else model_args.model_name_or_path) # hacky loading of backbone pretrained; "microsoft/deberta-v3-base"
+            else: # Default to roberta
+                model = RobertaForSequenceClassification.from_pretrained(
+                            pretrained_model_name_or_path=model_args.model_name_or_path,
+                            config=config,
+                            cache_dir=model_args.cache_dir,
+                            revision=model_args.model_revision,
+                            use_auth_token=True if model_args.use_auth_token else None,
+                            ignore_mismatched_sizes=model_args.ignore_mismatched_sizes,
+                )
+                
+            if torch.cuda.is_available():
+                model = model.to("cuda")    
+            # For Hyperparameter search
+            override_dict(best_hyperparams, peft_config)
+            if args.use_monarch:
+                # model.roberta.init_monarch_layers = partial(init_monarch_layers, model.roberta)
+                # model.roberta.peft_config = peft_config
+                # EDIT
+                if hasattr(model, "roberta"):
+                    model_internal = model.roberta
+                elif hasattr(model, "deberta"):
+                    model_internal = model.deberta
+                else:
+                    raise NotImplementedError
+                # model_internal.init_monarch_layers = partial(init_monarch_layers, model_internal)
+                # model_internal.peft_config = peft_config
+                init_monarch_layers(model_internal, peft_config)
+                    
+            elif args.use_lora:
+                init_lora(model, peft_config)
+                print("Using LoRA")
+                
+            elif args.use_boft:
+                peft_config["boft_dropout"] = model_args.oft_dropout
+                model = init_boft(model, peft_config)
+                print("Using BOFT")
             
-        if torch.cuda.is_available():
-            model = model.to("cuda")    
-        # For Hyperparameter search
-        override_dict(best_hyperparams, peft_config)
-        if args.use_monarch:
-            # For legacy purposes, don't init here. I ran some experiments with 
-            # modules initialized in the 1st training step, so init here instead would
-            # break the reproducibility. TODO: Try ensuring nothing breaks the random seed
-            # in between so that we can init here
-            
-            # model.roberta.init_monarch_layers = partial(init_monarch_layers, model.roberta)
-            # model.roberta.peft_config = peft_config
-            # EDIT
-            if hasattr(model, "roberta"):
-                model_internal = model.roberta
-            elif hasattr(model, "deberta"):
-                model_internal = model.deberta
-            else:
-                raise NotImplementedError
-            # model_internal.init_monarch_layers = partial(init_monarch_layers, model_internal)
-            # model_internal.peft_config = peft_config
-            init_monarch_layers(model_internal, peft_config)
-        elif args.use_lora:
-            init_lora(model, peft_config)
-            print("Using LoRA")
-        elif args.use_boft:
-            peft_config["boft_dropout"] = model_args.oft_dropout
-            model = init_boft(model, peft_config)
-            print("Using BOFT")
-        # NOTE: Ray doesn't support torch.compile, plus a bug with trainer...
-        # if torch.__version__.startswith("2") and not do_tune:
-        #     model = torch.compile(model)
         return model
     
     # Preprocessing the raw_datasets
@@ -511,7 +505,6 @@ def main(config: dict = None):
     def compute_metrics(p: EvalPrediction):
         preds = p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions
         preds = np.squeeze(preds) if is_regression else np.argmax(preds, axis=1)
-        
         if data_args.task_name is not None:
             result = metric.compute(predictions=preds, references=p.label_ids)
             if len(result) > 1:
@@ -700,6 +693,7 @@ def main(config: dict = None):
         new_lr=peft_config.get("new_lr", 1e-4),
         use_scaler=peft_config.get("scaler", False),
     )
+
     # # Training
     if training_args.do_train and not do_tune:
         checkpoint = None
@@ -709,7 +703,7 @@ def main(config: dict = None):
         if args.profile:
             ctx = profiler.profile(
                 schedule=profiler.schedule(wait=1, warmup=3, active=2, repeat=1),
-                on_trace_ready=profiler.tensorboard_trace_handler("./roberta_profile" + time.strftime("%Y%m%d-%H%M%S")),
+                on_trace_ready=profiler.tensorboard_trace_handler("./roberta_profile" + "_" + time.strftime("%Y%m%d-%H%M%S")),
                 record_shapes=True,
                 profile_memory=True,
                 with_stack=True,
@@ -741,14 +735,6 @@ def main(config: dict = None):
         else:
             trainer._load_best_model()
         override_dict(best_hyperparams, peft_config)
-        # trainer.model.roberta.init_monarch_layers() # OLD version
-        # EDIT
-        # if hasattr(trainer.model, "roberta"):
-        #     trainer_model_internal = trainer.model.roberta
-        # elif hasattr(trainer.model, "deberta"):
-        #     trainer_model_internal = trainer.model.deberta
-        # trainer_model_internal.init_monarch_layers(peft_config) 
-        # ^ monarch should already be inited
                     
         # Loop to handle MNLI double evaluation (matched, mis-matched)
         tasks = [data_args.task_name]

@@ -199,7 +199,6 @@ def finetune(
     intervention_type: str,
     max_n_train_example: int,
     max_n_eval_example: int,
-    use_wandb: bool,
     wandb_name: str,
     gradient_accumulation_steps: int,
     batch_size: int,
@@ -236,6 +235,7 @@ def finetune(
     Generic Representation Finetuning.
     """
     global tokenizer, reft_model, peft_config
+    use_wandb = kwargs.pop("wandb", True)
     
     assert task in task_config
     if data_dir is not None:
@@ -384,7 +384,7 @@ def finetune(
         run_name = args.notes + "_" + run_name
         
     # Must set env variables to carry to them ray tune workers!
-    if args.use_wandb == False:
+    if args.wandb == False:
         os.environ["WANDB_MODE"] = "offline"
     if args.resume:
         group_path = os.path.join(output_dir, "full_group.txt")
@@ -637,7 +637,7 @@ def main():
     parser.add_argument('-r', '--rank', type=int, help=8, default=8)
     parser.add_argument('-p', '--position', type=str, help='f1+l1', default='f1+l1')
     parser.add_argument('-e', '--epochs', type=int, help='1', default=1)
-    parser.add_argument('-wandb', '--use_wandb', default=True, type=eval)
+    parser.add_argument('-wandb', '--wandb', default=True, type=eval)
     parser.add_argument('-wandb_name', '--wandb_name', type=str, default="reft")
     parser.add_argument('-save_model', '--save_model', default=True, type=eval)
     parser.add_argument('-max_n_train_example', '--max_n_train_example', type=int, default=None)

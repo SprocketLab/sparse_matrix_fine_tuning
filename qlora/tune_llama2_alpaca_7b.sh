@@ -55,6 +55,6 @@ python qlora_monarch.py \
     --seed 0 \
     --hf_token=$HF_TOKEN "${FLAGS[@]}" \
     --do_mmlu_eval \
-    --mmlu_split test \
+    --mmlu_split eval \
     --save_total_limit 1 \
     --load_best_model_at_end \

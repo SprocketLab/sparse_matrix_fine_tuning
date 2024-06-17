@@ -22,13 +22,13 @@ fi
 
 
 time=$(date "+%m-%d-%H")
-python run_glue.py /fly/task_configs/boft_roberta_glue/cola.json   --time=$time --use_monarch=False --use_boft=True --project="BOFT_GLUE" "${FLAGS[@]}" &
+# python run_glue.py /fly/task_configs/boft_roberta_glue/cola.json   --time=$time --use_monarch=False --use_boft=True --project="BOFT_GLUE" "${FLAGS[@]}" &
 # wait for the previous job to occupy GPU memory to pick the correct vacant device for the next
-sleep 20; python run_glue.py /fly/task_configs/boft_roberta_glue/mrpc.json   --time=$time --use_monarch=False --use_boft=True --project="BOFT_GLUE" "${FLAGS[@]}" 
+# sleep 20; python run_glue.py /fly/task_configs/boft_roberta_glue/mrpc.json   --time=$time --use_monarch=False --use_boft=True --project="BOFT_GLUE" "${FLAGS[@]}" 
 sleep 20; python run_glue.py /fly/task_configs/boft_roberta_glue/qnli.json   --time=$time --use_monarch=False --use_boft=True --project="BOFT_GLUE" "${FLAGS[@]}" &
-sleep 20; python run_glue.py /fly/task_configs/boft_roberta_glue/rte.json    --time=$time --use_monarch=False --use_boft=True --project="BOFT_GLUE" "${FLAGS[@]}" 
+# sleep 20; python run_glue.py /fly/task_configs/boft_roberta_glue/rte.json    --time=$time --use_monarch=False --use_boft=True --project="BOFT_GLUE" "${FLAGS[@]}" 
 sleep 20; python run_glue.py /fly/task_configs/boft_roberta_glue/sst-2.json  --time=$time --use_monarch=False --use_boft=True --project="BOFT_GLUE" "${FLAGS[@]}"& 
-sleep 20; python run_glue.py /fly/task_configs/boft_roberta_glue/stsb.json   --time=$time --use_monarch=False --use_boft=True --project="BOFT_GLUE" "${FLAGS[@]}"
+# sleep 20; python run_glue.py /fly/task_configs/boft_roberta_glue/stsb.json   --time=$time --use_monarch=False --use_boft=True --project="BOFT_GLUE" "${FLAGS[@]}"
 
-sleep 20; python run_glue.py /fly/task_configs/boft_roberta_glue/qqp.json    --time=$time --use_monarch=False --use_boft=True --project="BOFT_GLUE" "${FLAGS[@]}" &
+# sleep 20; python run_glue.py /fly/task_configs/boft_roberta_glue/qqp.json    --time=$time --use_monarch=False --use_boft=True --project="BOFT_GLUE" "${FLAGS[@]}" &
 sleep 20; python run_glue.py /fly/task_configs/boft_roberta_glue/mnli.json   --time=$time --use_monarch=False --use_boft=True --project="BOFT_GLUE" "${FLAGS[@]}" 

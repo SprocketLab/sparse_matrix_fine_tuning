@@ -44,7 +44,7 @@ def parse_args():
     parser.add_argument("--use_boft", default=False, type=bool, help="Use BOFT")
     parser.add_argument("--use_lora", default=False, type=eval)
     parser.add_argument("--do_tune", default=False, type=eval, help="Whether to do Hyperparameter optimization (HPO) using ray tune.")
-    parser.add_argument("--use_wandb", default=True, type=eval, help="Use Weights & Biases for logging")
+    parser.add_argument("--wandb", default=True, type=eval, help="Use Weights & Biases for logging")
     parser.add_argument("--adapter", default=True, type=eval, help="Use lora adapter style. If false will project dense to sparse ")
     parser.add_argument("--tune_unit", default="eval_iter", help="Budget unit for HPO.", choices=["time", "eval_iter"])
     parser.add_argument("--n_trials", default=25, type=int, help="Number of trials for HPO")
@@ -61,7 +61,7 @@ def parse_args():
                                 Whether to save an extra copy in the dataset folder, which will be used by other un-tuned runs default")
     parser.add_argument("--resume", default=False, type=eval, help="Whether to resume Ray Tune from error")
     parser.add_argument("--load_group", default=False, type=eval, help="Whether to load the full group name from group dir's full_group.txt")
-    parser.add_argument("--profile", default=False, type=eval, help="Whether to profile performance")
+    parser.add_argument("--profile", action="store_true", help="Whether to profile performance")
     parser.add_argument("--disable_tqdm", default=False, type=eval, help="Disable trainer progress bar")
     args, unknown = parser.parse_known_args()
     return args
@@ -340,7 +340,8 @@ def init_boft(model,
         bias=peft_config["bias"],
     )
     model = get_peft_model(model, boft_config)
-    # model = model.base_model.model.to(peft_config["dtype"]) # remove the wrappers
+    model = model.base_model.model # remove the wrappers. NOTE without this, trainer won't return eval metrics, damn..
+    # model = model.base_model.model.to(peft_config["dtype"]) 
     # Unfreeze the classification head; pooler and classifier
     for n, p in model.named_parameters():
         n_split = n.split(".")
@@ -471,7 +472,11 @@ def watch_layers(model, max_per_module=2):
         if isinstance(module, MonarchLinear) or isinstance(module, Scaler):
             layer_name = name.split(".")[-1]
             if watch_count[(type(module), layer_name)] < max_per_module:
-                wandb.watch(module, log="parameters", log_freq=300)
+                try:
+                    wandb.watch(module, log="parameters", log_freq=300)
+                except ValueError as e:
+                    # Sometimes throws weird wandb uninitialized bug when used with Ray Tune...
+                    return 
                 watch_count[(type(module), layer_name)] += 1
 
     for (module, layer_name), count in watch_count.items():
