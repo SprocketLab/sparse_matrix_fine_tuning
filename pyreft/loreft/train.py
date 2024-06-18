@@ -172,7 +172,7 @@ def model_init(hyperparams: dict = best_hyperparams):
                 param.requires_grad = True
         
         # Monarch adaptation
-        args.monarch = args.monarch ^ args.boft
+        args.monarch = not args.boft
         if args.monarch:
             print("###### INIT MONARCH ######")
             peft_config["dtype"] = dtype
@@ -288,7 +288,7 @@ def finetune(
         
     ReftDataset = LoReftGLUEDataset if task == "glue" else LoReftSupervisedDataset 
     path = os.path.join(data_dir, train_datasets[0]) if data_dir is not None else train_datasets[0]
-    if not args.do_train:
+    if not args.do_train and not args.do_tune:
         max_n_train_example = 1
     train_dataset = ReftDataset(
         task, train_datasets[0] if task == "glue" else path, 
