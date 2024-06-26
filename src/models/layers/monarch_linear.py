@@ -8,7 +8,7 @@ from einops import rearrange
 import torch.nn.functional as F
 from src.models.layers.structured_linear import StructuredLinear
 from src.models.layers.blockdiag_butterfly_multiply import blockdiag_butterfly_multiply, single_monarch_mult
-
+import numpy as np
 # NOTE converting weights to monarch matrices
 from src.ops.blockdiag_butterfly_projection import (
     blockdiag_butterfly_project,
@@ -70,7 +70,6 @@ class Scaler(nn.Module):
         x = self.norm(x)
         return x
 
-""" @Wenxuan """
 _DEFAULT_CONFIG = {
     "nblocks": 4,
     "blk_r": 4,
@@ -109,10 +108,10 @@ class MonarchLinear(StructuredLinear):
         if self.blk_sz is None:
             self.blk_sz = int(math.ceil(self.in_features / nblocks))
         self.in_blksz = self.blk_sz
-        self.mid_blksz = self.blk_r
+        self.blk_r = self.blk_r
         # Use square blocks if testing block size trade-offs
         if peft_config["square"]:
-            self.mid_blksz = self.in_blksz
+            self.blk_r = self.in_blksz
             
         # Throw away blocks that are fully padded 
         if self.nblocks * self.in_blksz > self.in_features:
@@ -144,10 +143,10 @@ class MonarchLinear(StructuredLinear):
         
         # Init block-diagonal monarch factors 
         self.blkdiag1 = nn.Parameter(
-                torch.zeros(self.nblocks, self.mid_blksz, self.in_blksz, device=self.device) # (nblocks, r * nblocks , in_features / nblocks)
+                torch.zeros(self.nblocks, self.blk_r, self.in_blksz, device=self.device) # (nblocks, r * nblocks , in_features / nblocks)
         )  
         self.blkdiag2 = nn.Parameter(
-                torch.zeros(self.nblocks, self.out_blksz, self.mid_blksz, device=self.device) # (nblocks, out_features / nblocks, r * nblocks)
+                torch.zeros(self.nblocks, self.out_blksz, self.blk_r, device=self.device) # (nblocks, out_features / nblocks, r * nblocks)
         )
         
         # init a batch of identity matrices as a multiplicative factor
@@ -177,7 +176,10 @@ class MonarchLinear(StructuredLinear):
         else:
             self.scaler = nn.Identity()
         self.scaler.to(self.device)
-
+        
+        self.out1_buffer: torch.Tensor = None
+        self.out2_buffer: torch.Tensor = None
+        
     def merge_weights(self):
         """Merge Monarch adapters into dense weights"""
         pass
@@ -212,14 +214,28 @@ class MonarchLinear(StructuredLinear):
                 with torch.no_grad():
                     blkdiag.uniform_(-bound, bound)
         self.reset_parameters_bias()
-
-
+        
+        
+    def allocate_buffers(self, x):
+        """
+        Allocate buffers for forward pass
+        """
+        batch_shape = x.shape[:-1]
+        batch_dim = np.prod(batch_shape)
+        
+        if self.out1_buffer is None or self.out1_buffer.shape != (self.nblocks, batch_dim, self.blk_r):
+            self.out1_buffer = torch.empty(self.nblocks, batch_dim, self.blk_r, device=x.device, dtype=x.dtype)
+            
+        if self.out2_buffer is None or self.out2_buffer.shape != (self.nblocks, batch_dim, self.out_blksz):
+            self.out2_buffer = torch.empty(self.nblocks, batch_dim, self.out_blksz, device=x.device, dtype=x.dtype)
+        
     def monarch_forward(self, x):
         """
         Forward using monarch factors only
         """
+        self.allocate_buffers(x)
         output = blockdiag_butterfly_multiply(
-            self.preprocess(x), self.blkdiag1, self.blkdiag2
+            self.preprocess(x), self.blkdiag1, self.blkdiag2, self.out1_buffer, self.out2_buffer
         )
         return self.scaler(self.dropout(self.postprocess(output)))
 
