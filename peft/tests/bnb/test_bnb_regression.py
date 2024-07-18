@@ -27,7 +27,6 @@ import pytest
 import torch
 from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, BitsAndBytesConfig
 
-
 bnb = pytest.importorskip("bitsandbytes")
 
 device = torch.device("cuda")

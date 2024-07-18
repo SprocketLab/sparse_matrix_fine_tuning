@@ -203,12 +203,8 @@ def main():
     train_dataloader = DataLoader(
         train_dataset, shuffle=True, collate_fn=default_data_collator, batch_size=batch_size, pin_memory=True
     )
-    eval_dataloader = DataLoader(
-        eval_dataset, collate_fn=default_data_collator, batch_size=batch_size, pin_memory=True
-    )
-    test_dataloader = DataLoader(
-        test_dataset, collate_fn=default_data_collator, batch_size=batch_size, pin_memory=True
-    )
+    eval_dataloader = DataLoader(eval_dataset, collate_fn=default_data_collator, batch_size=batch_size, pin_memory=True)
+    test_dataloader = DataLoader(test_dataset, collate_fn=default_data_collator, batch_size=batch_size, pin_memory=True)
 
     print(next(iter(train_dataloader)))
 

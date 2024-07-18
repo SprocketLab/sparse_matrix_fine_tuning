@@ -61,8 +61,8 @@ RUN pip install tensorboard seqeval psutil sacrebleu rouge-score tensorflow_data
 # ENV NVIDIA_REQUIRE_CUDA=cuda>=10.1
 
 # added libs for PEFT
-RUN pip install scikit-learn tqdm loralib 
-RUN pip install evaluate 
+RUN pip install scikit-learn tqdm loralib
+RUN pip install evaluate
 
 # git for installing dependencies
 # tzdata to set time zone
@@ -83,7 +83,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
    tmux \
    zip \
    unzip \
-   zsh stow subversion fasd \ 
+   zsh stow subversion fasd \
    && rm -rf /var/lib/apt/lists/*  || true
    # openmpi-bin \
 
@@ -106,5 +106,6 @@ RUN pip install ray==2.7
 #     echo 'export PATH=$CONDA_DIR/bin:$PATH' > /etc/profile.d/conda.sh && \
 #     /bin/bash /tmp/miniconda.sh -b -p $CONDA_DIR && \
 #     rm -rf /tmp/*
+RUN pip install pre-commit
 Run pip install --upgrade peft
 RUN chmod -R 777 .

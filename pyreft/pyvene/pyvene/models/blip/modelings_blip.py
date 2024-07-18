@@ -1,8 +1,8 @@
+from typing import Dict, Optional, Tuple, Union
+
 import torch
 import torch.nn as nn
-from transformers import BlipForQuestionAnswering, BlipConfig
-from transformers.utils import ModelOutput
-from typing import Optional, Union, Tuple, Dict
+from transformers import BlipForQuestionAnswering
 
 
 class BlipWrapper(nn.Module):
@@ -30,16 +30,8 @@ class BlipWrapper(nn.Module):
         return_dict: Optional[bool] = None,
     ) -> Union[Tuple, Dict]:
         return_dict = return_dict if return_dict is not None else self.use_return_dict
-        output_attentions = (
-            output_attentions
-            if output_attentions is not None
-            else self.output_attentions
-        )
-        output_hidden_states = (
-            output_hidden_states
-            if output_hidden_states is not None
-            else self.output_hidden_states
-        )
+        output_attentions = output_attentions if output_attentions is not None else self.output_attentions
+        output_hidden_states = output_hidden_states if output_hidden_states is not None else self.output_hidden_states
 
         vision_outputs = self.model_vis(
             pixel_values=pixel_values,
@@ -60,9 +52,7 @@ class BlipWrapper(nn.Module):
             output_hidden_states=True,
         )
 
-        question_embeds_w = (
-            question_embeds[0] if not return_dict else question_embeds.last_hidden_state
-        )
+        question_embeds_w = question_embeds[0] if not return_dict else question_embeds.last_hidden_state
 
         bos_ids = torch.full(
             (question_embeds_w.size(0), 1),

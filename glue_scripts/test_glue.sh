@@ -2,12 +2,12 @@
 DEVICE_ID=0
 if [ "$1" != "" ]; then
     DEVICE_ID="$1"
-fi  
+fi
 echo "Using device $DEVICE_ID."
 
 # Set the CUDA_VISIBLE_DEVICES environment variable
 export CUDA_VISIBLE_DEVICES="$DEVICE_ID"
-python run_glue.py task_configs/monarch_roberta_glue/peft_con/cola.json --do_train=False --wandb=False --resume_from_checkpoint=True 
+python run_glue.py task_configs/monarch_roberta_glue/peft_con/cola.json --do_train=False --wandb=False --resume_from_checkpoint=True
 python run_glue.py task_configs/monarch_roberta_glue/peft_con/mrpc.json --do_train=False --wandb=False --resume_from_checkpoint=True
 python run_glue.py task_configs/monarch_roberta_glue/peft_con/qnli.json --do_train=False --wandb=False --resume_from_checkpoint=True
 python run_glue.py task_configs/monarch_roberta_glue/peft_con/rte.json  --do_train=False --wandb=False --resume_from_checkpoint=True

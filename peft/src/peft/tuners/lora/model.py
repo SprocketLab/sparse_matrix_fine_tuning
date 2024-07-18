@@ -44,7 +44,13 @@ from peft.utils import (
     get_peft_model_state_dict,
     get_quantization_config,
 )
-from peft.utils.merge_utils import dare_linear, dare_ties, magnitude_prune, task_arithmetic, ties
+from peft.utils.merge_utils import (
+    dare_linear,
+    dare_ties,
+    magnitude_prune,
+    task_arithmetic,
+    ties,
+)
 
 from .aqlm import dispatch_aqlm
 from .awq import dispatch_awq
@@ -254,11 +260,7 @@ class LoraModel(BaseTuner):
         for name, module in new_module.named_modules():
             if (self.prefix in name) or ("ranknum" in name):
                 weight = (
-                    child.qweight
-                    if hasattr(child, "qweight")
-                    else child.W_q
-                    if hasattr(child, "W_q")
-                    else child.weight
+                    child.qweight if hasattr(child, "qweight") else child.W_q if hasattr(child, "W_q") else child.weight
                 )
                 module.to(weight.device)
 

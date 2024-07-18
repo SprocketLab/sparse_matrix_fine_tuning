@@ -52,7 +52,6 @@ from peft.utils import ModulesToSaveWrapper, infer_device
 from .testing_common import PeftCommonTester
 from .testing_utils import get_state_dict, require_torch_gpu
 
-
 # MLP is a vanilla FF network with only linear layers
 # EmbConv1D has an embedding and a Conv1D layer
 # Conv2D has a Conv2D layer
@@ -1412,9 +1411,7 @@ class PeftCustomModelTester(unittest.TestCase, PeftCommonTester):
         torch.manual_seed(0)
         base_model = model_cls().eval().to(self.torch_device)
         torch.manual_seed(0)
-        peft_model_custom2 = (
-            get_peft_model(base_model, config0, adapter_name="other-name").eval().to(self.torch_device)
-        )
+        peft_model_custom2 = get_peft_model(base_model, config0, adapter_name="other-name").eval().to(self.torch_device)
         output_custom2 = peft_model_custom2(input)
         sd_custom2 = peft_model_custom2.state_dict()
 

@@ -1,9 +1,11 @@
-import random, torch, types
-import numpy as np
+import types
+
+import torch
 from torch import nn
+
+from .constants import *
 from .intervenable_modelcard import *
 from .interventions import *
-from .constants import *
 
 
 def get_internal_model_type(model):
@@ -22,11 +24,7 @@ def is_stateless(model):
 
 def is_gru(model):
     """Determine if this is a transformer model."""
-    if (
-        type(model) == GRUModel
-        or type(model) == GRULMHeadModel
-        or type(model) == GRUForClassification
-    ):
+    if type(model) == GRUModel or type(model) == GRULMHeadModel or type(model) == GRUForClassification:
         return True
     return False
 
@@ -74,9 +72,7 @@ def remove_forward_hooks(main_module: nn.Module):
 
         # Remove pre-forward hooks
         if hasattr(submodule, "_forward_pre_hooks"):
-            pre_hooks = list(
-                submodule._forward_pre_hooks.keys()
-            )  # Get a list of pre-hook IDs
+            pre_hooks = list(submodule._forward_pre_hooks.keys())  # Get a list of pre-hook IDs
             for pre_hook_id in pre_hooks:
                 submodule._forward_pre_hooks.pop(pre_hook_id)
 
@@ -86,9 +82,7 @@ def getattr_for_torch_module(model, parameter_name):
     current_module = model
     for param in parameter_name.split("."):
         if "[" in param:
-            current_module = getattr(current_module, param.split("[")[0])[
-                int(param.split("[")[-1].strip("]"))
-            ]
+            current_module = getattr(current_module, param.split("[")[0])[int(param.split("[")[-1].strip("]"))]
         else:
             current_module = getattr(current_module, param)
     return current_module
@@ -106,9 +100,7 @@ def get_dimension_by_component(model_type, model_config, component) -> int:
             dimension = int(proposal)
         elif "*" in proposal:
             # often constant multiplier with MLP
-            dimension = getattr_for_torch_module(
-                model_config, proposal.split("*")[0]
-            ) * int(proposal.split("*")[1])
+            dimension = getattr_for_torch_module(model_config, proposal.split("*")[0]) * int(proposal.split("*")[1])
         elif "/" in proposal:
             # often split by head number
             if proposal.split("/")[0].isnumeric():
@@ -132,13 +124,10 @@ def get_dimension_by_component(model_type, model_config, component) -> int:
 def get_module_hook(model, representation) -> nn.Module:
     """Render the intervening module with a hook."""
     if (
-        get_internal_model_type(model) in type_to_module_mapping and
-        representation.component
-        in type_to_module_mapping[get_internal_model_type(model)]
+        get_internal_model_type(model) in type_to_module_mapping
+        and representation.component in type_to_module_mapping[get_internal_model_type(model)]
     ):
-        type_info = type_to_module_mapping[get_internal_model_type(model)][
-            representation.component
-        ]
+        type_info = type_to_module_mapping[get_internal_model_type(model)][representation.component]
         parameter_name = type_info[0]
         hook_type = type_info[1]
         if "%s" in parameter_name and representation.moe_key is None:
@@ -227,8 +216,7 @@ def output_to_subcomponent(output, component, model_type, model_config):
     :param model_config: Hugging Face Model Config
     """
     subcomponent = output
-    if model_type in type_to_module_mapping and \
-        component in type_to_module_mapping[model_type]:
+    if model_type in type_to_module_mapping and component in type_to_module_mapping[model_type]:
         split_last_dim_by = type_to_module_mapping[model_type][component][2:]
         if len(split_last_dim_by) != 0 and len(split_last_dim_by) > 2:
             raise ValueError(f"Unsupported {split_last_dim_by}.")
@@ -268,32 +256,30 @@ def gather_neurons(tensor_input, unit, unit_locations_as_list):
         head_tensor_output = torch.gather(
             tensor_input,
             1,
-            head_unit_locations.reshape(
-                *head_unit_locations.shape, *(1,) * (len(tensor_input.shape) - 2)
-            ).expand(-1, -1, *tensor_input.shape[2:]),
+            head_unit_locations.reshape(*head_unit_locations.shape, *(1,) * (len(tensor_input.shape) - 2)).expand(
+                -1, -1, *tensor_input.shape[2:]
+            ),
         )  # b, h, s, d
         d = head_tensor_output.shape[1]
         pos_tensor_input = bhsd_to_bs_hd(head_tensor_output)
         pos_tensor_output = torch.gather(
             pos_tensor_input,
             1,
-            pos_unit_locations.reshape(
-                *pos_unit_locations.shape, *(1,) * (len(pos_tensor_input.shape) - 2)
-            ).expand(-1, -1, *pos_tensor_input.shape[2:]),
+            pos_unit_locations.reshape(*pos_unit_locations.shape, *(1,) * (len(pos_tensor_input.shape) - 2)).expand(
+                -1, -1, *pos_tensor_input.shape[2:]
+            ),
         )  # b, num_unit (pos), num_unit (h)*d
         tensor_output = bs_hd_to_bhsd(pos_tensor_output, d)
 
         return tensor_output  # b, num_unit (h), num_unit (pos), d
     else:
-        unit_locations = torch.tensor(
-            unit_locations_as_list, device=tensor_input.device
-        )
+        unit_locations = torch.tensor(unit_locations_as_list, device=tensor_input.device)
         tensor_output = torch.gather(
             tensor_input,
             1,
-            unit_locations.reshape(
-                *unit_locations.shape, *(1,) * (len(tensor_input.shape) - 2)
-            ).expand(-1, -1, *tensor_input.shape[2:]),
+            unit_locations.reshape(*unit_locations.shape, *(1,) * (len(tensor_input.shape) - 2)).expand(
+                -1, -1, *tensor_input.shape[2:]
+            ),
         )
         return tensor_output
 
@@ -337,9 +323,7 @@ def scatter_neurons(
             torch.tensor(unit_locations_as_list[1], device=tensor_input.device),
         )
     else:
-        unit_locations = torch.tensor(
-            unit_locations_as_list, device=tensor_input.device
-        )
+        unit_locations = torch.tensor(unit_locations_as_list, device=tensor_input.device)
 
     # if tensor is splitted, we need to get the start and end indices
     meta_component = output_to_subcomponent(
@@ -363,13 +347,9 @@ def scatter_neurons(
     elif unit in {"pos"}:
         if use_fast:
             # maybe this is all redundant, but maybe faster slightly?
-            tensor_input[
-                _batch_idx, unit_locations[0], start_index:end_index
-            ] = replacing_tensor_input
+            tensor_input[_batch_idx, unit_locations[0], start_index:end_index] = replacing_tensor_input
         else:
-            tensor_input[
-                _batch_idx, unit_locations, start_index:end_index
-            ] = replacing_tensor_input
+            tensor_input[_batch_idx, unit_locations, start_index:end_index] = replacing_tensor_input
         return tensor_input
     elif unit in {"h", "h.pos"}:
         # head-based scattering is only special for transformer-based model
@@ -394,13 +374,11 @@ def scatter_neurons(
         if "." in unit:
             # cannot advance indexing on two columns, thus a single for loop is unavoidable.
             for i in range(unit_locations[0].shape[-1]):
-                tensor_permute[
-                    _batch_idx, unit_locations[0][:, [i]], _slice_idx, unit_locations[1]
-                ] = replacing_tensor_input[:, i]
+                tensor_permute[_batch_idx, unit_locations[0][:, [i]], _slice_idx, unit_locations[1]] = (
+                    replacing_tensor_input[:, i]
+                )
         else:
-            tensor_permute[
-                _batch_idx, unit_locations, _slice_idx
-            ] = replacing_tensor_input
+            tensor_permute[_batch_idx, unit_locations, _slice_idx] = replacing_tensor_input
         # permute back and reshape
         tensor_output = tensor_permute.permute(0, 3, 2, 1, 4)  # b_s, s, -1, num_h, d
         tensor_output = tensor_output.view(old_shape)  # b_s, s, -1*num_h*d
@@ -409,18 +387,14 @@ def scatter_neurons(
         if "." in unit:
             # cannot advance indexing on two columns, thus a single for loop is unavoidable.
             for i in range(unit_locations[0].shape[-1]):
-                tensor_input[
-                    _batch_idx, unit_locations[0][:, [i]], unit_locations[1]
-                ] = replacing_tensor_input[:, i]
+                tensor_input[_batch_idx, unit_locations[0][:, [i]], unit_locations[1]] = replacing_tensor_input[:, i]
         else:
             tensor_input[_batch_idx, unit_locations] = replacing_tensor_input
         return tensor_input
     assert False
 
 
-def do_intervention(
-    base_representation, source_representation, intervention, subspaces
-):
+def do_intervention(base_representation, source_representation, intervention, subspaces):
     """Do the actual intervention."""
 
     if isinstance(intervention, types.FunctionType):
@@ -433,9 +407,11 @@ def do_intervention(
 
     # flatten
     original_base_shape = base_representation.shape
-    if len(original_base_shape) == 2 or (
-        isinstance(intervention, LocalistRepresentationIntervention)
-    ) or intervention.keep_last_dim:
+    if (
+        len(original_base_shape) == 2
+        or (isinstance(intervention, LocalistRepresentationIntervention))
+        or intervention.keep_last_dim
+    ):
         # no pos dimension, e.g., gru, or opt-out concate last two dims
         base_representation_f = base_representation
         source_representation_f = source_representation
@@ -449,17 +425,17 @@ def do_intervention(
         source_representation_f = bhsd_to_bs_hd(source_representation)
     else:
         assert False  # what's going on?
-    
-    intervened_representation = intervention(
-        base_representation_f, source_representation_f, subspaces
-    )
 
-    post_d = intervened_representation.shape[-1]
+    intervened_representation = intervention(base_representation_f, source_representation_f, subspaces)
+
+    intervened_representation.shape[-1]
 
     # unflatten
-    if len(original_base_shape) == 2 or isinstance(
-        intervention, LocalistRepresentationIntervention
-    ) or intervention.keep_last_dim:
+    if (
+        len(original_base_shape) == 2
+        or isinstance(intervention, LocalistRepresentationIntervention)
+        or intervention.keep_last_dim
+    ):
         # no pos dimension, e.g., gru or opt-out concate last two dims
         pass
     elif len(original_base_shape) == 3:

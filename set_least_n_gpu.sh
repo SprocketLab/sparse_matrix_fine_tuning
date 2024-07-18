@@ -1,5 +1,5 @@
 # To avoid only modifying the sub-shell spawned:
-# source set_least_n_gpu.sh 4 
+# source set_least_n_gpu.sh 4
 # take one command line argument n (number of GPUs to use)
 n=8
 if [ "$1" != "" ]; then

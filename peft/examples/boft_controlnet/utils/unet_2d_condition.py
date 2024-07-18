@@ -19,7 +19,6 @@ import torch
 from diffusers.models import UNet2DConditionModel
 from diffusers.utils import BaseOutput, logging
 
-
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
 
 

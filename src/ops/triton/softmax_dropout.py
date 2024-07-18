@@ -1,18 +1,14 @@
-from typing import Optional
 import logging
+from typing import Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import triton
+from einops import rearrange, repeat
 from torch.cuda.amp import custom_bwd, custom_fwd
 
-from einops import rearrange, repeat
-
-import triton
-import triton.language as tl
-
 from src.ops.triton.k_softmax import _softmax, _softmax_backward
-from src.ops.triton.k_softmax_dropout import _softmax_dropout_backward
 from src.ops.triton.softmax import softmax
 
 FAST_MHA_AVAILABLE = True
@@ -20,8 +16,9 @@ try:
     from fast_multihead_attn import additive_mask_softmax_dropout_backward
 except ImportError:
     from src.utils.utils import get_logger
+
     logger = get_logger()
-    logger.info('fast_multihead_attn from apex is not installed.')
+    logger.info("fast_multihead_attn from apex is not installed.")
     FAST_MHA_AVAILABLE = False
 
 
@@ -50,9 +47,7 @@ class _softmax_dropout_triton(torch.autograd.Function):
             x_ = x_.contiguous()
 
         y = torch.empty_like(x_)
-        assert (
-            y.stride(2) == 1 and x_.stride(2) == 1
-        ), f"{x.shape} - {x_.shape} - {x_.stride()}"
+        assert y.stride(2) == 1 and x_.stride(2) == 1, f"{x.shape} - {x_.shape} - {x_.stride()}"
 
         # SPMD launch grid
         grid_2d = (
@@ -67,8 +62,8 @@ class _softmax_dropout_triton(torch.autograd.Function):
             mask_type = None
         else:
             assert mask.dtype == x.dtype, "An additive mask is requested"
-            if mask_type == 'bk':
-                mask = repeat(mask, 'b 1 1 s -> b h 1 s', h=x_.shape[0] // mask.shape[0])
+            if mask_type == "bk":
+                mask = repeat(mask, "b 1 1 s -> b h 1 s", h=x_.shape[0] // mask.shape[0])
             mask = mask.flatten(0, -2).contiguous()
 
         _softmax[grid_2d](
@@ -154,19 +149,14 @@ class _softmax_dropout_triton(torch.autograd.Function):
         # grad_in, grad_out_, y = map(lambda x: x.contiguous(), [grad_in, grad_out_, y])
         grad_out_, y = map(lambda x: x.contiguous(), [grad_out_, y])
 
-        if (FAST_MHA_AVAILABLE and grad_out.dtype == torch.float16 and not ctx.causal
-            and ctx.mask_type == 'bk'):
+        if FAST_MHA_AVAILABLE and grad_out.dtype == torch.float16 and not ctx.causal and ctx.mask_type == "bk":
             # fast_multihead_attn from apex only works for fp16 for now.
             # Apex overwrites grad_output, i.e. in-place.
             # The first two flags (use_mask, heads) aren't used at all, can be set to whatever.
-            grad_in = additive_mask_softmax_dropout_backward(True, 1, grad_out_, y, dropout_mask,
-                                                             ctx.dropout_prob)
+            grad_in = additive_mask_softmax_dropout_backward(True, 1, grad_out_, y, dropout_mask, ctx.dropout_prob)
         else:
-            dropout_grads = torch._masked_scale(grad_out_, dropout_mask,
-                                                1.0 / (1.0 - ctx.dropout_prob))
-            grad_in = torch.empty_like(
-                y
-            )  # torch.zeros is measurably slower, we'll zero y in the kernel
+            dropout_grads = torch._masked_scale(grad_out_, dropout_mask, 1.0 / (1.0 - ctx.dropout_prob))
+            grad_in = torch.empty_like(y)  # torch.zeros is measurably slower, we'll zero y in the kernel
 
             # fmt: off
             _softmax_backward[grid_2d](
@@ -184,8 +174,7 @@ class _softmax_dropout_triton(torch.autograd.Function):
 
 
 def softmax_dropout(
-        x: torch.Tensor, p: float, mask: Optional[torch.Tensor] = None, causal: bool = False,
-        mask_type: str = 'qk'
+    x: torch.Tensor, p: float, mask: Optional[torch.Tensor] = None, causal: bool = False, mask_type: str = "qk"
 ) -> torch.Tensor:
     if p == 0.0:
         return softmax(x, mask=mask, mask_type=mask_type)
@@ -194,8 +183,7 @@ def softmax_dropout(
 
 
 def _softmax_dropout_dispatch(
-        x: torch.Tensor, p: float, mask: Optional[torch.Tensor], causal: bool = False,
-        mask_type: str = 'qk'
+    x: torch.Tensor, p: float, mask: Optional[torch.Tensor], causal: bool = False, mask_type: str = "qk"
 ) -> torch.Tensor:
     # Triton is used if
     # - CUDA
@@ -219,10 +207,10 @@ def _softmax_dropout_dispatch(
 
     if mask is not None:
         mask = mask.to(dtype=x.dtype)
-        if mask_type == 'qk':
+        if mask_type == "qk":
             x = x + mask
-        elif mask_type == 'bk':
-            x = x + rearrange(mask, '... k -> ... 1 k')
+        elif mask_type == "bk":
+            x = x + rearrange(mask, "... k -> ... 1 k")
 
     if causal:
         x = x + torch.triu(torch.full_like(x, float("-inf")), diagonal=1)
@@ -235,16 +223,17 @@ class SoftmaxDropout(nn.Module):
         super().__init__()
         self.p = p
 
-    def forward(self, x: torch.Tensor, mask: Optional[torch.Tensor] = None, causal: bool = False,
-                mask_type: str = 'qk') -> torch.Tensor:
+    def forward(
+        self, x: torch.Tensor, mask: Optional[torch.Tensor] = None, causal: bool = False, mask_type: str = "qk"
+    ) -> torch.Tensor:
         p = self.p if self.training else 0.0
         if not x.is_cuda:
             if mask is not None:
                 mask = mask.to(dtype=x.dtype)
-                if mask_type == 'qk':
+                if mask_type == "qk":
                     x = x + mask
-                elif mask_type == 'bk':
-                    x = x + rearrange(mask, '... k -> ... 1 k')
+                elif mask_type == "bk":
+                    x = x + rearrange(mask, "... k -> ... 1 k")
             if causal:
                 x = x + torch.triu(torch.full_like(x, float("-inf")), diagonal=1)
             return F.dropout(F.softmax(x, dim=-1, dtype=x.dtype), self.p)

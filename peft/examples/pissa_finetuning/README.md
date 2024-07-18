@@ -69,8 +69,8 @@ python preprocess.py \
 The main advantage of PiSSA is concentrated during the training phase. For a trained PiSSA adapter, we recommend converting it equivalently to the LoRA adapter for using and sharing.
 ```python
 # The fine-tuned matrices $A$ and $B$ in PiSSA adapter is saved and should be combined with the residual model.
-peft_model.save_pretrained(output_dir) 
-# Given the matrices $A_0$ and $B_0$, initialized by PiSSA and untrained, and the trained matrices $A$ and $B$, 
+peft_model.save_pretrained(output_dir)
+# Given the matrices $A_0$ and $B_0$, initialized by PiSSA and untrained, and the trained matrices $A$ and $B$,
 # we can convert these to LoRA by setting $\Delta W = A \times B - A_0 \times B_0 = [A \mid A_0] \times [B \mid -B_0]^T = A'B'$.
 peft_model.save_pretrained(output_dir, convert_pissa_to_lora="pissa_init")
 

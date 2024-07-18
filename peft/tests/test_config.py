@@ -40,7 +40,6 @@ from peft import (
     VeraConfig,
 )
 
-
 PEFT_MODELS_TO_TEST = [("lewtun/tiny-random-OPTForCausalLM-delta", "v1")]
 
 ALL_CONFIG_CLASSES = (

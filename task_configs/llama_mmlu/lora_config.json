@@ -1,0 +1,10 @@
+{
+    "r": 32,
+    "lora_alpha": 64,
+    "init_lora_weights": "gaussian",
+    "target_modules": [
+        "q_proj",
+        "v_proj",
+        "k_proj"
+    ]
+}

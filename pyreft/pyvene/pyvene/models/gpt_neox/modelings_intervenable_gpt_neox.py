@@ -8,9 +8,7 @@ config the dimensions of intervention based on model config
 defined in the huggingface library.
 """
 
-
 from ..constants import *
-
 
 """gpt_neox base model"""
 gpt_neox_type_to_module_mapping = {
@@ -66,7 +64,7 @@ gpt_neox_lm_type_to_dimension_mapping = gpt_neox_type_to_dimension_mapping
 
 def create_gpt_neox(name="EleutherAI/pythia-70m", cache_dir=None):
     """Creates a GPT2 model, config, and tokenizer from the given name and revision"""
-    from transformers import GPTNeoXForCausalLM, AutoTokenizer, GPTNeoXConfig
+    from transformers import AutoTokenizer, GPTNeoXConfig, GPTNeoXForCausalLM
 
     config = GPTNeoXConfig.from_pretrained(name)
     tokenizer = AutoTokenizer.from_pretrained(name)

@@ -56,18 +56,14 @@ blip_itm_type_to_dimension_mapping = {
     "mlp_activation": ("projection_dim",),
     "mlp_output": ("image_text_hidden_size",),
     "mlp_input": ("image_text_hidden_size",),
-    "attention_value_output": (
-        "image_text_hidden_size/text_config.num_attention_heads",
-    ),
+    "attention_value_output": ("image_text_hidden_size/text_config.num_attention_heads",),
     "attention_output": ("image_text_hidden_size",),
     "attention_input": ("image_text_hidden_size",),
-    "cross_attention_value_output": (
-        "image_text_hidden_size/text_config.num_attention_heads",
-    ),
+    "cross_attention_value_output": ("image_text_hidden_size/text_config.num_attention_heads",),
     "cross_attention_output": ("image_text_hidden_size",),
     "cross_attention_input": ("image_text_hidden_size",),
     "itm_input": ("image_text_hidden_size",),
-    "itm_output": (2,), # TODO: not sure how to specify this dim as it's not an attr in BlipConfig
+    "itm_output": (2,),  # TODO: not sure how to specify this dim as it's not an attr in BlipConfig
 }
 
 
@@ -75,7 +71,7 @@ blip_itm_type_to_dimension_mapping = {
 blip_itm_wrapper_type_to_module_mapping = {}
 for k, v in blip_itm_type_to_module_mapping.items():
     blip_itm_wrapper_type_to_module_mapping[k] = (
-        v[0].replace("text_encoder", "model_text_enc"), # NOTE: don't fully understand why we do this
+        v[0].replace("text_encoder", "model_text_enc"),  # NOTE: don't fully understand why we do this
         v[1],
     )
 
@@ -85,12 +81,10 @@ blip_itm_wrapper_type_to_dimension_mapping = blip_itm_type_to_dimension_mapping
 
 def create_blip_itm(name="Salesforce/blip-itm-base-coco", cache_dir=None):
     """Creates a BLIP ITM model, config, and tokenizer from the given name and revision"""
-    from transformers import BlipConfig, BlipProcessor, BlipForImageTextRetrieval
+    from transformers import BlipConfig, BlipForImageTextRetrieval, BlipProcessor
 
     config = BlipConfig.from_pretrained(name)
     processor = BlipProcessor.from_pretrained(name)
-    blip = BlipForImageTextRetrieval.from_pretrained(
-        name, config=config, cache_dir=cache_dir
-    )
+    blip = BlipForImageTextRetrieval.from_pretrained(name, config=config, cache_dir=cache_dir)
     print("loaded model")
     return config, processor, blip

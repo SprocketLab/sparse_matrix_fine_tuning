@@ -25,7 +25,6 @@ from peft.utils.other import transpose
 
 from .layer import LoraLayer
 
-
 if is_hqq_available():
     from hqq.core.quantize import HQQLinear
 

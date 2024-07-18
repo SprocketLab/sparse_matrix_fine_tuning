@@ -1,16 +1,15 @@
-# Load miscelaneous stuff 
-from transformers import (
-    TrainingArguments,
-)
-from transformers.trainer_utils import get_last_checkpoint
-import json
-import transformers
-import datasets
-from logging import Logger
-import os, sys
-import logging 
+# Load miscelaneous stuff
+import logging
+import os
+import sys
 from dataclasses import dataclass, field
+from logging import Logger
 from typing import Optional
+
+import datasets
+import transformers
+from transformers import TrainingArguments
+from transformers.trainer_utils import get_last_checkpoint
 
 # GLUE tasks mapping
 task_to_keys = {
@@ -30,7 +29,7 @@ def setup_logging_ckpt(training_args: TrainingArguments, logger: Logger, do_tune
     """
     Look at the funtion name man
     """
-    
+
     logging.basicConfig(
         format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
         datefmt="%m/%d/%Y %H:%M:%S",
@@ -42,10 +41,10 @@ def setup_logging_ckpt(training_args: TrainingArguments, logger: Logger, do_tune
     transformers.utils.logging.set_verbosity(log_level)
     transformers.utils.logging.enable_default_handler()
     transformers.utils.logging.enable_explicit_format()
-    
+
     # NOTE: This seem to be blocking wandb upload
     # if do_tune:
-    #     # Set Ray Tune object spilling (memory offloading) 
+    #     # Set Ray Tune object spilling (memory offloading)
     #     ray.init(
     #         _system_config={
     #             # Allow spilling until the local disk is 99% utilized.
@@ -62,7 +61,7 @@ def setup_logging_ckpt(training_args: TrainingArguments, logger: Logger, do_tune
     #             )
     #         },
     #     )
-    
+
     # Log on each process the small summary:
     logger.warning(
         f"Process rank: {training_args.local_rank}, device: {training_args.device}, n_gpu: {training_args.n_gpu}"
@@ -186,6 +185,7 @@ class ModelArguments:
     """
     Arguments pertaining to which model/config/tokenizer we are going to fine-tune from.
     """
+
     model_name_or_path: str = field(
         metadata={"help": "Path to pretrained model or model identifier from huggingface.co/models"}
     )
@@ -223,5 +223,3 @@ class ModelArguments:
     oft_dropout: float = field(
         default=0.1,
     )
-
-    

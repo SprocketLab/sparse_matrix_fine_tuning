@@ -8,10 +8,9 @@ config the dimensions of intervention based on model config
 defined in the huggingface library.
 """
 
-
 import torch
-from ..constants import *
 
+from ..constants import *
 
 mistral_type_to_module_mapping = {
     "block_input": ("layers[%s]", CONST_INPUT_HOOK),
@@ -60,11 +59,9 @@ for k, v in mistral_type_to_module_mapping.items():
 mistral_lm_type_to_dimension_mapping = mistral_type_to_dimension_mapping
 
 
-def create_mistral(
-    name="mistralai/Mistral-7B-v0.1", cache_dir=None
-):
+def create_mistral(name="mistralai/Mistral-7B-v0.1", cache_dir=None):
     """Creates a Mistral Causal LM model, config, and tokenizer from the given name and revision"""
-    from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
+    from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
 
     config = AutoConfig.from_pretrained(name, cache_dir=cache_dir)
     tokenizer = AutoTokenizer.from_pretrained(name, cache_dir=cache_dir)

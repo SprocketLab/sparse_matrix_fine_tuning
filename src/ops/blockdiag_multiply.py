@@ -1,11 +1,6 @@
 import numpy as np
-
 import torch
-from torch.nn import functional as F
-
 from einops import rearrange
-
-from src.ops.low_rank import low_rank_project
 
 
 def blockdiag_weight_to_dense_weight(weight):
@@ -31,13 +26,11 @@ def blockdiag_multiply_reference(x, weight):
     nblocks, q, p = weight.shape
     assert nblocks * p == n
 
-    x_reshaped = rearrange(x, '... (nblocks p) -> ... nblocks p', nblocks=nblocks)
-    return rearrange(torch.einsum('...kp, kqp -> ...kq', x_reshaped, weight),
-                     '... nblocks q -> ... (nblocks q)')
+    x_reshaped = rearrange(x, "... (nblocks p) -> ... nblocks p", nblocks=nblocks)
+    return rearrange(torch.einsum("...kp, kqp -> ...kq", x_reshaped, weight), "... nblocks q -> ... (nblocks q)")
 
 
 class BlockdiagMultiply(torch.autograd.Function):
-
     """This is a faster implementation, with careful memory copies for the fastest
     bmm performance.
     The backward pass is also written manually with careful memory copies.
@@ -73,8 +66,9 @@ class BlockdiagMultiply(torch.autograd.Function):
         dout_reshaped = dout.reshape(batch_dim, nblocks, q).transpose(0, 1)
         if ctx.needs_input_grad[0]:
             dx = torch.empty(batch_dim, nblocks, p, device=x.device, dtype=x.dtype)
-            dx = torch.bmm(dout_reshaped, weight.conj(),
-                           out=dx.transpose(0, 1)).transpose(0, 1).reshape(*batch_shape, n)
+            dx = (
+                torch.bmm(dout_reshaped, weight.conj(), out=dx.transpose(0, 1)).transpose(0, 1).reshape(*batch_shape, n)
+            )
         if ctx.needs_input_grad[1]:
             x_reshaped = x.reshape(batch_dim, nblocks, p).transpose(0, 1)
             dweight = torch.bmm(dout_reshaped.transpose(-1, -2), x_reshaped.conj())

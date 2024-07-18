@@ -45,7 +45,6 @@ from .constants import (
     starcoder_model_postprocess_past_key_value,
 )
 
-
 mlu_available = False
 if version.parse(accelerate.__version__) >= version.parse("0.29.0"):
     from accelerate.utils import is_mlu_available
@@ -411,7 +410,11 @@ def fsdp_auto_wrap_policy(model):
         get_module_class_from_name = FullyShardedDataParallelPlugin.get_module_class_from_name
     else:
         from accelerate.utils.dataclasses import get_module_class_from_name
-    from torch.distributed.fsdp.wrap import _or_policy, lambda_auto_wrap_policy, transformer_auto_wrap_policy
+    from torch.distributed.fsdp.wrap import (
+        _or_policy,
+        lambda_auto_wrap_policy,
+        transformer_auto_wrap_policy,
+    )
 
     from ..tuners import PrefixEncoder, PromptEmbedding, PromptEncoder
 

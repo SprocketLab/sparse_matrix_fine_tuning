@@ -19,7 +19,6 @@ from .gptq import QuantLinear
 from .layer import Conv2d, Embedding, Linear, LoraLayer
 from .model import LoraModel
 
-
 __all__ = ["LoraConfig", "LoftQConfig", "Conv2d", "Embedding", "LoraLayer", "Linear", "LoraModel", "QuantLinear"]
 
 

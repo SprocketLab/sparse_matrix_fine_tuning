@@ -1,15 +1,14 @@
 """
 Basic Utils
 """
-import os
-import copy
-import random
+
 import importlib
-import torch
+import os
+import random
 
-from torch import nn
 import numpy as np
-
+import torch
+from torch import nn
 
 lsm = nn.LogSoftmax(dim=2)
 sm = nn.Softmax(dim=2)
@@ -63,9 +62,7 @@ def set_seed(seed: int):
 
 def sigmoid_boundary(_input, boundary_x, boundary_y, temperature):
     """Generate sigmoid mask"""
-    return torch.sigmoid((_input - boundary_x) / temperature) * torch.sigmoid(
-        (boundary_y - _input) / temperature
-    )
+    return torch.sigmoid((_input - boundary_x) / temperature) * torch.sigmoid((boundary_y - _input) / temperature)
 
 
 def harmonic_sigmoid_boundary(_input, boundary_x, boundary_y, temperature):
@@ -75,14 +72,7 @@ def harmonic_sigmoid_boundary(_input, boundary_x, boundary_y, temperature):
         + (_input >= boundary_y) * torch.sigmoid((boundary_y - _input) / temperature)
         + ((_input > boundary_x) & (_input < boundary_y))
         * torch.sigmoid(
-            (
-                0.5
-                * (
-                    torch.abs(_input - boundary_x) ** (-1)
-                    + torch.abs(_input - boundary_y) ** (-1)
-                )
-            )
-            ** (-1)
+            (0.5 * (torch.abs(_input - boundary_x) ** (-1) + torch.abs(_input - boundary_y) ** (-1))) ** (-1)
             / temperature
         )
     )
@@ -127,7 +117,8 @@ def top_vals(tokenizer, res, n=10, return_results=False):
             print(f"{tok:<20} {top_values[i].item()}")
     if return_results:
         return ret
-        
+
+
 def get_list_depth(lst):
     """Return the max depth of the input list"""
     if isinstance(lst, list):
@@ -157,17 +148,6 @@ def GET_LOC(
     From simple locale to nested one.
     """
     if unit == "h.pos":
-        return [ 
-                   [ 
-                       [ 
-                           [LOC[0]] 
-                       ] * batch_size, 
-                       [ 
-                           [LOC[1]] 
-                       ] * batch_size 
-                   ] 
-               ]
+        return [[[[LOC[0]]] * batch_size, [[LOC[1]]] * batch_size]]
     else:
-        raise NotImplementedError(
-            f"{unit} is not supported."
-        )
+        raise NotImplementedError(f"{unit} is not supported.")

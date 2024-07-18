@@ -6,7 +6,7 @@ rendered properly in your Markdown viewer.
 
 [DeepSpeed](https://www.deepspeed.ai/) is a library designed for speed and scale for distributed training of large models with billions of parameters. At its core is the Zero Redundancy Optimizer (ZeRO) that shards optimizer states (ZeRO-1), gradients (ZeRO-2), and parameters (ZeRO-3) across data parallel processes. This drastically reduces memory usage, allowing you to scale your training to billion parameter models. To unlock even more memory efficiency, ZeRO-Offload reduces GPU compute and memory by leveraging CPU resources during optimization.
 
-Both of these features are supported in 🤗 Accelerate, and you can use them with 🤗 PEFT. 
+Both of these features are supported in 🤗 Accelerate, and you can use them with 🤗 PEFT.
 
 ## Compatibility with `bitsandbytes` quantization + LoRA
 
@@ -52,7 +52,7 @@ You'll be asked a few questions about your setup, and configure the following ar
 Once this is done, the corresponding config should look like below and you can find it in config folder at [deepspeed_config.yaml](https://github.com/huggingface/peft/blob/main/examples/sft/configs/deepspeed_config.yaml):
 
 ```yml
-compute_environment: LOCAL_MACHINE                                                                                                                                           
+compute_environment: LOCAL_MACHINE
 debug: false
 deepspeed_config:
   deepspeed_multinode_launcher: standard
@@ -178,7 +178,7 @@ In this section, we will look at how to use QLoRA and DeepSpeed Stage-3 for fine
 For this, we first need `bitsandbytes>=0.43.0`, `accelerate>=0.28.0`, `transformers>4.38.2`, `trl>0.7.11` and `peft>0.9.0`. We need to set `zero3_init_flag` to true when using Accelerate config. Below is the config which can be found at [deepspeed_config_z3_qlora.yaml](https://github.com/huggingface/peft/blob/main/examples/sft/configs/deepspeed_config_z3_qlora.yaml):
 
 ```yml
-compute_environment: LOCAL_MACHINE                                                                                                                                           
+compute_environment: LOCAL_MACHINE
 debug: false
 deepspeed_config:
   deepspeed_multinode_launcher: standard
@@ -250,7 +250,7 @@ accelerate launch --config_file "configs/deepspeed_config_z3_qlora.yaml"  train.
 
 Notice the new argument being passed `bnb_4bit_quant_storage_dtype` which denotes the data type for packing the 4-bit parameters. For example, when it is set to `bfloat16`, **32/4 = 8** 4-bit params are packed together post quantization.
 
-In terms of training code, the important code changes are: 
+In terms of training code, the important code changes are:
 
 ```diff
 ...
@@ -309,7 +309,7 @@ You'll be asked a few questions about your setup, and configure the following ar
 `offload_param_device`: [none] Disable parameter offloading, [cpu] offload parameters to CPU, [nvme] offload parameters to NVMe SSD. Only applicable with ZeRO Stage-3.
 `zero3_init_flag`: Decides whether to enable `deepspeed.zero.Init` for constructing massive models. Only applicable with ZeRO Stage-3.
 `zero3_save_16bit_model`: Decides whether to save 16-bit model weights when using ZeRO Stage-3.
-`mixed_precision`: `no` for FP32 training, `fp16` for FP16 mixed-precision training and `bf16` for BF16 mixed-precision training. 
+`mixed_precision`: `no` for FP32 training, `fp16` for FP16 mixed-precision training and `bf16` for BF16 mixed-precision training.
 ```
 
 An example [configuration file](https://github.com/huggingface/peft/blob/main/examples/conditional_generation/accelerate_ds_zero3_cpu_offload_config.yaml) might look like the following. The most important thing to notice is that `zero_stage` is set to `3`, and `offload_optimizer_device` and `offload_param_device` are set to the `cpu`.
@@ -347,7 +347,7 @@ Within the [`main`](https://github.com/huggingface/peft/blob/2822398fbe896f25d4d
 
 <Tip>
 
-💡 Feel free to change the model and dataset inside the `main` function. If your dataset format is different from the one in the script, you may also need to write your own preprocessing function. 
+💡 Feel free to change the model and dataset inside the `main` function. If your dataset format is different from the one in the script, you may also need to write your own preprocessing function.
 
 </Tip>
 
@@ -444,4 +444,4 @@ dataset['train'][label_column][:10]=['no complaint', 'no complaint', 'complaint'
 # Caveats
 1. Merging when using PEFT and DeepSpeed is currently unsupported and will raise error.
 2. When using CPU offloading, the major gains from using PEFT to shrink the optimizer states and gradients to that of the adapter weights would be realized on CPU RAM and there won't be savings with respect to GPU memory.
-3. DeepSpeed Stage 3 and qlora when used with CPU offloading leads to more GPU memory usage when compared to disabling CPU offloading. 
+3. DeepSpeed Stage 3 and qlora when used with CPU offloading leads to more GPU memory usage when compared to disabling CPU offloading.

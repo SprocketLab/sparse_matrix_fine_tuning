@@ -49,7 +49,6 @@ from peft.utils import _get_submodules, infer_device
 
 from .testing_utils import get_state_dict
 
-
 CONFIG_TESTING_KWARGS = (
     # IA³
     {

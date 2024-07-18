@@ -16,5 +16,4 @@ from .config import VeraConfig
 from .layer import Linear, VeraLayer
 from .model import VeraModel
 
-
 __all__ = ["VeraConfig", "VeraLayer", "Linear", "VeraModel"]

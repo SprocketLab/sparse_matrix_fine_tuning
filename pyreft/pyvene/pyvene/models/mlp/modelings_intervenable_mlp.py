@@ -8,9 +8,7 @@ config the dimensions of intervention based on model config
 defined in the huggingface library.
 """
 
-
 from ..constants import *
-
 
 """mlp base model"""
 mlp_type_to_module_mapping = {
@@ -35,12 +33,10 @@ for k, v in mlp_type_to_module_mapping.items():
 mlp_classifier_type_to_dimension_mapping = mlp_type_to_dimension_mapping
 
 
-def create_mlp_classifier(
-    config, tokenizer_name=None, cache_dir=None
-):
+def create_mlp_classifier(config, tokenizer_name=None, cache_dir=None):
     """Creates a MLP model, config, and tokenizer from the given name and revision"""
-    from transformers import AutoTokenizer
     from pyvene.models.mlp.modelings_mlp import MLPForClassification
+    from transformers import AutoTokenizer
 
     tokenizer = None
     if tokenizer_name is not None:

@@ -2,9 +2,9 @@
 
 # QLoRA: Efficient Finetuning of Quantized LLMs
 
-| [Paper](https://arxiv.org/abs/2305.14314) | [Adapter Weights](https://huggingface.co/timdettmers) | [Demo](https://huggingface.co/spaces/uwnlp/guanaco-playground-tgi) | 
+| [Paper](https://arxiv.org/abs/2305.14314) | [Adapter Weights](https://huggingface.co/timdettmers) | [Demo](https://huggingface.co/spaces/uwnlp/guanaco-playground-tgi) |
 
-This repo supports the paper "QLoRA: Efficient Finetuning of Quantized LLMs", an effort to democratize access to LLM research. 
+This repo supports the paper "QLoRA: Efficient Finetuning of Quantized LLMs", an effort to democratize access to LLM research.
 
 
 QLoRA uses [bitsandbytes](https://github.com/TimDettmers/bitsandbytes) for quantization and is integrated with Hugging Face's [PEFT](https://github.com/huggingface/peft) and [transformers](https://github.com/huggingface/transformers/) libraries. QLoRA was developed by members of the [University of Washington's UW NLP group](https://twitter.com/uwnlp?s=20).
@@ -28,7 +28,7 @@ Guanaco is a system purely intended for research purposes and could produce prob
 
 2. Or host your own Guanaco gradio demo directly in Colab with [this notebook](https://colab.research.google.com/drive/17XEqL1JcmVWjHkT-WczdYkJlNINacwG7?usp=sharing). Works with free GPUs for 7B and 13B models.
 
-3. Alternatively, can you distinguish ChatGPT from Guanaco? Give it a try! 
+3. Alternatively, can you distinguish ChatGPT from Guanaco? Give it a try!
 You can access [the model response Colab here](https://colab.research.google.com/drive/1kK6xasHiav9nhiRUJjPMZb4fAED4qRHb?usp=sharing) comparing ChatGPT and Guanaco 65B on Vicuna prompts.
 
 
@@ -55,7 +55,7 @@ To replicate our Guanaco models see below.
 ### Tutorials and Demonstrations
 Here is [a blog](https://huggingface.co/blog/4bit-transformers-bitsandbytes) discussing 4-bit quantization, QLoRA, and how they are integrated in transformers.
 
-You can host your own gradio Guanaco demo directly in Colab following [this notebook](https://colab.research.google.com/drive/17XEqL1JcmVWjHkT-WczdYkJlNINacwG7?usp=sharing). 
+You can host your own gradio Guanaco demo directly in Colab following [this notebook](https://colab.research.google.com/drive/17XEqL1JcmVWjHkT-WczdYkJlNINacwG7?usp=sharing).
 In addition, here are Colab notebooks with examples for inference and finetuning using QLoRA:
 - [Inference notebook](https://colab.research.google.com/drive/1ge2F1QSK8Q7h0hn3YKuBCOAS0bK8E0wf?usp=sharing)
 - [Finetuning notebook](https://colab.research.google.com/drive/1VoYNfYDKcKRQRor98Zbf2-9VQTtGJ24k?usp=sharing)
@@ -91,7 +91,7 @@ You can access the paged optimizer with the argument `--optim paged_adamw_32bit`
 ### Guanaco Finetuning
 You can select `--dataset oasst1` to load the OpenAssistant dataset that was used to train Guanaco. You can also find it on HF at [timdettmers/openassistant-guanaco](https://huggingface.co/datasets/timdettmers/openassistant-guanaco).
 
-We include scripts to reproduce the hyperparameters of Guanaco model training for various sizes at `./scripts/finetune_guanaco*.sh`. Make sure to adjust `per_device_train_batch_size` and `gradient_accumulation_steps` so that their product is 16 and training fits on your GPUs. 
+We include scripts to reproduce the hyperparameters of Guanaco model training for various sizes at `./scripts/finetune_guanaco*.sh`. Make sure to adjust `per_device_train_batch_size` and `gradient_accumulation_steps` so that their product is 16 and training fits on your GPUs.
 
 ### Using Local Datasets
 
@@ -119,7 +119,7 @@ max_memory = {i: '46000MB' for i in range(torch.cuda.device_count())}
 ## Sample Outputs
 We provide generations for the models described in the paper for both OA and Vicuna queries in the `eval/generations` folder. These are intended to foster further research on model evaluation and analysis.
 
-Can you distinguish ChatGPT from Guanaco? Give it a try! 
+Can you distinguish ChatGPT from Guanaco? Give it a try!
 You can access [the model response Colab here](https://colab.research.google.com/drive/1kK6xasHiav9nhiRUJjPMZb4fAED4qRHb?usp=sharing) comparing ChatGPT and Guanaco 65B on Vicuna prompts.
 
 ## Evaluation
@@ -138,7 +138,7 @@ Here a list of known issues and bugs. If your issue is not reported here, please
 4. Make sure that `tokenizer.bos_token_id = 1` to avoid generation issues.
 5. If you get an this [issue](https://github.com/artidoro/qlora/issues/82) ("illegal memory access") then you should use a newer HF LLaMA conversion or downgrade your PyTorch version.
 6. Problems with adding new tokens outlined in #214. Embeddings need to be updated and stored/reloaded if you are adding new tokens.
- 
+
 
 
 

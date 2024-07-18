@@ -19,7 +19,7 @@ else
     echo "Using no additional flags."
 fi
 
-run_conditionally() {    
+run_conditionally() {
     # Check the last exit status
     if [ $? -ne 0 ]; then
         # If previous command fails, return 1

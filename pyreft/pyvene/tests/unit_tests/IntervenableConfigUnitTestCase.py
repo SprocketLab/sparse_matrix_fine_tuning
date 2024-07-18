@@ -1,4 +1,5 @@
 import unittest
+
 from ..utils import *
 
 
@@ -37,26 +38,12 @@ class IntervenableConfigUnitTestCase(unittest.TestCase):
 
         assert config.model_type == type(self.gpt2)
         assert len(config.representations) == 1
-        assert (
-            config.intervention_types == VanillaIntervention
-        )
+        assert config.intervention_types == VanillaIntervention
 
-        assert (
-            config.representations[0].layer == 0
-        )
-        assert (
-            config.representations[
-                0
-            ].component
-            == "block_output"
-        )
-        assert (
-            config.representations[0].unit
-            == "pos"
-        )
-        assert (
-            config.representations[0].max_number_of_units == 1
-        )
+        assert config.representations[0].layer == 0
+        assert config.representations[0].component == "block_output"
+        assert config.representations[0].unit == "pos"
+        assert config.representations[0].max_number_of_units == 1
 
 
 def suite():

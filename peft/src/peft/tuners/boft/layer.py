@@ -31,7 +31,6 @@ from torch.utils.cpp_extension import load
 
 from peft.tuners.tuners_utils import BaseTunerLayer, check_adapters_to_merge
 
-
 _FBD_CUDA = None
 
 
@@ -592,8 +591,8 @@ class Linear(nn.Module, BOFTLayer):
         elif self.merged:
             result = self.base_layer(x, *args, **kwargs)
         else:
-            boft_rotation = torch.eye(self.in_features, device=x.device, dtype=previous_dtype) # EDIT
-            boft_scale = torch.ones((int(self.out_features), 1), device=x.device, dtype=previous_dtype) # EDIT
+            boft_rotation = torch.eye(self.in_features, device=x.device, dtype=previous_dtype)  # EDIT
+            boft_scale = torch.ones((int(self.out_features), 1), device=x.device, dtype=previous_dtype)  # EDIT
 
             for active_adapter in self.active_adapters:
                 if active_adapter not in self.boft_R.keys():
@@ -615,7 +614,7 @@ class Linear(nn.Module, BOFTLayer):
                     block_diagonal_butterfly = block_diagonal_butterfly.unsqueeze(0)
                 # EDIT
                 # print("prev dtype:  ", previous_dtype)
-                
+
                 boft_P = self.boft_P.to(block_diagonal_butterfly.device).to(previous_dtype)
                 block_diagonal_butterfly = block_diagonal_butterfly.to(previous_dtype)
                 # print("block_diag_butterfly, boft_P:  ", block_diagonal_butterfly.dtype, boft_P.dtype, )
@@ -628,7 +627,6 @@ class Linear(nn.Module, BOFTLayer):
                 # boft_rotation = boft_rotation.to(previous_dtype)
                 boft_rotation = butterfly_oft_mat @ boft_rotation
                 boft_scale = boft_s * boft_scale
-                
 
             x = x.to(self.get_base_layer().weight.data.dtype)
 
@@ -642,7 +640,7 @@ class Linear(nn.Module, BOFTLayer):
             rotated_weight = torch.transpose(rotated_weight, 0, 1)
 
             scaled_rotated_weight = rotated_weight * boft_scale
-            #EDIT
+            # EDIT
             # print("@#$@# x, scaled_rotated, bias,  ", x.dtype, scaled_rotated_weight.dtype, self.base_layer.bias.dtype if self.base_layer.bias is not None else "none")
             scaled_rotated_weight = scaled_rotated_weight.to(previous_dtype)
             if self.base_layer.bias is not None:

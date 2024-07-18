@@ -36,8 +36,8 @@ New features that haven't been released yet are added every day, which also mean
 pip install git+https://github.com/huggingface/peft
 ```
 
-If you're working on contributing to the library or wish to play with the source code and see live 
-results as you run the code, an editable version can be installed from a locally-cloned version of the 
+If you're working on contributing to the library or wish to play with the source code and see live
+results as you run the code, an editable version can be installed from a locally-cloned version of the
 repository:
 
 ```bash

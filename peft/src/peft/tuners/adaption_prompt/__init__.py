@@ -15,5 +15,4 @@ from .config import AdaptionPromptConfig
 from .layer import AdaptedAttention
 from .model import AdaptionPromptModel
 
-
 __all__ = ["AdaptionPromptConfig", "AdaptedAttention", "AdaptionPromptModel"]

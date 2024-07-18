@@ -1,14 +1,12 @@
+from typing import Dict, Optional, Tuple, Union
+
 import torch
 import torch.nn as nn
-from transformers import BlipConfig, BlipForImageTextRetrieval
-from transformers.utils import ModelOutput
-from typing import Optional, Union, Tuple, Dict
+from transformers import BlipForImageTextRetrieval
 
 
 class BlipITMWrapper(nn.Module):
-    def __init__(
-        self, model: BlipForImageTextRetrieval, use_itm_not_contrastive: bool = True
-    ):
+    def __init__(self, model: BlipForImageTextRetrieval, use_itm_not_contrastive: bool = True):
         super(BlipITMWrapper, self).__init__()
         self.model_vis = model.vision_model
         self.model_text_enc = model.text_encoder
@@ -35,16 +33,8 @@ class BlipITMWrapper(nn.Module):
         return_dict: Optional[bool] = None,
     ) -> Union[Tuple, Dict]:
         return_dict = return_dict if return_dict is not None else self.use_return_dict
-        output_attentions = (
-            output_attentions
-            if output_attentions is not None
-            else self.output_attentions
-        )
-        output_hidden_states = (
-            output_hidden_states
-            if output_hidden_states is not None
-            else self.output_hidden_states
-        )
+        output_attentions = output_attentions if output_attentions is not None else self.output_attentions
+        output_hidden_states = output_hidden_states if output_hidden_states is not None else self.output_hidden_states
 
         vision_outputs = self.model_vis(
             pixel_values=pixel_values,
@@ -55,11 +45,9 @@ class BlipITMWrapper(nn.Module):
 
         image_embeds = vision_outputs[0].to(self.model_text_enc.device)
         input_ids = input_ids.to(self.model_text_enc.device)
-        
+
         if self.use_itm_head:
-            image_attention_mask = torch.ones(
-                image_embeds.size()[:-1], dtype=torch.long
-            )
+            image_attention_mask = torch.ones(image_embeds.size()[:-1], dtype=torch.long)
 
             caption_embeds = self.model_text_enc(
                 input_ids=input_ids,
@@ -68,11 +56,7 @@ class BlipITMWrapper(nn.Module):
                 encoder_attention_mask=image_attention_mask,
                 output_hidden_states=True,
             )
-            caption_embeds = (
-                caption_embeds[0]
-                if not return_dict
-                else caption_embeds.last_hidden_state
-            )
+            caption_embeds = caption_embeds[0] if not return_dict else caption_embeds.last_hidden_state
 
             output = self.model_itm(caption_embeds[:, 0, :])
         else:
@@ -82,18 +66,10 @@ class BlipITMWrapper(nn.Module):
                 return_dict=return_dict,
                 output_hidden_states=True,
             )
-            caption_embeds = (
-                caption_embeds[0]
-                if not return_dict
-                else caption_embeds.last_hidden_state
-            )
+            caption_embeds = caption_embeds[0] if not return_dict else caption_embeds.last_hidden_state
 
-            image_feat = nn.functional.normalize(
-                self.vision_proj(image_embeds[:, 0, :]), dim=-1
-            )
-            text_feat = nn.functional.normalize(
-                self.text_proj(caption_embeds[:, 0, :]), dim=-1
-            )
+            image_feat = nn.functional.normalize(self.vision_proj(image_embeds[:, 0, :]), dim=-1)
+            text_feat = nn.functional.normalize(self.text_proj(caption_embeds[:, 0, :]), dim=-1)
 
             output = image_feat @ text_feat.t()
 

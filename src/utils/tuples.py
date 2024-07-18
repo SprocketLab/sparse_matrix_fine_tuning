@@ -1,5 +1,5 @@
-from itertools import repeat
 import collections.abc
+from itertools import repeat
 
 
 # Copied from https://github.com/rwightman/pytorch-image-models/blob/master/timm/models/layers/helpers.py
@@ -9,6 +9,7 @@ def _ntuple(n):
         if isinstance(x, collections.abc.Iterable):
             return x
         return tuple(repeat(x, n))
+
     return parse
 
 

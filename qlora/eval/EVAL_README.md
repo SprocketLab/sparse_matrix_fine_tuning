@@ -10,7 +10,7 @@ The `generation` folder has outputs from the models studied in our paper. This i
 
 The `ratings-gpt4` and `ratings-human` have the automated and human ratings described in our paper.
 
-We use the following naming conventions files with generations from the models we train: 
+We use the following naming conventions files with generations from the models we train:
 ```
 <model size>-<model name>-[oa or vicuna]-generations-topp0.9-temp0.7.jsonl
 ```
@@ -30,7 +30,7 @@ python qa_baseline_gpt35.py --question prompts/oa_questions.jsonl --output gener
 ```
 
 ## GPT-4 Automatic Ratings
-In our paper we explore using GPT-4 to rate generations automatically. Note that we use different prompts for the Vicuna and OA benchmarks. We also have different prompts for comparisons relative to ChatGPT-3.5 with a 10 point scale and for pairwise three class comparisons (win, loose, tie). Depending on which type of evaluation you want to perform you should choose `prompts/vicuna_prompt_threeclass.jsonl`, `prompts/vicuna_prompt_relative.jsonl` or `prompts/oa_prompt_threeclass.jsonl`. 
+In our paper we explore using GPT-4 to rate generations automatically. Note that we use different prompts for the Vicuna and OA benchmarks. We also have different prompts for comparisons relative to ChatGPT-3.5 with a 10 point scale and for pairwise three class comparisons (win, loose, tie). Depending on which type of evaluation you want to perform you should choose `prompts/vicuna_prompt_threeclass.jsonl`, `prompts/vicuna_prompt_relative.jsonl` or `prompts/oa_prompt_threeclass.jsonl`.
 
 The ratings for the Vicuna benchmark can be obtained with the following command:
 

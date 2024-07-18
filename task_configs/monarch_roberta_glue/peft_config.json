@@ -1,6 +1,6 @@
 {
     "monarch": true,
-    
+
     "square": false,
     "nblocks": 4,
     "blk_r": 4,
@@ -12,7 +12,7 @@
         "key"
     ],
     "q_v": false,
-    "adapter": true, 
+    "adapter": true,
     "svd_init": false,
     "scaler": false,
     "layernorm": true,
@@ -20,7 +20,7 @@
     "new_lr": 5e-3,
     "scaler_type": "scaler",
     "from_lora": "",
-    
+
     "mlp": false,
     "lora_style_init": false,
     "use_mult_factor": false,

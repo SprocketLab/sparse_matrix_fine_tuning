@@ -4,14 +4,9 @@ from enum import Enum
 import torch
 from datasets import DatasetDict, load_dataset, load_from_disk
 from datasets.builder import DatasetGenerationError
-from transformers import (
-    AutoModelForCausalLM,
-    AutoTokenizer,
-    BitsAndBytesConfig,
-)
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
 from peft import LoraConfig
-
 
 DEFAULT_CHATML_CHAT_TEMPLATE = "{% for message in messages %}\n{{'<|im_start|>' + message['role'] + '\n' + message['content'] + '<|im_end|>' + '\n'}}{% if loop.last and add_generation_prompt %}{{'<|im_start|>assistant\n' }}{% endif %}{% endfor %}"
 DEFAULT_ZEPHYR_CHAT_TEMPLATE = "{% for message in messages %}\n{% if message['role'] == 'user' %}\n{{ '<|user|>\n' + message['content'] + eos_token }}\n{% elif message['role'] == 'system' %}\n{{ '<|system|>\n' + message['content'] + eos_token }}\n{% elif message['role'] == 'assistant' %}\n{{ '<|assistant|>\n'  + message['content'] + eos_token }}\n{% endif %}\n{% if loop.last and add_generation_prompt %}\n{{ '<|assistant|>' }}\n{% endif %}\n{% endfor %}"
@@ -145,9 +140,11 @@ def create_and_prepare_model(args, data_args, training_args):
             r=args.lora_r,
             bias="none",
             task_type="CAUSAL_LM",
-            target_modules=args.lora_target_modules.split(",")
-            if args.lora_target_modules != "all-linear"
-            else args.lora_target_modules,
+            target_modules=(
+                args.lora_target_modules.split(",")
+                if args.lora_target_modules != "all-linear"
+                else args.lora_target_modules
+            ),
         )
 
     special_tokens = None
@@ -182,9 +179,11 @@ def create_and_prepare_model(args, data_args, training_args):
             lora_alpha=args.lora_alpha,
             lora_dropout=args.lora_dropout,
             r=args.lora_r,
-            target_modules=args.lora_target_modules.split(",")
-            if args.lora_target_modules != "all-linear"
-            else args.lora_target_modules,
+            target_modules=(
+                args.lora_target_modules.split(",")
+                if args.lora_target_modules != "all-linear"
+                else args.lora_target_modules
+            ),
             use_gradient_checkpointing=training_args.gradient_checkpointing,
             random_state=training_args.seed,
             max_seq_length=data_args.max_seq_length,

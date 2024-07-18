@@ -41,7 +41,7 @@ config = LoraConfig(init_lora_weights=False, ...)
 ```
 
 ### PiSSA
-[PiSSA](https://arxiv.org/abs/2404.02948) initializes the LoRA adapter using the principal singular values and singular vectors. This straightforward modification allows PiSSA to converge more rapidly than LoRA and ultimately attain superior performance. Moreover, PiSSA reduces the quantization error compared to QLoRA, leading to further enhancements. 
+[PiSSA](https://arxiv.org/abs/2404.02948) initializes the LoRA adapter using the principal singular values and singular vectors. This straightforward modification allows PiSSA to converge more rapidly than LoRA and ultimately attain superior performance. Moreover, PiSSA reduces the quantization error compared to QLoRA, leading to further enhancements.
 
 Configure the initialization method to "pissa", which may take several minutes to execute SVD on the pre-trained model:
 ```python
@@ -50,7 +50,7 @@ config = LoraConfig(init_lora_weights="pissa", ...)
 ```
 Alternatively, execute fast SVD, which takes only a few seconds. The number of iterations determines the trade-off between the error and computation time:
 ```python
-lora_config = LoraConfig(init_lora_weights="pissa_niter_[number of iters]", ...) 
+lora_config = LoraConfig(init_lora_weights="pissa_niter_[number of iters]", ...)
 ```
 For detailed instruction on using PiSSA, please follow [these instructions](https://github.com/fxmeng/peft/tree/main/examples/pissa_finetuning).
 
@@ -116,7 +116,7 @@ config = LoraConfig(use_dora=True, ...)
 #### Caveats
 
 - DoRA only supports linear and Conv2d layers at the momement.
-- DoRA introduces a bigger overhead than pure LoRA, so it is recommended to merge weights for inference, see [`LoraModel.merge_and_unload`]. 
+- DoRA introduces a bigger overhead than pure LoRA, so it is recommended to merge weights for inference, see [`LoraModel.merge_and_unload`].
 - DoRA should work with weights quantized with bitsandbytes ("QDoRA"). However, issues have been reported when using QDoRA with DeepSpeed Zero2.
 
 ### QLoRA-style training
@@ -191,7 +191,7 @@ base_model = AutoModelForCausalLM.from_pretrained(
 )
 ```
 
-Then we load the first adapter: 
+Then we load the first adapter:
 
 ```python
 peft_model_id = "alignment-handbook/zephyr-7b-sft-lora"

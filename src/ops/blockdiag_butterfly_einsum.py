@@ -1,5 +1,4 @@
 import torch
-
 from einops import rearrange
 
 from src.ops.low_rank import low_rank_project
@@ -21,11 +20,12 @@ def blockdiag_butterfly_multiply_einsum_simple(x, w1_bfly, w2_bfly):
     assert k1 == k
     assert k * i == n
 
-    x_reshaped = rearrange(x, 'b (k i) -> b k i', k=k)
-    out = torch.einsum('b k i, k j i, j l k -> b l j', x_reshaped, w1_bfly, w2_bfly)
-    return rearrange(out, 'b l j -> b (l j)')
+    x_reshaped = rearrange(x, "b (k i) -> b k i", k=k)
+    out = torch.einsum("b k i, k j i, j l k -> b l j", x_reshaped, w1_bfly, w2_bfly)
+    return rearrange(out, "b l j -> b (l j)")
 
-#@Wenxuan: works for rectangular weights. the rank 1 projection from the paper 
+
+# @Wenxuan: works for rectangular weights. the rank 1 projection from the paper
 # TODO why is the erorr so low with rank 1 approximation?
 def blockdiag_butterfly_project_einsum_simple(M, nblocks1, nblocks2):
     """
@@ -37,10 +37,10 @@ def blockdiag_butterfly_project_einsum_simple(M, nblocks1, nblocks2):
     """
     m, n = M.shape
     k, j = nblocks1, nblocks2
-    M_permuted_batched = rearrange(M, '(l j) (k i) -> k j l i', k=nblocks1, j=nblocks2)
-    U, Vt = low_rank_project(M_permuted_batched, rank=1) # U (l, l) Vt (i, i)
-    w1_bfly = rearrange(Vt, 'k j 1 i -> k j i')
-    w2_bfly = rearrange(U, 'k j l 1 -> j l k')
+    M_permuted_batched = rearrange(M, "(l j) (k i) -> k j l i", k=nblocks1, j=nblocks2)
+    U, Vt = low_rank_project(M_permuted_batched, rank=1)  # U (l, l) Vt (i, i)
+    w1_bfly = rearrange(Vt, "k j 1 i -> k j i")
+    w2_bfly = rearrange(U, "k j l 1 -> j l k")
     return w1_bfly, w2_bfly
 
 
@@ -61,12 +61,12 @@ def blockdiag_butterfly_multiply_einsum(x, w1_bfly, w2_bfly, b2):
     assert kb1 == k * b1
     assert k * i == n
 
-    x_reshaped = rearrange(x, 'b (k i) -> b k i', k=k)
-    w1_bfly = rearrange(w1_bfly, 'k (j b1) i -> k j b1 i', b1=b1)
-    w2_bfly = rearrange(w2_bfly, 'j (l b2) (k b1) -> j l b2 k b1', b1=b1, b2=b2)
+    x_reshaped = rearrange(x, "b (k i) -> b k i", k=k)
+    w1_bfly = rearrange(w1_bfly, "k (j b1) i -> k j b1 i", b1=b1)
+    w2_bfly = rearrange(w2_bfly, "j (l b2) (k b1) -> j l b2 k b1", b1=b1, b2=b2)
     # torch.einsum doesn't support indices named b1 or b2, so we map b1 -> y, b2 -> z
-    out = torch.einsum('b k i, k j y i, j l z k y -> b l j z', x_reshaped, w1_bfly, w2_bfly)
-    return rearrange(out, 'b l j b2 -> b (l j b2)')
+    out = torch.einsum("b k i, k j y i, j l z k y -> b l j z", x_reshaped, w1_bfly, w2_bfly)
+    return rearrange(out, "b l j b2 -> b (l j b2)")
 
 
 def blockdiag_butterfly_project_einsum(M, nblocks1, nblocks2, b1, b2):
@@ -79,11 +79,10 @@ def blockdiag_butterfly_project_einsum(M, nblocks1, nblocks2, b1, b2):
     """
     m, n = M.shape
     k, j = nblocks1, nblocks2
-    M_permuted_batched = rearrange(M, '(l j b2) (k i) -> k j (l b2) i', k=nblocks1, j=nblocks2,
-                                   b2=b2)
+    M_permuted_batched = rearrange(M, "(l j b2) (k i) -> k j (l b2) i", k=nblocks1, j=nblocks2, b2=b2)
     U, Vt = low_rank_project(M_permuted_batched, rank=b1)
-    w1_bfly = rearrange(Vt, 'k j b1 i -> k (j b1) i')
-    w2_bfly = rearrange(U, 'k j lb2 b1 -> j lb2 (k b1)')
+    w1_bfly = rearrange(Vt, "k j b1 i -> k (j b1) i")
+    w2_bfly = rearrange(U, "k j lb2 b1 -> j lb2 (k b1)")
     return w1_bfly, w2_bfly
 
 
@@ -104,13 +103,14 @@ def blockdiag_butterfly_multiply_einsum_rank(x, w1_bfly, w2_bfly):
     assert kb1 == k * r
     assert k * i == n
 
-    x_reshaped = rearrange(x, 'b (k i) -> b k i', k=k)
-    w1_bfly = rearrange(w1_bfly, 'k (r j) i -> k r j i', r=r)
-    w2_bfly = rearrange(w2_bfly, 'j l (k r) -> j l k r', r=r)
-    out = torch.einsum('b k i, k r j i, j l k r -> b l j', x_reshaped, w1_bfly, w2_bfly)
-    return rearrange(out, 'b l j -> b (l j)')
+    x_reshaped = rearrange(x, "b (k i) -> b k i", k=k)
+    w1_bfly = rearrange(w1_bfly, "k (r j) i -> k r j i", r=r)
+    w2_bfly = rearrange(w2_bfly, "j l (k r) -> j l k r", r=r)
+    out = torch.einsum("b k i, k r j i, j l k r -> b l j", x_reshaped, w1_bfly, w2_bfly)
+    return rearrange(out, "b l j -> b (l j)")
 
-#@Wenxuan: use for rectangular weights and see how rank affects param count
+
+# @Wenxuan: use for rectangular weights and see how rank affects param count
 def blockdiag_butterfly_project_einsum_rank(M, nblocks1, nblocks2, rank, reverse=False):
     """
     Maximum rank is min(l, i), which is min(m / nblocks1, n / nblocks2)  (look inside low_rank_project)
@@ -124,16 +124,16 @@ def blockdiag_butterfly_project_einsum_rank(M, nblocks1, nblocks2, rank, reverse
     m, n = M.shape
     k, j = nblocks1, nblocks2
     # (nblocks, nblocks, l, i) -> (4, 4, 1024)
-    M_permuted_batched = rearrange(M, '(l j) (k i) -> k j l i', k=nblocks1, j=nblocks2)
+    M_permuted_batched = rearrange(M, "(l j) (k i) -> k j l i", k=nblocks1, j=nblocks2)
     if not reverse:
-        U, Vt = low_rank_project(M_permuted_batched, rank=rank, reverse=reverse) 
-        w1_bfly = rearrange(Vt, 'k j r i -> k (r j) i')
-        w2_bfly = rearrange(U, 'k j l r -> j l (k r)')
+        U, Vt = low_rank_project(M_permuted_batched, rank=rank, reverse=reverse)
+        w1_bfly = rearrange(Vt, "k j r i -> k (r j) i")
+        w2_bfly = rearrange(U, "k j l r -> j l (k r)")
         return w1_bfly, w2_bfly
     else:
-        U, Vt, U_rev, Vt_rev = low_rank_project(M_permuted_batched, rank=rank, reverse=reverse) 
-        w1_bfly = rearrange(Vt, 'k j r i -> k (r j) i')
-        w2_bfly = rearrange(U, 'k j l r -> j l (k r)')
-        w1_bfly_rev = rearrange(Vt_rev, 'k j r i -> k (r j) i')
-        w2_bfly_rev = rearrange(U_rev, 'k j l r -> j l (k r)')
+        U, Vt, U_rev, Vt_rev = low_rank_project(M_permuted_batched, rank=rank, reverse=reverse)
+        w1_bfly = rearrange(Vt, "k j r i -> k (r j) i")
+        w2_bfly = rearrange(U, "k j l r -> j l (k r)")
+        w1_bfly_rev = rearrange(Vt_rev, "k j r i -> k (r j) i")
+        w2_bfly_rev = rearrange(U_rev, "k j l r -> j l (k r)")
         return w1_bfly, w2_bfly, w1_bfly_rev, w2_bfly_rev

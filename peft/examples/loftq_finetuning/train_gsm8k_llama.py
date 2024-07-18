@@ -47,7 +47,6 @@ from transformers.utils.versions import require_version
 
 from peft import PeftModel
 
-
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
 # check_min_version("4.32.0.dev0")
 
@@ -737,9 +736,7 @@ def main():
 
             if not args.pad_to_max_length:
                 # If we did not pad to max length, we need to pad the labels too
-                gold_tokens = accelerator.pad_across_processes(
-                    batch["labels"], dim=1, pad_index=tokenizer.pad_token_id
-                )
+                gold_tokens = accelerator.pad_across_processes(batch["labels"], dim=1, pad_index=tokenizer.pad_token_id)
 
             pred_tokens, gold_tokens = accelerator.gather_for_metrics((pred_tokens, gold_tokens))
             pred_tokens, gold_tokens = pred_tokens.cpu().numpy(), gold_tokens.cpu().numpy()

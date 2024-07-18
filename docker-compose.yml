@@ -2,7 +2,7 @@
 services:
   fly-service:
     network_mode: host
-    build: 
+    build:
       context: .
       dockerfile: Dockerfile
     image: fly:latest
@@ -11,18 +11,18 @@ services:
       - /data:/data
       - ~/.cache/huggingface:/home/user/.cache/huggingface
     working_dir: /fly
-    environment: 
+    environment:
     # Remove before publishing the repo
       - WANDB_API_KEY=16d21dc747a6f33247f1e9c96895d4ffa5ea0b27
       - HF_TOKEN=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
       - CUBLAS_WORKSPACE_CONFIG=:4096:8
       # - https_proxy=http://127.0.0.1:7890/
       # - http_proxy=http://127.0.0.1:7890/
-    command: bash -c " git config --global --add safe.directory /fly && exec bash && chmod -R 777 /fly" 
+    command: bash -c " git config --global --add safe.directory /fly && exec bash && chmod -R 777 /fly"
 
     stdin_open: true
-    tty: true 
-    # gpu config 
+    tty: true
+    # gpu config
     deploy:
       resources:
         reservations:
@@ -49,4 +49,3 @@ services:
 #     -p 5050:5050 \
 #     fly:latest \
 #     bash -c "git config --global --add safe.directory /fly && exec bash"
-

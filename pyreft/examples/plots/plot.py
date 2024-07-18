@@ -1,9 +1,18 @@
-from plotnine import (
-    ggplot, aes, geom_point, facet_wrap, scale_x_log10, theme, element_text,
-    geom_text, theme_set, theme_gray, element_blank
-)
-from pandas import DataFrame
 from mizani.formatters import percent_format
+from pandas import DataFrame
+from plotnine import (
+    aes,
+    element_blank,
+    element_text,
+    facet_wrap,
+    geom_point,
+    geom_text,
+    ggplot,
+    scale_x_log10,
+    theme,
+    theme_gray,
+    theme_set,
+)
 
 theme_set(theme_gray(base_family="Inter"))
 
@@ -19,7 +28,7 @@ stats = {
             {"name": "LoRA", "params": 0.830, "score": 74.7},
             {"name": "DoRA (half)", "params": 0.430, "score": 77.5},
             {"name": "DoRA", "params": 0.840, "score": 78.1},
-            {"name": "LoReFT", "params": 0.031, "score": 80.2}
+            {"name": "LoReFT", "params": 0.031, "score": 80.2},
         ],
         "LLaMA-13B": [
             {"name": "PrefT", "params": 0.03, "score": 68.4},
@@ -28,8 +37,8 @@ stats = {
             {"name": "LoRA", "params": 0.670, "score": 80.5},
             {"name": "DoRA (half)", "params": 0.350, "score": 80.8},
             {"name": "DoRA", "params": 0.680, "score": 81.5},
-            {"name": "LoReFT", "params": 0.025, "score": 83.3}
-        ]
+            {"name": "LoReFT", "params": 0.025, "score": 83.3},
+        ],
     },
     "Arithmetic": {
         "LLaMA-7B": [
@@ -45,14 +54,14 @@ stats = {
             {"name": "AdapterP", "params": 2.890, "score": 50.2},
             {"name": "LoRA", "params": 0.670, "score": 51.1},
             {"name": "LoReFT", "params": 0.025, "score": 49.6},
-        ]
+        ],
     },
     "Instruct-tuning": {
         "Llama-2 7B": [
             {"name": "FT", "params": 100.000, "score": 80.93},
             {"name": "LoRA", "params": 0.1245, "score": 81.48},
             {"name": "RED", "params": 0.0039, "score": 81.69},
-            {"name": "LoReFT", "params": 0.0039, "score": 85.60}
+            {"name": "LoReFT", "params": 0.0039, "score": 85.60},
         ]
     },
     "GLUE": {
@@ -63,7 +72,7 @@ stats = {
             {"name": "AdapterFNN", "params": 0.239, "score": 84.7},
             {"name": "BitFit", "params": 0.080, "score": 82.3},
             {"name": "RED", "params": 0.016, "score": 84.3},
-            {"name": "LoReFT", "params": 0.015, "score": 84.2}
+            {"name": "LoReFT", "params": 0.015, "score": 84.2},
         ],
         "RoBERTa-large": [
             {"name": "FT", "params": 100.000, "score": 88.6},
@@ -71,9 +80,9 @@ stats = {
             {"name": "LoRA", "params": 0.225, "score": 88.1},
             {"name": "AdapterFNN", "params": 0.225, "score": 87.7},
             {"name": "RED", "params": 0.014, "score": 88.0},
-            {"name": "LoReFT", "params": 0.014, "score": 88.2}
-        ]
-    }
+            {"name": "LoReFT", "params": 0.014, "score": 88.2},
+        ],
+    },
 }
 stats_flat = []
 for task in stats:
@@ -93,12 +102,20 @@ df["task"].cat.set_categories(TASK_ORDER, inplace=True)
 df = df.rename(columns={"score": "Score", "params": "Parameters"})
 
 plot = (
-    ggplot(df, aes(x="Parameters", y="Score", color="color")) +
-    geom_point() + facet_wrap("~task+model", scales="free", nrow=2) +
-    scale_x_log10(labels=percent_format()) +
-    geom_text(aes(label="name"), size=7, adjust_text={"avoid_self": True}) +
-    theme(legend_position="none", axis_text_x=element_text(angle=45, hjust=0.75), panel_spacing_x=0.4, panel_spacing_y=0.4,
-          panel_grid_minor_x=element_blank(), panel_grid_minor_y=element_blank(), axis_text=element_text(size=7),
-          strip_text=element_text(weight="bold"))
+    ggplot(df, aes(x="Parameters", y="Score", color="color"))
+    + geom_point()
+    + facet_wrap("~task+model", scales="free", nrow=2)
+    + scale_x_log10(labels=percent_format())
+    + geom_text(aes(label="name"), size=7, adjust_text={"avoid_self": True})
+    + theme(
+        legend_position="none",
+        axis_text_x=element_text(angle=45, hjust=0.75),
+        panel_spacing_x=0.4,
+        panel_spacing_y=0.4,
+        panel_grid_minor_x=element_blank(),
+        panel_grid_minor_y=element_blank(),
+        axis_text=element_text(size=7),
+        strip_text=element_text(weight="bold"),
+    )
 )
 plot.save("plot.svg", width=9, height=4, dpi=300)

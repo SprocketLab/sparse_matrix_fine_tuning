@@ -20,7 +20,6 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from peft import LoraConfig, get_peft_model
 
-
 parser = argparse.ArgumentParser(
     description="Merge Adapter to Base Model", help="The name or path of the fp32/16 base model."
 )

@@ -60,7 +60,6 @@ from .tuners import (
 from .tuners.tuners_utils import BaseTuner as _BaseTuner
 from .utils import _prepare_prompt_learning_config
 
-
 if TYPE_CHECKING:
     from transformers import PreTrainedModel
 

@@ -1,0 +1,26 @@
+{
+    "monarch": true,
+    "square": false,
+    "nblocks": 4,
+    "blk_r": 4,
+    "blk_sz": null,
+    "dropout": 0.1,
+    "target_modules": [
+        "q_proj",
+        "v_proj",
+        "k_proj"
+    ],
+    "q_v": false,
+    "adapter": true,
+    "svd_init": false,
+
+    "scaler": false,
+    "layernorm": true,
+    "scaler_type": "scaler",
+    "from_lora": "",
+
+    "mlp": false,
+    "lora_style_init": false,
+    "use_mult_factor": false,
+    "affine": false
+}

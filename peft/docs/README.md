@@ -16,7 +16,7 @@ limitations under the License.
 
 # Generating the documentation
 
-To generate the documentation, you first have to build it. Several packages are necessary to build the doc, 
+To generate the documentation, you first have to build it. Several packages are necessary to build the doc,
 you can install them with the following command, at the root of the code repository:
 
 ```bash
@@ -39,7 +39,7 @@ check how they look before committing for instance). You don't have to commit to
 
 ## Building the documentation
 
-Once you have setup the `doc-builder` and additional packages, you can generate the documentation by 
+Once you have setup the `doc-builder` and additional packages, you can generate the documentation by
 typing the following command:
 
 ```bash
@@ -133,7 +133,7 @@ Values that should be put in `code` should either be surrounded by backticks: \`
 and objects like True, None, or any strings should usually be put in `code`.
 
 When mentioning a class, function, or method, it is recommended to use our syntax for internal links so that our tool
-adds a link to its documentation with this syntax: \[\`XXXClass\`\] or \[\`function\`\]. This requires the class or 
+adds a link to its documentation with this syntax: \[\`XXXClass\`\] or \[\`function\`\]. This requires the class or
 function to be in the main package.
 
 If you want to create a link to some internal class or function, you need to
@@ -154,10 +154,10 @@ description:
         n_layers (`int`): The number of layers of the model.
 ```
 
-If the description is too long to fit in one line (more than 119 characters in total), another indentation is necessary 
+If the description is too long to fit in one line (more than 119 characters in total), another indentation is necessary
 before writing the description after the argument.
 
-Finally, to maintain uniformity if any *one* description is too long to fit on one line, the 
+Finally, to maintain uniformity if any *one* description is too long to fit on one line, the
 rest of the parameters should follow suit and have an indention before their description.
 
 Here's an example showcasing everything so far:
@@ -259,9 +259,9 @@ The syntax, for example, docstrings can look as follows:
     ```
 ```
 
-The docstring should give a minimal, clear example of how the respective function 
+The docstring should give a minimal, clear example of how the respective function
 is to be used in inference and also include the expected (ideally sensible)
 output.
-Often, readers will try out the example before even going through the function 
-or class definitions. Therefore, it is of utmost importance that the example 
+Often, readers will try out the example before even going through the function
+or class definitions. Therefore, it is of utmost importance that the example
 works as expected.

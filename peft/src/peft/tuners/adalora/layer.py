@@ -24,7 +24,6 @@ from peft.tuners.lora import LoraLayer
 from peft.tuners.tuners_utils import check_adapters_to_merge
 from peft.utils import transpose
 
-
 if packaging.version.parse(transformers.__version__) >= packaging.version.parse("4.33.0"):
     from transformers.integrations import deepspeed_config
 else:

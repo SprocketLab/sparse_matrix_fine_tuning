@@ -1,28 +1,33 @@
 import math
 
+import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.nn import init
 
-from einops import rearrange
-import torch.nn.functional as F
+from src.models.layers.blockdiag_butterfly_multiply import (
+    blockdiag_butterfly_multiply,
+    single_monarch_mult,
+)
 from src.models.layers.structured_linear import StructuredLinear
-from src.models.layers.blockdiag_butterfly_multiply import blockdiag_butterfly_multiply, single_monarch_mult
-import numpy as np
-# NOTE converting weights to monarch matrices
-from src.ops.blockdiag_butterfly_projection import (
-    blockdiag_butterfly_project,
-)  # square weights, rank 1
 from src.ops.blockdiag_butterfly_einsum import (
     blockdiag_butterfly_project_einsum_rank,  # for rectangular, custom rank
+)
+from src.ops.blockdiag_butterfly_einsum import (
     blockdiag_butterfly_project_einsum_simple,  # for rectangular, rank 1
 )
 
+# NOTE converting weights to monarch matrices
+from src.ops.blockdiag_butterfly_projection import (
+    blockdiag_butterfly_project,  # square weights, rank 1
+)
 
 hooked = False
 hooked_module = None
 check_freq = 600
 check_step = 0
+
 
 def backward_hook(module, grad_input, grad_output):
     global check_freq, check_step
@@ -30,38 +35,42 @@ def backward_hook(module, grad_input, grad_output):
         print(f"{module} has mean dX {grad_input[0].mean()} and scaler value {module.scaler}")
     check_step += 1
 
+
 def grad_hook(grad):
     global check_freq, check_step
     if check_step % check_freq == 0:
-        print(f"Scaler has  dW {grad} and value {hooked_module.scaler}. ")  
+        print(f"Scaler has  dW {grad} and value {hooked_module.scaler}. ")
     check_step += 1
-    
+
+
 def factor_balance(mid_blksz, out_blksz):
-    total = mid_blksz * out_blksz
+    mid_blksz * out_blksz
+
 
 # @Wenxuan
 class Scaler(nn.Module):
     """
-        Scale output of monarch factors
+    Scale output of monarch factors
     """
+
     def __init__(self, out_features, scaler_type="scaler", affine=False, layernorm=False):
         super().__init__()
         assert scaler_type in ["scaler", "diag"]
         self.scaler_type = scaler_type
-        
+
         if scaler_type == "scaler":
             self.scaler = nn.Parameter((torch.zeros(1)))
         else:
             self.scaler = nn.Parameter((torch.zeros(out_features)))
         self.norm = nn.LayerNorm(out_features, elementwise_affine=affine)
-        
+
         # hook only module
         global hooked, hooked_module
         if not hooked:
             hooked_module = self
             self.hook = self.scaler.register_hook(grad_hook)
             hooked = True
-            
+
     def forward(self, x):
         if self.scaler_type == "scaler":
             x = x * self.scaler
@@ -70,6 +79,7 @@ class Scaler(nn.Module):
         x = self.norm(x)
         return x
 
+
 _DEFAULT_CONFIG = {
     "nblocks": 4,
     "blk_r": 4,
@@ -77,10 +87,13 @@ _DEFAULT_CONFIG = {
     "square": False,
     "adapter": True,
 }
+
+
 class MonarchLinear(StructuredLinear):
     """
     bmm with two monarch factors
     """
+
     def __init__(
         self,
         in_features,
@@ -103,7 +116,7 @@ class MonarchLinear(StructuredLinear):
         super().__init__(in_features, out_features, *args, **kwargs)
         self.device = device
         self.nblocks = nblocks
-        self.blk_r = peft_config["blk_r"] if "blk_r" not in kwargs  else kwargs["blk_r"]
+        self.blk_r = peft_config["blk_r"] if "blk_r" not in kwargs else kwargs["blk_r"]
         self.blk_sz = peft_config["blk_sz"] if "blk_sz" not in kwargs else kwargs["blk_sz"]
         if self.blk_sz is None:
             self.blk_sz = int(math.ceil(self.in_features / nblocks))
@@ -112,18 +125,20 @@ class MonarchLinear(StructuredLinear):
         # Use square blocks if testing block size trade-offs
         if peft_config["square"]:
             self.blk_r = self.in_blksz
-            
-        # Throw away blocks that are fully padded 
+
+        # Throw away blocks that are fully padded
         if self.nblocks * self.in_blksz > self.in_features:
-            self.nblocks = (self.in_features + self.in_blksz - 1) // self.in_blksz 
+            self.nblocks = (self.in_features + self.in_blksz - 1) // self.in_blksz
         elif self.nblocks * self.in_blksz < self.in_features:
             self.nblocks = (self.in_features + self.in_blksz - 1) // self.in_blksz
-                
-        align_factor = int(math.ceil(self.out_features / self.in_features)) # Useful for the blocks in the two monarch factors to exactly match  
+
+        align_factor = int(
+            math.ceil(self.out_features / self.in_features)
+        )  # Useful for the blocks in the two monarch factors to exactly match
         self.out_blksz = self.in_blksz * align_factor
-        
+
         # Custom peft configs
-        
+
         self.peft_config = peft_config
         self.as_adapter = peft_config["adapter"] and kwargs.pop("as_adapter", peft_config["adapter"])
         self.use_scaler = peft_config.get("scaler", False)
@@ -134,21 +149,23 @@ class MonarchLinear(StructuredLinear):
         self.merged = False
         self.use_scaler = self.use_scaler or self.use_mult_factor
         dropout_rate = peft_config.get("dropout", 0.0)
-        self.dropout = nn.Dropout(dropout_rate) if dropout_rate > 0.0 else lambda x : x
-        
+        self.dropout = nn.Dropout(dropout_rate) if dropout_rate > 0.0 else lambda x: x
+
         assert self.scaler_type in ["scaler", "diag"]
-        assert self.blk_r <= min(
-            self.in_blksz, self.out_blksz
-        ), "rank must be smaller than the smaller block size"
-        
-        # Init block-diagonal monarch factors 
+        assert self.blk_r <= min(self.in_blksz, self.out_blksz), "rank must be smaller than the smaller block size"
+
+        # Init block-diagonal monarch factors
         self.blkdiag1 = nn.Parameter(
-                torch.zeros(self.nblocks, self.blk_r, self.in_blksz, device=self.device) # (nblocks, r * nblocks , in_features / nblocks)
-        )  
-        self.blkdiag2 = nn.Parameter(
-                torch.zeros(self.nblocks, self.out_blksz, self.blk_r, device=self.device) # (nblocks, out_features / nblocks, r * nblocks)
+            torch.zeros(
+                self.nblocks, self.blk_r, self.in_blksz, device=self.device
+            )  # (nblocks, r * nblocks , in_features / nblocks)
         )
-        
+        self.blkdiag2 = nn.Parameter(
+            torch.zeros(
+                self.nblocks, self.out_blksz, self.blk_r, device=self.device
+            )  # (nblocks, out_features / nblocks, r * nblocks)
+        )
+
         # init a batch of identity matrices as a multiplicative factor
         # X @ W @ M_mult + X @ M1 @ M2 * scaler
         # (nblocks, out_features / nblocks, in_features / nblocks)
@@ -156,7 +173,7 @@ class MonarchLinear(StructuredLinear):
             self.blkdiag_mult = nn.Parameter(
                 torch.eye(self.out_blksz, self.in_blksz, device=self.device).repeat(nblocks, 1, 1)
             )
-        
+
         # initialize frozen dense weights
         self.reset_parameters()
         if weights is not None:
@@ -165,9 +182,9 @@ class MonarchLinear(StructuredLinear):
             else:
                 self.set_weights_from_dense_init(weights, 1)
         self.to(device)
-        
+
         # Initialize scaling (vector or a scaler)
-        if self.use_scaler: 
+        if self.use_scaler:
             if self.lora_style_init:
                 raise ValueError("LoRA init already zeroed out; no need for scaler")
             layernorm = peft_config.get("layernorm", False)
@@ -176,22 +193,21 @@ class MonarchLinear(StructuredLinear):
         else:
             self.scaler = nn.Identity()
         self.scaler.to(self.device)
-        
+
         self.out1_buffer: torch.Tensor = None
         self.out2_buffer: torch.Tensor = None
-        
+
     def merge_weights(self):
         """Merge Monarch adapters into dense weights"""
-        pass
-    
+
     def reset_parameters(self) -> None:
         """
         Initialize block-diagonal weights and biases
         """
         monarch_factors = [self.blkdiag1]
         if self.use_scaler:
-            monarch_factors.append(self.blkdiag2) # zero init the scaler only
-            
+            monarch_factors.append(self.blkdiag2)  # zero init the scaler only
+
         if self.lora_style_init:
             lora_rank = 4
             lora_A = torch.zeros(lora_rank, self.in_features)
@@ -201,34 +217,31 @@ class MonarchLinear(StructuredLinear):
         else:
             for blkdiag in monarch_factors:
                 # init.kaiming_uniform_(blkdiag, a=math.sqrt(5)) # sqrt(5) should cancel "gain" out and give uniform(-1 / std, 1 / std)
-                
+
                 ## Mimic init.kaiming_uniform but only on each block: p of (k, q, p) instead of q * p
                 ## https://github.com/pytorch/pytorch/blob/main/torch/nn/modules/linear.py
                 fan_in = blkdiag.shape[-1]
-                gain = init.calculate_gain(nonlinearity="leaky_relu", param=math.sqrt(5)) 
+                gain = init.calculate_gain(nonlinearity="leaky_relu", param=math.sqrt(5))
                 std = gain / math.sqrt(fan_in)
-                bound = (
-                    math.sqrt(3.0) * std
-                )  
+                bound = math.sqrt(3.0) * std
                 ## Calculate uniform bounds from standard deviation
                 with torch.no_grad():
                     blkdiag.uniform_(-bound, bound)
         self.reset_parameters_bias()
-        
-        
+
     def allocate_buffers(self, x):
         """
         Allocate buffers for forward pass
         """
         batch_shape = x.shape[:-1]
         batch_dim = np.prod(batch_shape)
-        
+
         if self.out1_buffer is None or self.out1_buffer.shape != (self.nblocks, batch_dim, self.blk_r):
             self.out1_buffer = torch.empty(self.nblocks, batch_dim, self.blk_r, device=x.device, dtype=x.dtype)
-            
+
         if self.out2_buffer is None or self.out2_buffer.shape != (self.nblocks, batch_dim, self.out_blksz):
             self.out2_buffer = torch.empty(self.nblocks, batch_dim, self.out_blksz, device=x.device, dtype=x.dtype)
-        
+
     def monarch_forward(self, x):
         """
         Forward using monarch factors only
@@ -239,7 +252,6 @@ class MonarchLinear(StructuredLinear):
         )
         return self.scaler(self.dropout(self.postprocess(output)))
 
-
     def set_weights_from_dense_init(self, w: torch.Tensor, rank=1):
         """
         Args:
@@ -248,11 +260,9 @@ class MonarchLinear(StructuredLinear):
         """
         assert w.ndim == 2, "w must be a 2D weight matrix"
         # project to monarch factors
-        blkdiag1, blkdiag2 = blockdiag_butterfly_project_einsum_rank(
-            w.T, self.nblocks, self.nblocks, rank
-        )
+        blkdiag1, blkdiag2 = blockdiag_butterfly_project_einsum_rank(w.T, self.nblocks, self.nblocks, rank)
         # assert blkdiag1.shape == self.blkdiag1.shape and blkdiag2.shape == self.blkdiag2.shape, \
-            # "Projected monarch shapes mismatch original shapes. Check you dense weight shape!"
+        # "Projected monarch shapes mismatch original shapes. Check you dense weight shape!"
         self.blkdiag1 = nn.Parameter(blkdiag1.to(self.device))
         self.blkdiag2 = nn.Parameter(blkdiag2.to(self.device))
 
@@ -261,8 +271,7 @@ class MonarchLinear(StructuredLinear):
             # Residual SVD components
             w.data -= blockdiag_butterfly_multiply(i, blkdiag1, blkdiag2)
             self.dense = nn.Parameter(w, requires_grad=False)
-        
-        
+
     def train(self, mode: bool = True):
         """
         Override for freezing and merging weights
@@ -276,7 +285,7 @@ class MonarchLinear(StructuredLinear):
                     merged_weights = self.monarch_forward(torch.eye(self.in_features, device=self.device)).T
                     self.dense.data -= merged_weights
                     self.merged = False
-                self.dense.requires_grad_(False) # freeze dense, train monarch adapter
+                self.dense.requires_grad_(False)  # freeze dense, train monarch adapter
                 if self.bias is not None:
                     self.bias.requires_grad_(False)
         else:
@@ -286,15 +295,16 @@ class MonarchLinear(StructuredLinear):
                 self.dense.data += merged_weights
                 self.merged = True
 
-
     def forward(self, x):
         if self.as_adapter:
-            assert getattr(self, "dense", None) is not None, "You should either set dense weights or set as_adapter=False"
+            assert (
+                getattr(self, "dense", None) is not None
+            ), "You should either set dense weights or set as_adapter=False"
             out = F.linear(x, self.dense)
             if self.use_mult_factor:
                 out = single_monarch_mult(out, self.blkdiag_mult)
-                
-            if not self.merged:                
+
+            if not self.merged:
                 # training with adapter
                 x = out + self.monarch_forward(x)
             else:
@@ -302,9 +312,8 @@ class MonarchLinear(StructuredLinear):
         else:
             # Dense already projected to monarch
             x = self.monarch_forward(x)
-        
-        return x + self.bias if getattr(self, "bias", None) is not None else x
 
+        return x + self.bias if getattr(self, "bias", None) is not None else x
 
     # Override magic methods
     def __repr__(self):
@@ -313,40 +322,42 @@ class MonarchLinear(StructuredLinear):
             f"{self.__class__.__name__}(in_features={self.in_features}, out_features={self.out_features}, "
             f"nblocks={self.nblocks}, requires_grad={list(self.parameters())[0].requires_grad})"
         )
-        
+
     def preprocess(self, x):
         in_features = x.shape[-1]
         if in_features < self.nblocks * self.in_blksz:
             x = F.pad(x, (0, self.nblocks * self.in_blksz - in_features))
         return x
-    
+
     @property
     def saving(self):
-        return (self.blkdiag1.numel() + self.blkdiag2.numel()) / (
-            self.in_features * self.out_features
-        )
+        return (self.blkdiag1.numel() + self.blkdiag2.numel()) / (self.in_features * self.out_features)
+
+
 class Block(nn.Module):
     """Helper for orthogonal parameterization"""
-    pass
-    
+
+
 class MonarchFactor(nn.Module):
-    def __init__(self,
-                 in_features: int,
-                 out_features: int,
-                 nblocks: int = 4,
-                 blk_r: int = 4,
-                 bias: bool = False,
-                 ortho: bool = False,
-                 all_zero: bool = False,
-                 dtype=torch.float,
-                 device="cuda"):
+    def __init__(
+        self,
+        in_features: int,
+        out_features: int,
+        nblocks: int = 4,
+        blk_r: int = 4,
+        bias: bool = False,
+        ortho: bool = False,
+        all_zero: bool = False,
+        dtype=torch.float,
+        device="cuda",
+    ):
         """Parameterizes a single monarch factor.
         Args:
             nblocks (int): number of blocks in the monarch factor
             blk_r (int): rank of each block
             ortho (bool): Whether to use orthogonal parameterization
             dtype: Set to bf16 by default for flash attention compatibility
-        The final shape will be (nblocks, blk_r, in_features / nblocks), 
+        The final shape will be (nblocks, blk_r, in_features / nblocks),
         with a max obtainable rank of nblocks * blk_r
         """
         super().__init__()
@@ -356,28 +367,26 @@ class MonarchFactor(nn.Module):
         self.blk_r = blk_r
         assert in_features % nblocks == 0, "Input dimension must be divisible by nblocks"
         self.in_blk_sz = in_features // nblocks
-        self.weight = nn.Parameter(
-            torch.zeros(nblocks, self.blk_r, self.in_blk_sz, device=device)
-        )  
+        self.weight = nn.Parameter(torch.zeros(nblocks, self.blk_r, self.in_blk_sz, device=device))
         self.ortho = ortho
         self.all_zero = all_zero
         self.dtype = dtype
         if bias:
             self.bias = nn.Parameter(torch.zeros(out_features, device=device))
-        
+
         self.reset_parameters()
-        
+
     def forward(self, x):
         x = single_monarch_mult(x, self.weight)
         if hasattr(self, "bias"):
             x += self.bias
         return x
-    
+
     def reset_parameters(self):
         if self.all_zero:
             torch.nn.init.zeros_(self.weight)
         if self.ortho:
-            self.dtype = torch.float # Otho parametrization doesn't support bf16
+            self.dtype = torch.float  # Otho parametrization doesn't support bf16
 
             for block in self.weight:
                 torch.nn.init.orthogonal_(block)
@@ -391,6 +400,6 @@ class MonarchFactor(nn.Module):
             bound = math.sqrt(3.0) * std
             with torch.no_grad():
                 self.weight.uniform_(-bound, bound)
-        
+
         if hasattr(self, "bias"):
             torch.nn.init.zeros_(self.bias)

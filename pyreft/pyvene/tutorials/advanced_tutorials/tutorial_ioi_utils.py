@@ -1,47 +1,22 @@
-import math
-import joblib
-import os
-import inspect
-from tqdm import tqdm
-from collections import defaultdict
-import functools
-from collections import OrderedDict
-from abc import ABC, abstractmethod
 import json
-from pathlib import Path
 import random
-from typing import (
-    Tuple,
-    List,
-    Sequence,
-    Union,
-    Any,
-    Optional,
-    Literal,
-    Iterable,
-    Callable,
-    Dict,
-)
-import typing
-import transformers
+from collections import OrderedDict
+from pathlib import Path
+from typing import Iterable, List, Literal, Sequence, Tuple, Union
 
 import numpy as np
-import pandas as pd
 import torch
-from torch import Tensor
-from torch.nn import Parameter
-from torch import nn
-from torch.utils.data import Dataset, DataLoader
-
+import transformers
 from pyvene import (
-    IntervenableModel,
-    RepresentationConfig,
-    IntervenableConfig,
-    LowRankRotatedSpaceIntervention,
-    SkipIntervention,
-    VanillaIntervention,
     BoundlessRotatedSpaceIntervention,
+    IntervenableConfig,
+    IntervenableModel,
+    LowRankRotatedSpaceIntervention,
+    RepresentationConfig,
+    VanillaIntervention,
 )
+from torch import Tensor
+from torch.utils.data import Dataset
 
 ###
 #
@@ -118,19 +93,14 @@ class Prompt:
         # the unique elements of the tuple, in the order they appear
         ordered_uniques = list(OrderedDict.fromkeys(things).keys())
         canonical_elts = ["A", "B", "C"]
-        uniques_to_canonical = {
-            x: y
-            for x, y in zip(ordered_uniques, canonical_elts[: len(ordered_uniques)])
-        }
+        uniques_to_canonical = {x: y for x, y in zip(ordered_uniques, canonical_elts[: len(ordered_uniques)])}
         return tuple([uniques_to_canonical[x] for x in things])
 
     @staticmethod
     def matches_pattern(names: Tuple[str, str, str], pattern: str) -> bool:
         return Prompt.canonicalize(names) == Prompt.canonicalize(tuple(pattern))
 
-    def resample_pattern(
-        self, orig_pattern: str, new_pattern: str, name_distribution: Sequence[str]
-    ) -> "Prompt":
+    def resample_pattern(self, orig_pattern: str, new_pattern: str, name_distribution: Sequence[str]) -> "Prompt":
         """
         Change the pattern of the prompt, while keeping the names that are
         mapped to the same symbols in the original and new patterns the same.
@@ -198,7 +168,7 @@ class PromptDataset(Dataset):
         assert len(prompts) > 0
         self.prompts: Sequence[Prompt] = np.array(prompts)
         self.tokenizer = tokenizer
-        ls = self.lengths
+        self.lengths
 
     def __getitem__(self, idx: Union[int, Sequence, slice]) -> "PromptDataset":
         if isinstance(idx, int):
@@ -217,16 +187,12 @@ class PromptDataset(Dataset):
         return f"{[x for x in self.prompts]}"
 
     def __add__(self, other: "PromptDataset") -> "PromptDataset":
-        return PromptDataset(
-            prompts=list(self.prompts) + list(other.prompts), tokenizer=self.tokenizer
-        )
+        return PromptDataset(prompts=list(self.prompts) + list(other.prompts), tokenizer=self.tokenizer)
 
     @property
     def lengths(self) -> List[int]:
         return [
-            self.tokenizer(
-                x.sentence, return_tensors="pt", return_attention_mask=False
-            )["input_ids"].shape[1]
+            self.tokenizer(x.sentence, return_tensors="pt", return_attention_mask=False)["input_ids"].shape[1]
             for x in self.prompts
         ]
 
@@ -240,15 +206,11 @@ class PromptDataset(Dataset):
 
     @property
     def io_tokens(self) -> Tensor:
-        return torch.tensor(
-            [self.tokenizer(f" {x.io_name}")["input_ids"][0] for x in self.prompts]
-        )
+        return torch.tensor([self.tokenizer(f" {x.io_name}")["input_ids"][0] for x in self.prompts])
 
     @property
     def s_tokens(self) -> Tensor:
-        return torch.tensor(
-            [self.tokenizer(f" {x.s_name}")["input_ids"][0] for x in self.prompts]
-        )
+        return torch.tensor([self.tokenizer(f" {x.s_name}")["input_ids"][0] for x in self.prompts])
 
     @property
     def answer_tokens(self):
@@ -299,9 +261,7 @@ class PatchingDataset(Dataset):
         self.source = source
         self.patched_answer_tokens = patched_answer_tokens.long()
 
-    def batches(
-        self, batch_size: int, shuffle: bool = True
-    ) -> Iterable["PatchingDataset"]:
+    def batches(self, batch_size: int, shuffle: bool = True) -> Iterable["PatchingDataset"]:
         if shuffle:
             order = np.random.permutation(len(self))
         else:
@@ -326,9 +286,7 @@ class PatchingDataset(Dataset):
         return PatchingDataset(
             base=self.base + other.base,
             source=self.source + other.source,
-            patched_answer_tokens=torch.cat(
-                [self.patched_answer_tokens, other.patched_answer_tokens], dim=0
-            ),
+            patched_answer_tokens=torch.cat([self.patched_answer_tokens, other.patched_answer_tokens], dim=0),
         )
 
 
@@ -369,9 +327,7 @@ class PromptDistribution:
         prompt_names = tuple([unique_names[unique_ids.index(i)] for i in pattern])
         obj = random.choice(self.objects)
         place = random.choice(self.places)
-        return Prompt(
-            names=prompt_names, template=template, obj=obj, place=place
-        )
+        return Prompt(names=prompt_names, template=template, obj=obj, place=place)
 
     def sample_das(
         self,
@@ -403,10 +359,7 @@ class PromptDistribution:
         source_prompts: List[Prompt] = []
         for orig_pattern in base_patterns:
             for corrupted_pattern in source_patterns:
-                base_prompt_batch = [
-                    self.sample_one(orig_pattern)
-                    for _ in range(samples_per_combination)
-                ]
+                base_prompt_batch = [self.sample_one(orig_pattern) for _ in range(samples_per_combination)]
                 source_prompt_batch = [
                     p.resample_pattern(
                         name_distribution=self.names,
@@ -423,27 +376,19 @@ class PromptDistribution:
             patched_answer_names = []  # list of (correct, incorrect) name pairs
             for base_prompt, source_prompt in zip(base_prompts, source_prompts):
                 if base_prompt.s1_pos == source_prompt.s1_pos:
-                    patched_answer_names.append(
-                        (base_prompt.io_name, base_prompt.s_name)
-                    )
+                    patched_answer_names.append((base_prompt.io_name, base_prompt.s_name))
                 else:
-                    patched_answer_names.append(
-                        (base_prompt.s_name, base_prompt.io_name)
-                    )
+                    patched_answer_names.append((base_prompt.s_name, base_prompt.io_name))
         elif labels == "name":
             patched_answer_names = []  # list of (correct, incorrect) name pairs
             for base_prompt, source_prompt in zip(base_prompts, source_prompts):
-                patched_answer_names.append(
-                    (source_prompt.io_name, base_prompt.io_name)
-                )
+                patched_answer_names.append((source_prompt.io_name, base_prompt.io_name))
 
         clean_dataset = PromptDataset(base_prompts, tokenizer)
         corrupted_dataset = PromptDataset(source_prompts, tokenizer)
         patched_answer_tokens = torch.Tensor(
             [
-                [
-                    tokenizer(f" {x}")["input_ids"][0] for x in y
-                ]  # prepend space for each name
+                [tokenizer(f" {x}")["input_ids"][0] for x in y]  # prepend space for each name
                 for y in patched_answer_names
             ]
         )
@@ -470,9 +415,7 @@ def compute_metrics(eval_preds, eval_labels):
         total_count += len(correct_labels)
         correct_count += correct_labels.sum().tolist()
         # kl div
-        kl_divs += [
-            eval_pred[:, -1][torch.arange(len(actual_test_labels)), actual_test_labels]
-        ]
+        kl_divs += [eval_pred[:, -1][torch.arange(len(actual_test_labels)), actual_test_labels]]
     accuracy = round(correct_count / total_count, 2)
     kl_div = torch.cat(kl_divs, dim=0).mean()
     return {"accuracy": accuracy, "kl_div": kl_div}
@@ -574,9 +517,7 @@ def find_variable_at(
     D_train = train_distribution.sample_das(
         tokenizer=tokenizer,
         base_patterns=["ABB", "BAB"],
-        source_patterns=["ABB", "BAB"]
-        if aligning_variable == "position"
-        else ["CDD", "DCD"],
+        source_patterns=["ABB", "BAB"] if aligning_variable == "position" else ["CDD", "DCD"],
         labels=aligning_variable,
         samples_per_combination=50 if aligning_variable == "position" else 50,
     )
@@ -603,7 +544,6 @@ def find_variable_at(
     data = []
 
     batch_size = 20
-    eval_every = 5
     initial_lr = 0.01
     n_epochs = 10
     aligning_stream = stream
@@ -618,10 +558,7 @@ def find_variable_at(
     for aligning_pos in positions:
         for aligning_layer in layers:
             if debug:
-                print(
-                    f"finding name position at: pos->{aligning_pos}, "
-                    f"layers->{aligning_layer}, stream->{stream}"
-                )
+                print(f"finding name position at: pos->{aligning_pos}, " f"layers->{aligning_layer}, stream->{stream}")
             if heads is not None:
                 config = single_d_low_rank_das_position_config(
                     type(gpt2),
@@ -659,28 +596,20 @@ def find_variable_at(
                     optimizer_params = []
                     for k, v in intervenable.interventions.items():
                         optimizer_params += [{"params": v[0].rotate_layer.parameters()}]
-                        optimizer_params += [
-                            {"params": v[0].intervention_boundaries, "lr": 0.5}
-                        ]
+                        optimizer_params += [{"params": v[0].intervention_boundaries, "lr": 0.5}]
                     optimizer = torch.optim.Adam(optimizer_params, lr=initial_lr)
                     target_total_step = int(len(D_train) / batch_size) * n_epochs
                     temperature_start = 50.0
                     temperature_end = 0.1
                     temperature_schedule = (
-                        torch.linspace(
-                            temperature_start, temperature_end, target_total_step
-                        )
+                        torch.linspace(temperature_start, temperature_end, target_total_step)
                         .to(torch.bfloat16)
                         .to("cuda" if torch.cuda.is_available() else "cpu")
                     )
                     intervenable.set_temperature(temperature_schedule[total_step])
                 else:
-                    optimizer = torch.optim.Adam(
-                        intervenable.get_trainable_parameters(), lr=initial_lr
-                    )
-                scheduler = torch.optim.lr_scheduler.LinearLR(
-                    optimizer, end_factor=0.1, total_iters=n_epochs
-                )
+                    optimizer = torch.optim.Adam(intervenable.get_trainable_parameters(), lr=initial_lr)
+                scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, end_factor=0.1, total_iters=n_epochs)
 
                 for epoch in range(n_epochs):
                     torch.cuda.empty_cache()
@@ -697,9 +626,7 @@ def find_variable_at(
                             if v is not None and isinstance(v, torch.Tensor):
                                 source_inputs[k] = v.to(gpt2.device)
                         # prepare label
-                        labels = batch_dataset.patched_answer_tokens[:, 0].to(
-                            gpt2.device
-                        )
+                        labels = batch_dataset.patched_answer_tokens[:, 0].to(gpt2.device)
 
                         assert all(x == 18 for x in batch_dataset.base.lengths)
                         assert all(x == 18 for x in batch_dataset.source.lengths)
@@ -739,29 +666,23 @@ def find_variable_at(
                                     },
                                 )
 
-                        logits = get_last_token(counterfactual_outputs.logits, base_inputs["attention_mask"]).unsqueeze(1)
-                        eval_metrics = compute_metrics(
-                            [logits], [labels]
+                        logits = get_last_token(counterfactual_outputs.logits, base_inputs["attention_mask"]).unsqueeze(
+                            1
                         )
+                        eval_metrics = compute_metrics([logits], [labels])
                         if do_boundless_das:
-                            loss = calculate_boundless_das_loss(
-                                logits, labels, intervenable
-                            )
+                            loss = calculate_boundless_das_loss(logits, labels, intervenable)
                         else:
                             loss = calculate_loss(logits, labels)
-                        loss_str = round(loss.item(), 2)
+                        round(loss.item(), 2)
                         loss.backward()
                         optimizer.step()
                         scheduler.step()
                         intervenable.set_zero_grad()
                         if do_boundless_das:
-                            intervenable.set_temperature(
-                                temperature_schedule[total_step]
-                            )
+                            intervenable.set_temperature(temperature_schedule[total_step])
                             for k, v in intervenable.interventions.items():
-                                intervention_boundaries = v[
-                                    0
-                                ].intervention_boundaries.sum()
+                                intervention_boundaries = v[0].intervention_boundaries.sum()
                         total_step += 1
 
             # eval
@@ -866,31 +787,33 @@ def find_variable_at(
     return data
 
 
-def path_patching_config(
-    layer, last_layer, low_rank_dimension,
-    component="attention_output", unit="pos"
-):
-    intervening_component = [{
-        "layer": layer, "component": component, 
-        "unit": unit, "group_key": 0,
-        "intervention_type": LowRankRotatedSpaceIntervention,
-        "low_rank_dimension": low_rank_dimension,
-    }]
+def path_patching_config(layer, last_layer, low_rank_dimension, component="attention_output", unit="pos"):
+    intervening_component = [
+        {
+            "layer": layer,
+            "component": component,
+            "unit": unit,
+            "group_key": 0,
+            "intervention_type": LowRankRotatedSpaceIntervention,
+            "low_rank_dimension": low_rank_dimension,
+        }
+    ]
     restoring_components = []
     if not component.startswith("mlp_"):
-        restoring_components += [{
-            "layer": layer, "component": "mlp_output", "group_key": 1,
-            "intervention_type": VanillaIntervention,
-        }]
-    for i in range(layer+1, last_layer):
-        restoring_components += [{
-            "layer": i, "component": "attention_output", "group_key": 1, 
-            "intervention_type": VanillaIntervention},{
-            "layer": i, "component": "mlp_output", "group_key": 1,
-            "intervention_type": VanillaIntervention
-        }]
-    intervenable_config = IntervenableConfig(
-        intervening_component + restoring_components)
+        restoring_components += [
+            {
+                "layer": layer,
+                "component": "mlp_output",
+                "group_key": 1,
+                "intervention_type": VanillaIntervention,
+            }
+        ]
+    for i in range(layer + 1, last_layer):
+        restoring_components += [
+            {"layer": i, "component": "attention_output", "group_key": 1, "intervention_type": VanillaIntervention},
+            {"layer": i, "component": "mlp_output", "group_key": 1, "intervention_type": VanillaIntervention},
+        ]
+    intervenable_config = IntervenableConfig(intervening_component + restoring_components)
     return intervenable_config, len(restoring_components)
 
 
@@ -948,7 +871,6 @@ def with_path_patch_find_variable_at(
     data = []
 
     batch_size = 20
-    eval_every = 5
     initial_lr = 0.01
     n_epochs = 10
     aligning_stream = stream
@@ -956,27 +878,16 @@ def with_path_patch_find_variable_at(
     for aligning_pos in positions:
         for aligning_layer in layers:
             if debug:
-                print(
-                    f"finding name position at: pos->{aligning_pos}, "
-                    f"layers->{aligning_layer}, stream->{stream}"
-                )
+                print(f"finding name position at: pos->{aligning_pos}, " f"layers->{aligning_layer}, stream->{stream}")
             config, num_restores = path_patching_config(
-                aligning_layer, 
-                gpt2.config.n_layer, 
-                low_rank_dimension,
-                component=aligning_stream,
-                unit="pos"
+                aligning_layer, gpt2.config.n_layer, low_rank_dimension, component=aligning_stream, unit="pos"
             )
             intervenable = IntervenableModel(config, gpt2)
             intervenable.set_device("cuda")
             intervenable.disable_model_gradients()
             total_step = 0
-            optimizer = torch.optim.Adam(
-                intervenable.get_trainable_parameters(), lr=initial_lr
-            )
-            scheduler = torch.optim.lr_scheduler.LinearLR(
-                optimizer, end_factor=0.1, total_iters=n_epochs
-            )
+            optimizer = torch.optim.Adam(intervenable.get_trainable_parameters(), lr=initial_lr)
+            scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, end_factor=0.1, total_iters=n_epochs)
 
             for epoch in range(n_epochs):
                 torch.cuda.empty_cache()
@@ -993,9 +904,7 @@ def with_path_patch_find_variable_at(
                         if v is not None and isinstance(v, torch.Tensor):
                             source_inputs[k] = v.to(gpt2.device)
                     # prepare label
-                    labels = batch_dataset.patched_answer_tokens[:, 0].to(
-                        gpt2.device
-                    )
+                    labels = batch_dataset.patched_answer_tokens[:, 0].to(gpt2.device)
 
                     assert all(x == 18 for x in batch_dataset.base.lengths)
                     assert all(x == 18 for x in batch_dataset.source.lengths)
@@ -1005,17 +914,15 @@ def with_path_patch_find_variable_at(
                         [{"input_ids": source_inputs["input_ids"]}, {"input_ids": base_inputs["input_ids"]}],
                         {
                             "sources->base": (
-                                [[[aligning_pos]] * b_s]+[[[aligning_pos]] * b_s]*num_restores, 
-                                [[[aligning_pos]] * b_s]+[[[aligning_pos]] * b_s]*num_restores, 
+                                [[[aligning_pos]] * b_s] + [[[aligning_pos]] * b_s] * num_restores,
+                                [[[aligning_pos]] * b_s] + [[[aligning_pos]] * b_s] * num_restores,
                             )
                         },
                     )
 
-                    eval_metrics = compute_metrics(
-                        [counterfactual_outputs.logits], [labels]
-                    )
+                    eval_metrics = compute_metrics([counterfactual_outputs.logits], [labels])
                     loss = calculate_loss(counterfactual_outputs.logits, labels)
-                    loss_str = round(loss.item(), 2)
+                    round(loss.item(), 2)
                     loss.backward()
                     optimizer.step()
                     scheduler.step()
@@ -1049,8 +956,8 @@ def with_path_patch_find_variable_at(
                         [{"input_ids": source_inputs["input_ids"]}, {"input_ids": base_inputs["input_ids"]}],
                         {
                             "sources->base": (
-                                [[[aligning_pos]] * b_s]+[[[aligning_pos]] * b_s]*num_restores, 
-                                [[[aligning_pos]] * b_s]+[[[aligning_pos]] * b_s]*num_restores, 
+                                [[[aligning_pos]] * b_s] + [[[aligning_pos]] * b_s] * num_restores,
+                                [[[aligning_pos]] * b_s] + [[[aligning_pos]] * b_s] * num_restores,
                             )
                         },
                     )

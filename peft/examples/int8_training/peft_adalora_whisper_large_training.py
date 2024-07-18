@@ -18,12 +18,17 @@ import evaluate
 import numpy as np
 import torch
 import transformers
-import wandb
 
 # accelerate imports
 from accelerate import Accelerator, dispatch_model
 from accelerate.logging import get_logger
-from datasets import Audio, DatasetDict, IterableDatasetDict, interleave_datasets, load_dataset
+from datasets import (
+    Audio,
+    DatasetDict,
+    IterableDatasetDict,
+    interleave_datasets,
+    load_dataset,
+)
 
 # hf imports
 from huggingface_hub import HfApi
@@ -39,9 +44,10 @@ from transformers import (
 )
 from transformers.models.whisper.english_normalizer import BasicTextNormalizer
 
+import wandb
+
 # peft imports
 from peft import AdaLoraConfig, LoraConfig, PeftModel, get_peft_model
-
 
 logger = get_logger(__name__, log_level="INFO")
 
@@ -71,9 +77,7 @@ def parse_args():
         action="store_true",
         help="Whether to use streaming mode for the dataset.",
     )
-    parser.add_argument(
-        "--do_lower_case", action="store_true", help="lowercase the transcribed text before tokenizing"
-    )
+    parser.add_argument("--do_lower_case", action="store_true", help="lowercase the transcribed text before tokenizing")
     parser.add_argument(
         "--do_remove_punctuation", action="store_true", help="remove punctuation from the transcribed text"
     )

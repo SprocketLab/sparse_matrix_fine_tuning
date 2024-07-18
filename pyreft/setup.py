@@ -1,11 +1,11 @@
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 # Read the content of the README file
-with open('README.md', 'r', encoding='utf-8') as f:
+with open("README.md", "r", encoding="utf-8") as f:
     long_description = f.read()
 
 # Read the content of the requirements.txt file
-with open('requirements.txt', 'r', encoding='utf-8') as f:
+with open("requirements.txt", "r", encoding="utf-8") as f:
     requirements = f.read().splitlines()
 
 setup(
@@ -13,13 +13,13 @@ setup(
     version="0.0.4",
     description="REFT: Representation Finetuning for Language Models",
     long_description=long_description,
-    long_description_content_type='text/markdown',
+    long_description_content_type="text/markdown",
     url="https://github.com/stanfordnlp/pyreft",
     author="Zhengxuan Wu",
     author_email="wuzhengx@stanford.edu",
     license="Apache License 2.0",
-    packages=find_packages(include=['pyreft', 'pyreft.*']),
-    python_requires='>=3.8',
+    packages=find_packages(include=["pyreft", "pyreft.*"]),
+    python_requires=">=3.8",
     install_requires=requirements,
     extras_require={},
     classifiers=[

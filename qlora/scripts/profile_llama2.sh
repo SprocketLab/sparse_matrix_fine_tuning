@@ -1,5 +1,5 @@
 python qlora.py \
-    --model_name_or_path huggyllama/llama-7b \
+    --model_name_or_path meta-llama/Llama-2-7b-hf \
     --use_auth \
     --output_dir /fly/results/qlora \
     --logging_steps 10 \
@@ -22,8 +22,6 @@ python qlora.py \
     --lora_r 64 \
     --lora_alpha 16 \
     --lora_modules all \
-    --double_quant \
-    --quant_type nf4 \
     --bf16 \
     --bits 16 \
     --warmup_ratio 0.03 \
@@ -42,4 +40,7 @@ python qlora.py \
     --lora_dropout 0.1 \
     --weight_decay 0.0 \
     --seed 0 \
-    --mmlu_split test
+    --mmlu_split test \
+    --double_quant False \
+    --report_to none \
+    --profile True

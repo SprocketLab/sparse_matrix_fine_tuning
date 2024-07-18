@@ -330,9 +330,7 @@ class Linear(OFTLayer):
         self._active_adapter = adapter_name
         self.update_layer(adapter_name, r, module_dropout, init_weights, **kwargs)
 
-    def _get_delta_activations(
-        self, adapter_name: str, input: torch.Tensor, *args: Any, **kwargs: Any
-    ) -> torch.Tensor:
+    def _get_delta_activations(self, adapter_name: str, input: torch.Tensor, *args: Any, **kwargs: Any) -> torch.Tensor:
         delta_weight = self.get_delta_weight(adapter_name)
 
         base_layer = self.get_base_layer()
@@ -365,9 +363,7 @@ class Conv2d(OFTLayer):
         self._active_adapter = adapter_name
         self.update_layer(adapter_name, r, module_dropout, init_weights, **kwargs)
 
-    def _get_delta_activations(
-        self, adapter_name: str, input: torch.Tensor, *args: Any, **kwargs: Any
-    ) -> torch.Tensor:
+    def _get_delta_activations(self, adapter_name: str, input: torch.Tensor, *args: Any, **kwargs: Any) -> torch.Tensor:
         delta_weight = self.get_delta_weight(adapter_name)
 
         base_layer = self.get_base_layer()

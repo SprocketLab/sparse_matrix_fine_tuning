@@ -1,11 +1,12 @@
-import random
 import copy
 import inspect
 import itertools
-import torch
+import random
 from collections import defaultdict
-import networkx as nx
+
 import matplotlib.pyplot as plt
+import networkx as nx
+import torch
 
 
 class CausalModel:
@@ -35,9 +36,7 @@ class CausalModel:
             assert variable in self.values
             assert variable in self.children
             assert variable in self.functions
-            assert len(inspect.getfullargspec(self.functions[variable])[0]) == len(
-                self.parents[variable]
-            )
+            assert len(inspect.getfullargspec(self.functions[variable])[0]) == len(self.parents[variable])
             if timesteps is not None:
                 assert variable in timesteps
             for variable2 in copy.copy(self.variables):
@@ -83,9 +82,7 @@ class CausalModel:
             if var in self.inputs or var in self.equiv_classes:
                 continue
             self.equiv_classes[var] = {val: [] for val in self.values[var]}
-            for parent_values in itertools.product(
-                *[self.values[par] for par in self.parents[var]]
-            ):
+            for parent_values in itertools.product(*[self.values[par] for par in self.parents[var]]):
                 value = self.functions[var](*parent_values)
                 self.equiv_classes[var][value].append(
                     {par: parent_values[i] for i, par in enumerate(self.parents[var])}
@@ -115,13 +112,7 @@ class CausalModel:
 
     def print_structure(self, pos=None):
         G = nx.DiGraph()
-        G.add_edges_from(
-            [
-                (parent, child)
-                for child in self.variables
-                for parent in self.parents[child]
-            ]
-        )
+        G.add_edges_from([(parent, child) for child in self.variables for parent in self.parents[child]])
         plt.figure(figsize=(10, 10))
         nx.draw_networkx(G, with_labels=True, node_color="green", pos=self.pos)
         plt.show()
@@ -150,20 +141,10 @@ class CausalModel:
         return paths
 
     def print_setting(self, total_setting, display=None):
-        labeler = lambda var: var + ": " + str(total_setting[var]) \
-            if display is None or display[var] \
-            else var
-        relabeler = {
-            var: labeler(var) for var in self.variables
-        }
+        labeler = lambda var: var + ": " + str(total_setting[var]) if display is None or display[var] else var
+        relabeler = {var: labeler(var) for var in self.variables}
         G = nx.DiGraph()
-        G.add_edges_from(
-            [
-                (parent, child)
-                for child in self.variables
-                for parent in self.parents[child]
-            ]
-        )
+        G.add_edges_from([(parent, child) for child in self.variables for parent in self.parents[child]])
         plt.figure(figsize=(10, 10))
         G = nx.relabel_nodes(G, relabeler)
         newpos = dict()
@@ -176,7 +157,6 @@ class CausalModel:
     def run_forward(self, intervention=None):
         total_setting = defaultdict(None)
         length = len(list(total_setting.keys()))
-        step = 0
         while length != len(self.variables):
             for variable in self.variables:
                 for variable2 in self.parents[variable]:
@@ -198,9 +178,7 @@ class CausalModel:
             interchange_intervention[var] = setting[var]
         return self.run_forward(interchange_intervention)
 
-    def add_variable(
-        self, variable, values, parents, children, function, timestep=None
-    ):
+    def add_variable(self, variable, values, parents, children, function, timestep=None):
         if timestep is not None:
             assert self.timesteps is not None
             self.timesteps[variable] = timestep
@@ -315,7 +293,7 @@ class CausalModel:
     ):
         if sampler is None:
             sampler = self.sample_input
-        
+
         if input_function is None:
             input_function = self.input_to_tensor
         if output_function is None:
@@ -328,11 +306,11 @@ class CausalModel:
             if filter is None or filter(input):
                 output = self.run_forward(input)
                 if return_tensors:
-                    example['input_ids'] = input_function(input).to(device)
-                    example['labels'] = output_function(output).to(device)
+                    example["input_ids"] = input_function(input).to(device)
+                    example["labels"] = output_function(output).to(device)
                 else:
-                    example['input_ids'] = input
-                    example['labels'] = output
+                    example["input_ids"] = input
+                    example["labels"] = output
                 examples.append(example)
 
         return examples
@@ -355,13 +333,7 @@ class CausalModel:
         if output_function is None:
             output_function = self.output_to_tensor
 
-        maxlength = len(
-            [
-                var
-                for var in self.variables
-                if var not in self.inputs and var not in self.outputs
-            ]
-        )
+        maxlength = len([var for var in self.variables if var not in self.inputs and var not in self.outputs])
         if sampler is None:
             sampler = self.sample_input
         if intervention_sampler is None:
@@ -392,23 +364,17 @@ class CausalModel:
                             sources.append({})
 
                     if return_tensors:
-                        example["labels"] = self.output_to_tensor(
-                            self.run_interchange(base, source_dic)
-                        ).to(device)
-                        example["base_labels"] = self.output_to_tensor(
-                            self.run_forward(base)
-                        ).to(device)
+                        example["labels"] = self.output_to_tensor(self.run_interchange(base, source_dic)).to(device)
+                        example["base_labels"] = self.output_to_tensor(self.run_forward(base)).to(device)
                         example["input_ids"] = self.input_to_tensor(base).to(device)
                         example["source_input_ids"] = torch.stack(sources).to(device)
-                        example["intervention_id"] = torch.tensor(
-                            [intervention_id(intervention)]
-                        ).to(device)
+                        example["intervention_id"] = torch.tensor([intervention_id(intervention)]).to(device)
                     else:
-                        example['labels'] = self.run_interchange(base, source_dic)
-                        example['base_labels'] = self.run_forward(base)
-                        example['input_ids'] = base
-                        example['source_input_ids'] = sources
-                        example['intervention_id'] = [intervention_id(intervention)]
+                        example["labels"] = self.run_interchange(base, source_dic)
+                        example["base_labels"] = self.run_forward(base)
+                        example["input_ids"] = base
+                        example["source_input_ids"] = sources
+                        example["intervention_id"] = [intervention_id(intervention)]
 
                     examples.append(example)
         return examples

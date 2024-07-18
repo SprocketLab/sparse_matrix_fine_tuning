@@ -10,26 +10,25 @@ from torch.nn import init
 class StructuredLinear(nn.Module):
 
     def __init__(self, in_features, out_features, bias=None, device=None, dtype=None, **kwargs):
-        """Subclasses should call reset_parameters
-        """
-        factory_kwargs = {'device': device, 'dtype': dtype}
+        """Subclasses should call reset_parameters"""
+        factory_kwargs = {"device": device, "dtype": dtype}
         super().__init__()
         self.in_features = in_features
         self.out_features = out_features
         # Subclasses may override {in,out}_features_extended
-        if not hasattr(self, 'in_features'):
+        if not hasattr(self, "in_features"):
             self.in_features = in_features
-        if not hasattr(self, 'out_features'):
+        if not hasattr(self, "out_features"):
             self.out_features = out_features
-        
-        # set bias 
+
+        # set bias
         if bias is None:
             self.bias = nn.Parameter(torch.zeros(out_features, **factory_kwargs))
         elif isinstance(bias, torch.Tensor):
             assert bias.shape == (out_features,), f"bias shape {bias.shape} is not (out_features,)"
             self.bias = nn.Parameter(bias)
         else:
-            self.register_parameter('bias', None)
+            self.register_parameter("bias", None)
 
     def reset_parameters(self) -> None:
         self.set_weights_from_dense_init(dense_init_fn_=partial(init.kaiming_uniform_, a=math.sqrt(5)))
@@ -49,7 +48,7 @@ class StructuredLinear(nn.Module):
         raise NotImplementedError
 
     def convert_to_dense_weight(self):
-        factory_kwargs = {'device': self.weight.device, 'dtype': self.weight.dtype}
+        factory_kwargs = {"device": self.weight.device, "dtype": self.weight.dtype}
         dense_weight = self.forward_matmul(torch.eye(self.in_features, **factory_kwargs)).T
         return dense_weight
 
@@ -62,7 +61,7 @@ class StructuredLinear(nn.Module):
     def postprocess(self, output):
         out_features = output.shape[-1]
         if out_features > self.out_features:
-            output = output[..., :self.out_features]
+            output = output[..., : self.out_features]
         return output
 
     def forward_matmul(self, x):

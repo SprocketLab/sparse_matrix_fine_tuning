@@ -15,5 +15,4 @@
 from .config import PromptTuningConfig, PromptTuningInit
 from .model import PromptEmbedding
 
-
 __all__ = ["PromptTuningConfig", "PromptEmbedding", "PromptTuningInit"]

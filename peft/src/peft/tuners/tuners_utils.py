@@ -34,7 +34,6 @@ from peft.utils import INCLUDE_LINEAR_LAYERS_SHORTHAND
 from ..config import PeftConfig
 from ..utils import ModulesToSaveWrapper, _get_submodules
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -191,7 +190,6 @@ class BaseTuner(nn.Module, ABC):
             adapter_name (`str`):
                 The adapter name.
         """
-        pass
 
     @abstractmethod
     def _prepare_adapter_config(self, peft_config: PeftConfig, model_config: dict) -> PeftConfig:
@@ -223,7 +221,6 @@ class BaseTuner(nn.Module, ABC):
             model (`nn.Module`):
                 The model that is going to be adapted.
         """
-        pass
 
     @abstractmethod
     def _check_target_module_exists(peft_config: PeftConfig, key: str) -> bool:
@@ -302,7 +299,6 @@ class BaseTuner(nn.Module, ABC):
         Raise a ValueError if there is something wrong with the config or if it conflicts with existing adapters.
 
         """
-        pass
 
     def _cast_adapter_dtype(self, adapter_name: str, autocast_adapter_dtype: bool = True) -> None:
         """
@@ -347,7 +343,6 @@ class BaseTuner(nn.Module, ABC):
 
         Raise a ValueError if it is not possible to merge the adapter with the given configuration.
         """
-        pass
 
     def inject_adapter(self, model: nn.Module, adapter_name: str, autocast_adapter_dtype: bool = True) -> None:
         r"""

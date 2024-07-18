@@ -1,18 +1,15 @@
 # Adapted from https://github.com/lm-sys/FastChat/blob/b3c8bd71637d6c88206a360be436e7941b4fffb4/fastchat/eval/eval_gpt_review.py
 import argparse
 import json
+import logging
 import os
 import time
 
 import openai
-from tqdm import tqdm
 import ray
-
 import shortuuid
-import logging
-import numpy as np
-import os
-import openai
+from tqdm import tqdm
+
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 logging.basicConfig(level=logging.INFO)
@@ -44,20 +41,20 @@ def get_eval(sys_prompt, user_prompt: str, max_tokens: int, model: str):
             return content
         except Exception as e:
             logger.error(e)
-            time.sleep(min(5*(i+1), 100))
+            time.sleep(min(5 * (i + 1), 100))
     logger.error(f"Failed after {MAX_API_RETRY} retries.")
     return "error"
+
 
 def parse_three_class_score(review):
     try:
         score = int(review.strip().split("\n")[-1].strip())
         return score
     except Exception as e:
-        logger.error(
-            f"{e}\nContent: {review}\n" "You must manually fix the score pair."
-        )
+        logger.error(f"{e}\nContent: {review}\n" "You must manually fix the score pair.")
         return -1
-    
+
+
 def parse_score(review):
     try:
         score_pair = review.split("\n")[0]
@@ -68,9 +65,7 @@ def parse_score(review):
         else:
             raise Exception("Invalid score pair.")
     except Exception as e:
-        logger.error(
-            f"{e}\nContent: {review}\n" "You must manually fix the score pair."
-        )
+        logger.error(f"{e}\nContent: {review}\n" "You must manually fix the score pair.")
         return [-1, -1]
 
 
@@ -88,9 +83,7 @@ def gen_prompt(reviewer_jsons, prompt_jsons, cat, ques, ans1, ans2):
     sys_prompt = prompt_json["system_prompt"]
     prompt_template = prompt_json["prompt_template"]
     defaults = prompt_json["defaults"]
-    prompt = prompt_template.format(
-        question=ques, answer_1=ans1, answer_2=ans2, **defaults
-    )
+    prompt = prompt_template.format(question=ques, answer_1=ans1, answer_2=ans2, **defaults)
 
     return sys_prompt, prompt, reviewer_idx + 1
 
@@ -103,6 +96,7 @@ def get_json_list(file_path):
             json_list.append(json.loads(line))
         return json_list
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="ChatGPT-based QA evaluation.")
     parser.add_argument("-q", "--question-file")
@@ -110,8 +104,8 @@ if __name__ == "__main__":
     parser.add_argument("-p", "--prompt-file")
     parser.add_argument("-r", "--reviewer-file")
     parser.add_argument("-o", "--output-review-file")
-    parser.add_argument("-m", "--model", default='gpt-4')
-    parser.add_argument("-id", "--id-key", default='question_id')
+    parser.add_argument("-m", "--model", default="gpt-4")
+    parser.add_argument("-id", "--id-key", default="question_id")
     parser.add_argument(
         "--max-tokens",
         type=int,
@@ -123,10 +117,12 @@ if __name__ == "__main__":
     if not os.path.isdir(args.output_review_file):
         dest = args.output_review_file
     else:
-        threeclass_suff = "_threeclass" if 'threeclass' in args.prompt_file else ""
+        threeclass_suff = "_threeclass" if "threeclass" in args.prompt_file else ""
         dest = os.path.join(
             args.output_review_file,
-            '_vs_'.join([elt.split('/')[-1].replace('.jsonl', '') for elt in args.answer_file_list]) + f'_{args.model}_reviewer{threeclass_suff}' + '.jsonl'
+            "_vs_".join([elt.split("/")[-1].replace(".jsonl", "") for elt in args.answer_file_list])
+            + f"_{args.model}_reviewer{threeclass_suff}"
+            + ".jsonl",
         )
 
     ray.init()
@@ -140,12 +136,10 @@ if __name__ == "__main__":
     question_ids = set(question[args.id_key] for question in question_jsons)
     question_jsons = sorted(question_jsons, key=lambda x: x[args.id_key])
     answer1_jsons = sorted(
-        [answer for answer in answer1_jsons if answer[args.id_key] in question_ids],
-        key=lambda x: x[args.id_key]
+        [answer for answer in answer1_jsons if answer[args.id_key] in question_ids], key=lambda x: x[args.id_key]
     )
     answer2_jsons = sorted(
-        [answer for answer in answer2_jsons if answer[args.id_key] in question_ids],
-        key=lambda x: x[args.id_key]
+        [answer for answer in answer2_jsons if answer[args.id_key] in question_ids], key=lambda x: x[args.id_key]
     )
 
     # check if # of questions, answers are the same
@@ -157,56 +151,56 @@ if __name__ == "__main__":
     question_idx_list = list(range(total_len))
 
     for i in tqdm(question_idx_list):
-        assert (
-            answer1_jsons[i][args.id_key]
-            == question_jsons[i][args.id_key]
-            == answer2_jsons[i][args.id_key]
-        )
+        assert answer1_jsons[i][args.id_key] == question_jsons[i][args.id_key] == answer2_jsons[i][args.id_key]
 
         ques = question_jsons[i]["text"]
         cat = question_jsons[i]["category"]
-        if 'generation_truncated' in answer1_jsons[i]:
+        if "generation_truncated" in answer1_jsons[i]:
             ans1 = answer1_jsons[i]["generation_truncated"].split(
-                'A chat between a curious human and an artificial intelligence')[0]
-        elif 'generation' in answer1_jsons[i]:
+                "A chat between a curious human and an artificial intelligence"
+            )[0]
+        elif "generation" in answer1_jsons[i]:
             ans1 = answer1_jsons[i]["generation"].split(
-                'A chat between a curious human and an artificial intelligence')[0]
+                "A chat between a curious human and an artificial intelligence"
+            )[0]
         else:
             ans1 = answer1_jsons[i]["text"]
         # ans1 = answer1_jsons[i]["text"]
-        if 'generation_truncated' in answer2_jsons[i]:
+        if "generation_truncated" in answer2_jsons[i]:
             ans2 = answer2_jsons[i]["generation_truncated"].split(
-                'A chat between a curious human and an artificial intelligence')[0]
-        elif 'generation' in answer2_jsons[i]:
+                "A chat between a curious human and an artificial intelligence"
+            )[0]
+        elif "generation" in answer2_jsons[i]:
             ans2 = answer2_jsons[i]["generation"].split(
-                'A chat between a curious human and an artificial intelligence')[0]
+                "A chat between a curious human and an artificial intelligence"
+            )[0]
         else:
             ans2 = answer2_jsons[i]["text"]
-        sys_prompt, prompt, reviewer_id = gen_prompt(
-            reviewer_jsons, prompt_jsons, cat, ques, ans1, ans2
-        )
+        sys_prompt, prompt, reviewer_id = gen_prompt(reviewer_jsons, prompt_jsons, cat, ques, ans1, ans2)
         review_id = shortuuid.uuid()
         review_jsons.append(
             {
                 "review_id": review_id,
                 args.id_key: question_jsons[i][args.id_key],
-                "answer1_id": answer1_jsons[i]["answer_id"] if 'answer_id' in answer1_jsons[i] else shortuuid.uuid(ans1),
-                "answer2_id": answer2_jsons[i]["answer_id"] if 'answer_id' in answer2_jsons[i] else shortuuid.uuid(ans2),
+                "answer1_id": (
+                    answer1_jsons[i]["answer_id"] if "answer_id" in answer1_jsons[i] else shortuuid.uuid(ans1)
+                ),
+                "answer2_id": (
+                    answer2_jsons[i]["answer_id"] if "answer_id" in answer2_jsons[i] else shortuuid.uuid(ans2)
+                ),
                 "reviewer_id": reviewer_id,
                 "metadata": {},
             }
         )
         # To avoid the rate limit set by OpenAI
         handles.append(get_eval.remote(sys_prompt, prompt, args.max_tokens, args.model))
-        logger.info(
-            f"Waiting for {REQ_TIME_GAP} seconds before sending the next request."
-        )
+        logger.info(f"Waiting for {REQ_TIME_GAP} seconds before sending the next request.")
         time.sleep(REQ_TIME_GAP)
 
     reviews = ray.get(handles)
     with open(dest, "w") as output_review_file:
         for idx, review in enumerate(reviews):
-            if 'threeclass' in args.prompt_file:
+            if "threeclass" in args.prompt_file:
                 scores = parse_three_class_score(review)
             else:
                 scores = parse_score(review)

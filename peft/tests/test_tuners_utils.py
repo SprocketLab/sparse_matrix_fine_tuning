@@ -23,7 +23,12 @@ import torch
 from diffusers import StableDiffusionPipeline
 from parameterized import parameterized
 from torch import nn
-from transformers import AutoModel, AutoModelForCausalLM, AutoModelForSeq2SeqLM, BitsAndBytesConfig
+from transformers import (
+    AutoModel,
+    AutoModelForCausalLM,
+    AutoModelForSeq2SeqLM,
+    BitsAndBytesConfig,
+)
 
 from peft import (
     AdaptionPromptConfig,
@@ -45,7 +50,6 @@ from peft.tuners.tuners_utils import (
 from peft.utils import INCLUDE_LINEAR_LAYERS_SHORTHAND
 
 from .testing_utils import require_bitsandbytes, require_torch_gpu
-
 
 # Implements tests for regex matching logic common for all BaseTuner subclasses, and
 # tests for correct behaviour with different config kwargs for BaseTuners (Ex: feedforward for IA3, etc) and

@@ -3,15 +3,16 @@ import torch
 
 try:
     from deepspeed.profiling.flops_profiler import get_model_profile
+
     has_deepspeed_profiling = True
-except ImportError as e:
+except ImportError:
     has_deepspeed_profiling = False
 
 try:
-    from fvcore.nn import FlopCountAnalysis, flop_count_str, flop_count_table
-    from fvcore.nn import ActivationCountAnalysis
+    from fvcore.nn import ActivationCountAnalysis, FlopCountAnalysis, flop_count_table
+
     has_fvcore_profiling = True
-except ImportError as e:
+except ImportError:
     FlopCountAnalysis = None
     ActivationCountAnalysis = None
     has_fvcore_profiling = False
@@ -27,14 +28,22 @@ def profile_deepspeed(model, input_size=(3, 224, 224), batch_size=1, detailed=Fa
         warm_up=10,  # the number of warm-ups before measuring the time of each module
         as_string=False,  # print raw numbers (e.g. 1000) or as human-readable strings (e.g. 1k)
         output_file=None,  # path to the output file. If None, the profiler prints to stdout.
-        ignore_modules=None)  # the list of modules to ignore in the profiling
+        ignore_modules=None,
+    )  # the list of modules to ignore in the profiling
     return macs, 0  # no activation count in DS
 
 
-def profile_fvcore(model, input_size=(3, 224, 224), input_dtype=torch.float32, max_depth=4,
-                   batch_size=1, detailed=False, force_cpu=False):
+def profile_fvcore(
+    model,
+    input_size=(3, 224, 224),
+    input_dtype=torch.float32,
+    max_depth=4,
+    batch_size=1,
+    detailed=False,
+    force_cpu=False,
+):
     if force_cpu:
-        model = model.to('cpu')
+        model = model.to("cpu")
     device, dtype = next(model.parameters()).device, next(model.parameters()).dtype
     example_input = torch.ones((batch_size,) + input_size, device=device, dtype=input_dtype)
     fca = FlopCountAnalysis(model, example_input)

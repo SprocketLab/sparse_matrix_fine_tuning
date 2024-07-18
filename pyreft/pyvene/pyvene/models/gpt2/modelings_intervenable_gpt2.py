@@ -8,9 +8,7 @@ config the dimensions of intervention based on model config
 defined in the huggingface library.
 """
 
-
 from ..constants import *
-
 
 """gpt2 base model"""
 gpt2_type_to_module_mapping = {
@@ -27,14 +25,14 @@ gpt2_type_to_module_mapping = {
     "query_output": ("h[%s].attn.c_attn", CONST_OUTPUT_HOOK, (split_three, 0)),
     "key_output": ("h[%s].attn.c_attn", CONST_OUTPUT_HOOK, (split_three, 1)),
     "value_output": ("h[%s].attn.c_attn", CONST_OUTPUT_HOOK, (split_three, 2)),
-    "head_query_output": ("h[%s].attn.c_attn", CONST_OUTPUT_HOOK, (split_three, 0), (split_head_and_permute, "n_head")), 
+    "head_query_output": ("h[%s].attn.c_attn", CONST_OUTPUT_HOOK, (split_three, 0), (split_head_and_permute, "n_head")),
     "head_key_output": ("h[%s].attn.c_attn", CONST_OUTPUT_HOOK, (split_three, 1), (split_head_and_permute, "n_head")),
     "head_value_output": ("h[%s].attn.c_attn", CONST_OUTPUT_HOOK, (split_three, 2), (split_head_and_permute, "n_head")),
 }
 
 
 gpt2_type_to_dimension_mapping = {
-    "n_head": ("n_head", ),
+    "n_head": ("n_head",),
     "block_input": ("n_embd",),
     "block_output": ("n_embd",),
     "mlp_activation": (
@@ -45,7 +43,7 @@ gpt2_type_to_dimension_mapping = {
     "mlp_input": ("n_embd",),
     "attention_value_output": ("n_embd",),
     "head_attention_value_output": ("n_embd/n_head",),
-    "attention_weight": ("max_position_embeddings", ),
+    "attention_weight": ("max_position_embeddings",),
     "attention_output": ("n_embd",),
     "attention_input": ("n_embd",),
     "query_output": ("n_embd",),
@@ -60,21 +58,21 @@ gpt2_type_to_dimension_mapping = {
 """gpt2 model with LM head"""
 gpt2_lm_type_to_module_mapping = {}
 for k, v in gpt2_type_to_module_mapping.items():
-    gpt2_lm_type_to_module_mapping[k] = (f"transformer.{v[0]}", ) + v[1:]
+    gpt2_lm_type_to_module_mapping[k] = (f"transformer.{v[0]}",) + v[1:]
 
 gpt2_lm_type_to_dimension_mapping = gpt2_type_to_dimension_mapping
 
 """gpt2 model with classifier head"""
 gpt2_classifier_type_to_module_mapping = {}
 for k, v in gpt2_type_to_module_mapping.items():
-    gpt2_classifier_type_to_module_mapping[k] = (f"transformer.{v[0]}", ) + v[1:]
+    gpt2_classifier_type_to_module_mapping[k] = (f"transformer.{v[0]}",) + v[1:]
 
 gpt2_classifier_type_to_dimension_mapping = gpt2_type_to_dimension_mapping
 
 
 def create_gpt2(name="gpt2", cache_dir=None):
     """Creates a GPT2 model, config, and tokenizer from the given name and revision"""
-    from transformers import GPT2Model, GPT2Tokenizer, GPT2Config
+    from transformers import GPT2Config, GPT2Model, GPT2Tokenizer
 
     config = GPT2Config.from_pretrained(name)
     tokenizer = GPT2Tokenizer.from_pretrained(name)
@@ -85,7 +83,7 @@ def create_gpt2(name="gpt2", cache_dir=None):
 
 def create_gpt2_lm(name="gpt2", config=None, cache_dir=None):
     """Creates a GPT2 LM, config, and tokenizer from the given name and revision"""
-    from transformers import GPT2LMHeadModel, GPT2Tokenizer, GPT2Config
+    from transformers import GPT2Config, GPT2LMHeadModel, GPT2Tokenizer
 
     tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
     if config is None:
@@ -96,9 +94,10 @@ def create_gpt2_lm(name="gpt2", config=None, cache_dir=None):
     print("loaded model")
     return config, tokenizer, gpt
 
+
 def create_gpt2_classifier(name="gpt2", config=None, cache_dir=None):
     """Creates a GPT2ForSequenceClassification, config, and tokenizer from the given name and revision"""
-    from transformers import GPT2LMForSequenceClassification, GPT2Tokenizer, GPT2Config
+    from transformers import GPT2Config, GPT2LMForSequenceClassification, GPT2Tokenizer
 
     tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
     if config is None:

@@ -2,11 +2,16 @@ from templates import *
 
 task_config = {
     "commonsense": {
-        "train_datasets": [
-            "commonsense_170k"
-        ],
+        "train_datasets": ["commonsense_170k"],
         "eval_datasets": [
-            "boolq", "piqa", "social_i_qa", "hellaswag", "winogrande", "ARC-Easy", "ARC-Challenge", "openbookqa"
+            "boolq",
+            "piqa",
+            "social_i_qa",
+            "hellaswag",
+            "winogrande",
+            "ARC-Easy",
+            "ARC-Challenge",
+            "openbookqa",
         ],
         "task_prompt_template": "%s\n",
         "trigger_tokens": "the correct answer is ",
@@ -23,16 +28,12 @@ task_config = {
                 "top_k": 40,
                 "num_beams": 4,
                 "do_sample": True,
-            }
-        }
+            },
+        },
     },
     "tune_commonsense": {
-        "train_datasets": [
-            "commonsense_170k"
-        ],
-        "eval_datasets": [
-            "commonsense_170k"
-        ],
+        "train_datasets": ["commonsense_170k"],
+        "eval_datasets": ["commonsense_170k"],
         "task_prompt_template": "%s\n",
         "trigger_tokens": "the correct answer is ",
         "generation_args": {
@@ -48,35 +49,37 @@ task_config = {
                 "top_k": 40,
                 "num_beams": 4,
                 "do_sample": True,
-            }
-        }
+            },
+        },
     },
-    "tune_math":{
-        "train_datasets":[
-            "math_10k"
-        ],
+    "tune_math": {
+        "train_datasets": ["math_10k"],
         "eval_datasets": ["math_10k"],
         "task_prompt_template": alpaca_prompt_no_input_template,
         "trigger_tokens": "### Response:",
-            True: {
-                "max_new_tokens": 512,
-                "do_sample": False,
-            },
-            False: {
-                "max_new_tokens": 512,
-                "temperature": 0.3,
-                "top_p": 0.75,
-                "top_k": 40,
-                "num_beams": 4,
-                "do_sample": True,
-            }
+        True: {
+            "max_new_tokens": 512,
+            "do_sample": False,
+        },
+        False: {
+            "max_new_tokens": 512,
+            "temperature": 0.3,
+            "top_p": 0.75,
+            "top_k": 40,
+            "num_beams": 4,
+            "do_sample": True,
+        },
     },
     "math": {
-        "train_datasets": [
-            "math_10k"
-        ],
+        "train_datasets": ["math_10k"],
         "eval_datasets": [
-            "MultiArith", "gsm8k", "SVAMP", "mawps", "AddSub", "AQuA", "SingleEq", 
+            "MultiArith",
+            "gsm8k",
+            "SVAMP",
+            "mawps",
+            "AddSub",
+            "AQuA",
+            "SingleEq",
         ],
         "task_prompt_template": alpaca_prompt_no_input_template,
         "trigger_tokens": "### Response:",
@@ -94,8 +97,8 @@ task_config = {
                 "top_k": 40,
                 "num_beams": 4,
                 "do_sample": True,
-            }
-        }
+            },
+        },
     },
     "alpaca": {
         "train_datasets": ["alpaca_data_cleaned"],
@@ -113,8 +116,8 @@ task_config = {
                 "no_repeat_ngram_size": 5,
                 "repetition_penalty": 1.1,
                 "do_sample": False,
-            }
-        }
+            },
+        },
     },
     "instruct": {
         "train_datasets": ["instruct"],
@@ -132,8 +135,8 @@ task_config = {
                 "no_repeat_ngram_size": 5,
                 "repetition_penalty": 1.1,
                 "do_sample": False,
-            }
-        }
+            },
+        },
     },
     "ultrafeedback": {
         "train_datasets": ["ultrafeedback"],
@@ -151,15 +154,10 @@ task_config = {
                 "no_repeat_ngram_size": 5,
                 "repetition_penalty": 1.1,
                 "do_sample": False,
-            }
-        }
+            },
+        },
     },
-    "glue": {
-        "train_datasets": None,
-        "eval_datasets": None,
-        "task_prompt_template": None,
-        "trigger_tokens": None
-    },
+    "glue": {"train_datasets": None, "eval_datasets": None, "task_prompt_template": None, "trigger_tokens": None},
     "gsm8k": {
         "train_datasets": ["gsm8k"],
         "eval_datasets": ["gsm8k"],
@@ -172,13 +170,7 @@ task_config = {
                 "max_new_tokens": 256,
                 "do_sample": False,
             },
-            False: {
-                "max_new_tokens": 256,
-                "temperature": 0.8,
-                "top_p": 0.95,
-                "top_k": 40,
-                "do_sample": True
-            }
-        }
+            False: {"max_new_tokens": 256, "temperature": 0.8, "top_p": 0.95, "top_k": 40, "do_sample": True},
+        },
     },
 }

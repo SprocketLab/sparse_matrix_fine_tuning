@@ -20,7 +20,11 @@ from torch import nn
 from tqdm import tqdm
 
 from peft.tuners import adalora, loha, lokr, lora, oft
-from peft.tuners.tuners_utils import BaseTuner, BaseTunerLayer, check_target_module_exists
+from peft.tuners.tuners_utils import (
+    BaseTuner,
+    BaseTunerLayer,
+    check_target_module_exists,
+)
 from peft.utils import (
     TRANSFORMERS_MODELS_TO_LORA_TARGET_MODULES_MAPPING,
     ModulesToSaveWrapper,
@@ -28,7 +32,6 @@ from peft.utils import (
     _get_submodules,
     get_auto_gptq_quant_linear,
 )
-
 
 # Collection of constants used for all tuners
 COMPATIBLE_TUNER_TYPES = (PeftType.LORA, PeftType.LOHA, PeftType.LOKR, PeftType.ADALORA, PeftType.OFT)

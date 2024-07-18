@@ -8,9 +8,7 @@ config the dimensions of intervention based on model config
 defined in the huggingface library.
 """
 
-
 from ..constants import *
-
 
 """gru base model"""
 gru_type_to_module_mapping = {
@@ -56,7 +54,7 @@ gru_type_to_dimension_mapping = {
 """mlp model with classification head"""
 gru_classifier_type_to_module_mapping = {}
 for k, v in gru_type_to_module_mapping.items():
-    gru_classifier_type_to_module_mapping[k] = (f"gru.{v[0]}", ) + v[1:]
+    gru_classifier_type_to_module_mapping[k] = (f"gru.{v[0]}",) + v[1:]
 
 gru_classifier_type_to_dimension_mapping = gru_type_to_dimension_mapping
 
@@ -72,6 +70,7 @@ gru_lm_type_to_dimension_mapping = gru_type_to_dimension_mapping
 def create_gru(config, tokenizer_name=None, cache_dir=None):
     """Creates a GRU model, config, and tokenizer from the given name and revision"""
     from transformers import AutoTokenizer
+
     from models.gru.modelings_gru import GRUModel
 
     tokenizer = None
@@ -85,6 +84,7 @@ def create_gru(config, tokenizer_name=None, cache_dir=None):
 def create_gru_lm(config, tokenizer_name=None, cache_dir=None):
     """Creates a GRU model, config, and tokenizer from the given name and revision"""
     from transformers import AutoTokenizer
+
     from models.gru.modelings_gru import GRULMHeadModel
 
     tokenizer = None
@@ -95,12 +95,10 @@ def create_gru_lm(config, tokenizer_name=None, cache_dir=None):
     return config, tokenizer, mlp
 
 
-def create_gru_classifier(
-    config, tokenizer_name=None, cache_dir=None
-):
+def create_gru_classifier(config, tokenizer_name=None, cache_dir=None):
     """Creates a GRU model, config, and tokenizer from the given name and revision"""
-    from transformers import AutoTokenizer
     from pyvene.models.gru.modelings_gru import GRUForClassification
+    from transformers import AutoTokenizer
 
     tokenizer = None
     if tokenizer_name is not None:

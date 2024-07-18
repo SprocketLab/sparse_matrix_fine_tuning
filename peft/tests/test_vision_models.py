@@ -22,8 +22,14 @@ from datasets import load_dataset
 from safetensors.torch import load_file
 from transformers import AutoImageProcessor, AutoModelForImageClassification
 
-from peft import LoHaConfig, LoKrConfig, LoraConfig, OFTConfig, PeftModel, get_peft_model
-
+from peft import (
+    LoHaConfig,
+    LoKrConfig,
+    LoraConfig,
+    OFTConfig,
+    PeftModel,
+    get_peft_model,
+)
 
 CONFIGS = {
     "lora": LoraConfig(target_modules=["convolution"], modules_to_save=["classifier", "normalization"]),

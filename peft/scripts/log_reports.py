@@ -6,7 +6,6 @@ from pathlib import Path
 
 from tabulate import tabulate
 
-
 MAX_LEN_MESSAGE = 2900  # slack endpoint has a limit of 3001 characters
 
 parser = argparse.ArgumentParser()

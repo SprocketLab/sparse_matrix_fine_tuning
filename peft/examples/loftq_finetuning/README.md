@@ -10,7 +10,7 @@ Steps:
 1. Apply LoftQ to a full-precision pre-trained weight and save.
 2. Load LoftQ initialization and train.
 
-For step 1, we have provided off-the-shelf LoftQ initializations (see [supported model list](#appendix-off-the-shelf-model-table)) 
+For step 1, we have provided off-the-shelf LoftQ initializations (see [supported model list](#appendix-off-the-shelf-model-table))
 in [Huggingface Hub LoftQ](https://huggingface.co/LoftQ).
 If you want to do it yourself, jump to [LoftQ DIY](#loftq-diy).
 
@@ -23,7 +23,7 @@ from peft import PeftModel
 MODEL_ID = "LoftQ/Mistral-7B-v0.1-4bit-64rank"
 
 base_model = AutoModelForCausalLM.from_pretrained(
-    MODEL_ID, 
+    MODEL_ID,
     torch_dtype=torch.bfloat16,  # you may change it with different models
     quantization_config=BitsAndBytesConfig(
         load_in_4bit=True,
@@ -45,7 +45,7 @@ peft_model = PeftModel.from_pretrained(
 ## LoftQ DIY
 
 ### Apply LoftQ and save
-We provide [quantize_save_load.py](quantize_save_load.py) as an example to apply LoftQ with 
+We provide [quantize_save_load.py](quantize_save_load.py) as an example to apply LoftQ with
 different bits(`--bits`), ranks(`--rank`), and alternating steps (`--iter`, a hyper-parameter in LoftQ, see Algorithm 1 in [LoftQ paper](https://arxiv.org/abs/2310.08659)). Currently, this example supports
 `llama-2`, `falcon`, `mistral`, `bart`, `t5`, `deberta`, `bert`, `roberta`.
 
@@ -61,8 +61,8 @@ python quantize_save_load.py \
     --save_dir $SAVE_DIR
 ```
 
-The above commands end up with creating the model directory under `$SAVE_DIR`. 
-Specifically, the model directory is named as 
+The above commands end up with creating the model directory under `$SAVE_DIR`.
+Specifically, the model directory is named as
 
 `MODEL_DIR = SAVE_DIR + f"{args.model_name_or_path.split('/')[-1]}-{args.bits}bits-{args.rank}rank"`
 
@@ -80,7 +80,7 @@ from peft import PeftModel
 MODEL_DIR = "model_zoo/loftq/Llama-2-7b-hf-4bit-16rank"
 
 base_model = AutoModelForCausalLM.from_pretrained(
-    MODEL_DIR, 
+    MODEL_DIR,
     torch_dtype=torch.bfloat16,
     quantization_config=BitsAndBytesConfig(
         load_in_4bit=True,
@@ -100,7 +100,7 @@ peft_model = PeftModel.from_pretrained(
 
 ## LoftQ Fine-tuning
 
-We also provide an example to fine-tune LoftQ on GSM8K. 
+We also provide an example to fine-tune LoftQ on GSM8K.
 We load the quantized backbone and LoRA adapters from the [LoftQ Huggingface hub](https://huggingface.co/LoftQ).
 
 ```sh

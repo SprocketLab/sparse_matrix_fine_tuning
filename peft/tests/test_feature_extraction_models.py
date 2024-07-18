@@ -21,7 +21,6 @@ from peft import PrefixTuningConfig, PromptLearningConfig
 
 from .testing_common import PeftCommonTester, PeftTestConfigManager
 
-
 PEFT_FEATURE_EXTRACTION_MODELS_TO_TEST = [
     "hf-internal-testing/tiny-random-BertModel",
     "hf-internal-testing/tiny-random-RobertaModel",
@@ -37,9 +36,7 @@ FULL_GRID = {
 
 def skip_non_prompt_tuning(test_list):
     """Skip tests that are not prompt tuning"""
-    return [
-        test for test in test_list if issubclass(test[2], PromptLearningConfig) and (test[2] != PrefixTuningConfig)
-    ]
+    return [test for test in test_list if issubclass(test[2], PromptLearningConfig) and (test[2] != PrefixTuningConfig)]
 
 
 def skip_deberta_lora_tests(test_list):

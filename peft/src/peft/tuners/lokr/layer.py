@@ -277,9 +277,7 @@ class Linear(LoKrLayer):
         self._active_adapter = adapter_name
         self.update_layer(adapter_name, r, alpha, rank_dropout, module_dropout, init_weights, **kwargs)
 
-    def _get_delta_activations(
-        self, adapter_name: str, input: torch.Tensor, *args: Any, **kwargs: Any
-    ) -> torch.Tensor:
+    def _get_delta_activations(self, adapter_name: str, input: torch.Tensor, *args: Any, **kwargs: Any) -> torch.Tensor:
         delta_weight = self.get_delta_weight(adapter_name)
         # don't add bias here, because the bias is already included in the output of the base_layer
         return F.linear(input, delta_weight)
@@ -314,9 +312,7 @@ class Conv2d(LoKrLayer):
             adapter_name, r, alpha, rank_dropout, module_dropout, init_weights, use_effective_conv2d, **kwargs
         )
 
-    def _get_delta_activations(
-        self, adapter_name: str, input: torch.Tensor, *args: Any, **kwargs: Any
-    ) -> torch.Tensor:
+    def _get_delta_activations(self, adapter_name: str, input: torch.Tensor, *args: Any, **kwargs: Any) -> torch.Tensor:
         delta_weight = self.get_delta_weight(adapter_name)
         # don't add bias here, because the bias is already included in the output of the base_layer
         base_layer = self.get_base_layer()

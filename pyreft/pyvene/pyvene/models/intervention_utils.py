@@ -1,5 +1,7 @@
 import json
+
 import torch
+
 
 class InterventionState(object):
     def __init__(self, key, **kwargs):
@@ -37,6 +39,7 @@ class InterventionState(object):
     def __str__(self):
         return json.dumps(self.state_dict, indent=4)
 
+
 def broadcast_tensor_v1(x, target_shape):
     # Ensure the last dimension of target_shape matches x's size
     if target_shape[-1] != x.shape[-1]:
@@ -49,7 +52,8 @@ def broadcast_tensor_v1(x, target_shape):
     x_reshaped = x.view(*reshape_shape)
     broadcasted_x = x_reshaped.expand(*target_shape)
     return broadcasted_x
-    
+
+
 def broadcast_tensor_v2(x, target_shape):
     # Ensure that target_shape has at least one dimension
     if len(target_shape) < 1:
@@ -63,20 +67,18 @@ def broadcast_tensor_v2(x, target_shape):
 
     return broadcasted_x
 
-def _can_cast_tensor(
-    subspaces
-):
+
+def _can_cast_tensor(subspaces):
     tensorfiable = True
     try:
         torch.tensor(subspaces)
     except:
         tensorfiable = False
-        
+
     return tensorfiable
 
-def _can_use_fast(
-    subspaces
-):
+
+def _can_use_fast(subspaces):
     tensorfiable = True
     row_same_val = False
     try:
@@ -84,8 +86,9 @@ def _can_use_fast(
         row_same_val = torch.all(subspaces == subspaces[0], axis=1).all()
     except:
         tensorfiable = False
-        
+
     return row_same_val and tensorfiable
+
 
 def _do_intervention_by_swap(
     base,
@@ -106,8 +109,7 @@ def _do_intervention_by_swap(
                 source = broadcast_tensor_v1(source, base.shape)
             except:
                 raise ValueError(
-                    f"source with shape {source.shape} cannot be broadcasted "
-                    f"into base with shape {base.shape}."
+                    f"source with shape {source.shape} cannot be broadcasted " f"into base with shape {base.shape}."
                 )
     # if subspace is none, then we are doing swap based on interchange_dim
     if subspaces is None:
@@ -118,7 +120,7 @@ def _do_intervention_by_swap(
         elif mode == "subtract":
             base[..., :interchange_dim] -= source[..., :interchange_dim]
         elif mode == "collect":
-            return base[..., :interchange_dim] # return without side-effect
+            return base[..., :interchange_dim]  # return without side-effect
         return base
 
     sel_subspace_indices = None
@@ -129,9 +131,7 @@ def _do_intervention_by_swap(
         else:
             sel_subspace_indices = []
             for subspace in subspaces[0]:
-                sel_subspace_indices.extend(
-                    subspace_partition[subspace]
-                )
+                sel_subspace_indices.extend(subspace_partition[subspace])
     elif _can_cast_tensor(subspaces):
         sel_subspace_indices = []
         for example_i in range(len(subspaces)):
@@ -141,11 +141,9 @@ def _do_intervention_by_swap(
             else:
                 _sel_subspace_indices = []
                 for subspace in subspaces[example_i]:
-                    _sel_subspace_indices.extend(
-                        subspace_partition[subspace]
-                    )
+                    _sel_subspace_indices.extend(subspace_partition[subspace])
                 sel_subspace_indices.append(_sel_subspace_indices)
-    
+
     # _can_use_fast or _can_cast_tensor will prepare the sel_subspace_indices
     if sel_subspace_indices is not None:
         pad_idx = torch.arange(base.shape[-2]).unsqueeze(dim=-1).to(base.device)
@@ -156,7 +154,7 @@ def _do_intervention_by_swap(
         elif mode == "subtract":
             base[..., pad_idx, sel_subspace_indices] -= source[..., pad_idx, sel_subspace_indices]
         elif mode == "collect":
-            return base[..., pad_idx, sel_subspace_indices] # return without side-effect
+            return base[..., pad_idx, sel_subspace_indices]  # return without side-effect
     else:
         collect_base = []
         for example_i in range(len(subspaces)):
@@ -166,24 +164,16 @@ def _do_intervention_by_swap(
             else:
                 sel_subspace_indices = []
                 for subspace in subspaces[example_i]:
-                    sel_subspace_indices.extend(
-                        subspace_partition[subspace]
-                    )
+                    sel_subspace_indices.extend(subspace_partition[subspace])
             if mode == "interchange":
-                base[example_i, ..., sel_subspace_indices] = source[
-                    example_i, ..., sel_subspace_indices
-                ]
+                base[example_i, ..., sel_subspace_indices] = source[example_i, ..., sel_subspace_indices]
             elif mode == "add":
-                base[example_i, ..., sel_subspace_indices] += source[
-                    example_i, ..., sel_subspace_indices
-                ]
+                base[example_i, ..., sel_subspace_indices] += source[example_i, ..., sel_subspace_indices]
             elif mode == "subtract":
-                base[example_i, ..., sel_subspace_indices] -= source[
-                    example_i, ..., sel_subspace_indices
-                ]
+                base[example_i, ..., sel_subspace_indices] -= source[example_i, ..., sel_subspace_indices]
             elif mode == "collect":
                 collect_base += [base[example_i, ..., sel_subspace_indices]]
         if mode == "collect":
-            return torch.stack(collect_base, dim=0) # return without side-effect
+            return torch.stack(collect_base, dim=0)  # return without side-effect
 
     return base

@@ -19,7 +19,6 @@ from .gptq import SVDQuantLinear
 from .layer import AdaLoraLayer, RankAllocator, SVDLinear
 from .model import AdaLoraModel
 
-
 __all__ = ["AdaLoraConfig", "AdaLoraLayer", "AdaLoraModel", "SVDLinear", "RankAllocator", "SVDQuantLinear"]
 
 

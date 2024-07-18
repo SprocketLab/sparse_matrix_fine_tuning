@@ -8,7 +8,6 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
 from peft import LoraConfig, get_peft_model
 
-
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 # -*- coding: utf-8 -*-

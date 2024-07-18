@@ -1,18 +1,18 @@
+from dataclasses import dataclass
+from typing import Optional, Tuple
+
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
-from typing import Optional, Tuple
-import numpy as np
-from dataclasses import dataclass
-from transformers.utils import ModelOutput
 from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss
 from transformers import PretrainedConfig, PreTrainedModel
-from transformers.activations import ACT2FN
 from transformers.modeling_outputs import (
+    CausalLMOutput,
     ModelOutput,
     SequenceClassifierOutput,
-    CausalLMOutput,
 )
+from transformers.utils import ModelOutput
 
 
 class GRUConfig(PretrainedConfig):
@@ -67,9 +67,7 @@ class GRUCell(nn.Module):
 
     def forward(self, current_states, hidden_states=None):
         if hidden_states is None:
-            hidden_states = Variable(
-                current_states.new_zeros(current_states.size(0), self.hidden_size)
-            )
+            hidden_states = Variable(current_states.new_zeros(current_states.size(0), self.hidden_size))
 
         x_t = self.x2h(current_states)
         h_t = self.h2h(hidden_states)
@@ -115,9 +113,7 @@ class GRUModel(GRUPreTrainedModel):
             self.wte = nn.Embedding(config.vocab_size, self.h_dim)
             self.wpe = nn.Embedding(config.max_position_embeddings, self.h_dim)
 
-        self.cells = nn.ModuleList(
-            [GRUCell(self.config) for _ in range(0, self.n_layer)]
-        )
+        self.cells = nn.ModuleList([GRUCell(self.config) for _ in range(0, self.n_layer)])
 
         # Initialize weights and apply final processing
         self.post_init()
@@ -146,9 +142,7 @@ class GRUModel(GRUPreTrainedModel):
         batch_size = inputs_embeds.shape[0]
         max_seq_len = inputs_embeds.shape[1]
         if hidden_states is None:
-            h0 = Variable(torch.zeros(self.n_layer, batch_size, self.h_dim)).to(
-                inputs_embeds.device
-            )
+            h0 = Variable(torch.zeros(self.n_layer, batch_size, self.h_dim)).to(inputs_embeds.device)
         else:
             h0 = hidden_states
         all_layer_hidden_states = [h0[layer, :, :] for layer in range(self.n_layer)]
@@ -172,11 +166,7 @@ class GRUModel(GRUPreTrainedModel):
         all_hidden_states = torch.stack(all_hidden_states, dim=1)
 
         if not return_dict:
-            return tuple(
-                v
-                for v in [all_hidden_states, current_layer_hidden_state]
-                if v is not None
-            )
+            return tuple(v for v in [all_hidden_states, current_layer_hidden_state] if v is not None)
 
         return GRUModelOutput(
             hidden_states=all_hidden_states,
@@ -229,9 +219,7 @@ class GRUForClassification(GRUPreTrainedModel):
         else:
             sequence_lengths = attention_mask.sum(dim=-1).int() - 1
 
-        pooled_hidden_states = hidden_states[
-            torch.arange(batch_size, device=hidden_states.device), sequence_lengths
-        ]
+        pooled_hidden_states = hidden_states[torch.arange(batch_size, device=hidden_states.device), sequence_lengths]
         pooled_logits = self.score(pooled_hidden_states)
 
         loss = None
@@ -239,9 +227,7 @@ class GRUForClassification(GRUPreTrainedModel):
             if self.config.problem_type is None:
                 if self.num_labels == 1:
                     self.config.problem_type = "regression"
-                elif self.num_labels > 1 and (
-                    labels.dtype == torch.long or labels.dtype == torch.int
-                ):
+                elif self.num_labels > 1 and (labels.dtype == torch.long or labels.dtype == torch.int):
                     self.config.problem_type = "single_label_classification"
                 else:
                     self.config.problem_type = "multi_label_classification"
@@ -254,9 +240,7 @@ class GRUForClassification(GRUPreTrainedModel):
                     loss = loss_fct(pooled_logits, labels)
             elif self.config.problem_type == "single_label_classification":
                 loss_fct = CrossEntropyLoss()
-                loss = loss_fct(
-                    pooled_logits.view(-1, self.num_labels), labels.view(-1)
-                )
+                loss = loss_fct(pooled_logits.view(-1, self.num_labels), labels.view(-1))
             elif self.config.problem_type == "multi_label_classification":
                 loss_fct = BCEWithLogitsLoss()
                 loss = loss_fct(pooled_logits, labels)
@@ -316,9 +300,7 @@ class GRULMHeadModel(GRUPreTrainedModel):
             shift_labels = labels[..., 1:].contiguous()
             # Flatten the tokens
             loss_fct = CrossEntropyLoss()
-            loss = loss_fct(
-                shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1)
-            )
+            loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
 
         if not return_dict:
             output = (lm_logits,) + gru_outputs[1:]

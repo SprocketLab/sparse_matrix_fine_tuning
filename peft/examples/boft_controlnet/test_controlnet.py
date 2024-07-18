@@ -29,16 +29,15 @@ from diffusers.utils import check_min_version
 from safetensors.torch import load_file
 from tqdm import tqdm
 from transformers import AutoTokenizer
+
 from utils.args_loader import parse_args
 from utils.dataset import make_dataset
 from utils.light_controlnet import ControlNetModel
 from utils.pipeline_controlnet import LightControlNetPipeline
 from utils.unet_2d_condition import UNet2DConditionNewModel
 
-
 sys.path.append("../../src")
 from peft import PeftModel
-
 
 # Will error if the minimal version of diffusers is not installed. Remove at your own risks.
 check_min_version("0.10.0.dev0")

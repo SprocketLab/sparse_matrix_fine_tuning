@@ -19,11 +19,13 @@ import numpy as np
 import PIL.Image
 import torch
 from diffusers.pipelines.controlnet.multicontrolnet import MultiControlNetModel
-from diffusers.pipelines.controlnet.pipeline_controlnet import StableDiffusionControlNetPipeline
+from diffusers.pipelines.controlnet.pipeline_controlnet import (
+    StableDiffusionControlNetPipeline,
+)
 from diffusers.utils import BaseOutput, is_compiled_module, logging
 from torch.nn import functional as F
-from utils.light_controlnet import ControlNetModel
 
+from utils.light_controlnet import ControlNetModel
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
 

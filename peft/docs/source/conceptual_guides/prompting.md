@@ -33,7 +33,7 @@ Take a look at [Prompt tuning for causal language modeling](../task_guides/clm-p
 </div>
 <small>Optimize the prefix parameters for each task <a href="https://hf.co/papers/2101.00190">(image source)</a>.</small>
 
-[Prefix tuning](https://hf.co/papers/2101.00190) was designed for natural language generation (NLG) tasks on GPT models. It is very similar to prompt tuning; prefix tuning also prepends a sequence of task-specific vectors to the input that can be trained and updated while keeping the rest of the pretrained model's parameters frozen. 
+[Prefix tuning](https://hf.co/papers/2101.00190) was designed for natural language generation (NLG) tasks on GPT models. It is very similar to prompt tuning; prefix tuning also prepends a sequence of task-specific vectors to the input that can be trained and updated while keeping the rest of the pretrained model's parameters frozen.
 
 The main difference is that the prefix parameters are inserted in **all** of the model layers, whereas prompt tuning only adds the prompt parameters to the model input embeddings. The prefix parameters are also optimized by a separate feed-forward network (FFN) instead of training directly on the soft prompts because it causes instability and hurts performance. The FFN is discarded after updating the soft prompts.
 
@@ -48,7 +48,7 @@ Take a look at [Prefix tuning for conditional generation](../task_guides/seq2seq
 </div>
 <small>Prompt tokens can be inserted anywhere in the input sequence, and they are optimized by a prompt encoder <a href="https://hf.co/papers/2103.10385">(image source)</a>.</small>
 
-[P-tuning](https://hf.co/papers/2103.10385) is designed for natural language understanding (NLU) tasks and all language models. 
+[P-tuning](https://hf.co/papers/2103.10385) is designed for natural language understanding (NLU) tasks and all language models.
 It is another variation of a soft prompt method; P-tuning also adds a trainable embedding tensor that can be optimized to find better prompts, and it uses a prompt encoder (a bidirectional long-short term memory network or LSTM) to optimize the prompt parameters. Unlike prefix tuning though:
 
 - the prompt tokens can be inserted anywhere in the input sequence, and it isn't restricted to only the beginning

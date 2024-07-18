@@ -97,9 +97,7 @@ def parse_args(input_args=None):
     parser.add_argument(
         "--train_batch_size", type=int, default=4, help="Batch size (per device) for the training dataloader."
     )
-    parser.add_argument(
-        "--sample_batch_size", type=int, default=4, help="Batch size (per device) for sampling images."
-    )
+    parser.add_argument("--sample_batch_size", type=int, default=4, help="Batch size (per device) for sampling images.")
 
     parser.add_argument("--num_train_epochs", type=int, default=1)
     parser.add_argument(

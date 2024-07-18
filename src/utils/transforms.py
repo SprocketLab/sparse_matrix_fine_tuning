@@ -1,8 +1,9 @@
 # Credits to DeepVoltaire
 # github:DeepVoltaire/AutoAugment
 
-from PIL import Image, ImageEnhance, ImageOps
 import random
+
+from PIL import Image, ImageEnhance, ImageOps
 
 
 class ShearX(object):
@@ -11,8 +12,12 @@ class ShearX(object):
 
     def __call__(self, x, magnitude):
         return x.transform(
-            x.size, Image.AFFINE, (1, magnitude * random.choice([-1, 1]), 0, 0, 1, 0),
-            Image.BICUBIC, fillcolor=self.fillcolor)
+            x.size,
+            Image.AFFINE,
+            (1, magnitude * random.choice([-1, 1]), 0, 0, 1, 0),
+            Image.BICUBIC,
+            fillcolor=self.fillcolor,
+        )
 
 
 class ShearY(object):
@@ -21,8 +26,12 @@ class ShearY(object):
 
     def __call__(self, x, magnitude):
         return x.transform(
-            x.size, Image.AFFINE, (1, 0, 0, magnitude * random.choice([-1, 1]), 1, 0),
-            Image.BICUBIC, fillcolor=self.fillcolor)
+            x.size,
+            Image.AFFINE,
+            (1, 0, 0, magnitude * random.choice([-1, 1]), 1, 0),
+            Image.BICUBIC,
+            fillcolor=self.fillcolor,
+        )
 
 
 class TranslateX(object):
@@ -31,8 +40,11 @@ class TranslateX(object):
 
     def __call__(self, x, magnitude):
         return x.transform(
-            x.size, Image.AFFINE, (1, 0, magnitude * x.size[0] * random.choice([-1, 1]), 0, 1, 0),
-            fillcolor=self.fillcolor)
+            x.size,
+            Image.AFFINE,
+            (1, 0, magnitude * x.size[0] * random.choice([-1, 1]), 0, 1, 0),
+            fillcolor=self.fillcolor,
+        )
 
 
 class TranslateY(object):
@@ -41,8 +53,11 @@ class TranslateY(object):
 
     def __call__(self, x, magnitude):
         return x.transform(
-            x.size, Image.AFFINE, (1, 0, 0, 0, 1, magnitude * x.size[1] * random.choice([-1, 1])),
-            fillcolor=self.fillcolor)
+            x.size,
+            Image.AFFINE,
+            (1, 0, 0, 0, 1, magnitude * x.size[1] * random.choice([-1, 1])),
+            fillcolor=self.fillcolor,
+        )
 
 
 class Rotate(object):

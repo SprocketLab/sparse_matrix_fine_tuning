@@ -2,11 +2,12 @@ import random
 
 import numpy as np
 import torch
-import wandb
 from datasets import load_dataset
 from diffusers import DDIMScheduler
 from PIL import Image
 from torchvision import transforms
+
+import wandb
 from utils.pipeline_controlnet import LightControlNetPipeline
 
 
@@ -50,7 +51,9 @@ def log_validation(val_dataset, text_encoder, unet, controlnet, args, accelerato
             [validation_image],
             num_inference_steps=50,
             generator=generator,
-        )[0][0]
+        )[
+            0
+        ][0]
 
         image_logs.append(
             {

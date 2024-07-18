@@ -16,5 +16,4 @@ from .config import BOFTConfig
 from .layer import BOFTLayer
 from .model import BOFTModel
 
-
 __all__ = ["BOFTConfig", "BOFTLayer", "BOFTModel"]

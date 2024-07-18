@@ -20,6 +20,7 @@ from unittest import TestCase
 
 import pytest
 import torch
+from tests.testing_common import PeftCommonTester
 from torch.testing import assert_close
 
 from peft.mapping import get_peft_model
@@ -27,7 +28,6 @@ from peft.peft_model import PeftModel
 from peft.tuners.adaption_prompt import AdaptionPromptConfig
 from peft.utils.other import prepare_model_for_kbit_training
 from peft.utils.save_and_load import get_peft_model_state_dict
-from tests.testing_common import PeftCommonTester
 
 
 def is_llama_available() -> bool:
@@ -509,9 +509,7 @@ class AdaptionPromptTester(TestCase, PeftCommonTester):
         original_before = original(input_ids=input_ids, attention_mask=attention_mask)
 
         # Get AdaptionPrompt model.
-        adapted = get_peft_model(
-            original, AdaptionPromptConfig(adapter_layers=2, adapter_len=4, task_type="CAUSAL_LM")
-        )
+        adapted = get_peft_model(original, AdaptionPromptConfig(adapter_layers=2, adapter_len=4, task_type="CAUSAL_LM"))
         adapted = adapted.to(self.torch_device)
         default_before = adapted(input_ids=input_ids, attention_mask=attention_mask, labels=target_ids)
 
@@ -649,9 +647,7 @@ class AdaptionPromptTester(TestCase, PeftCommonTester):
         original_before = original(input_ids=input_ids, attention_mask=attention_mask)
 
         # Get AdaptionPrompt model.
-        adapted = get_peft_model(
-            original, AdaptionPromptConfig(adapter_layers=2, adapter_len=4, task_type="CAUSAL_LM")
-        )
+        adapted = get_peft_model(original, AdaptionPromptConfig(adapter_layers=2, adapter_len=4, task_type="CAUSAL_LM"))
         adapted = adapted.to(self.torch_device)
 
         with adapted.disable_adapter():
@@ -740,9 +736,7 @@ class AdaptionPromptTester(TestCase, PeftCommonTester):
                 use_cache=False,
             )
         ).eval()
-        adapted = get_peft_model(
-            original, AdaptionPromptConfig(adapter_layers=2, adapter_len=4, task_type="CAUSAL_LM")
-        )
+        adapted = get_peft_model(original, AdaptionPromptConfig(adapter_layers=2, adapter_len=4, task_type="CAUSAL_LM"))
         adapted = adapted.to(self.torch_device)
         expected = adapted.generate(input_ids=input_ids, max_length=8)
 
@@ -766,9 +760,7 @@ class AdaptionPromptTester(TestCase, PeftCommonTester):
                 use_cache=False,
             )
         ).eval()
-        adapted = get_peft_model(
-            original, AdaptionPromptConfig(adapter_layers=2, adapter_len=4, task_type="CAUSAL_LM")
-        )
+        adapted = get_peft_model(original, AdaptionPromptConfig(adapter_layers=2, adapter_len=4, task_type="CAUSAL_LM"))
         adapted = adapted.to(self.torch_device)
         expected = adapted.generate(input_ids=input_ids, max_length=8)
 
@@ -786,9 +778,7 @@ class AdaptionPromptTester(TestCase, PeftCommonTester):
         original = LlamaForCausalLM.from_pretrained(
             "trl-internal-testing/tiny-random-LlamaForCausalLM", torch_dtype=torch.bfloat16
         )
-        adapted = get_peft_model(
-            original, AdaptionPromptConfig(adapter_layers=2, adapter_len=4, task_type="CAUSAL_LM")
-        )
+        adapted = get_peft_model(original, AdaptionPromptConfig(adapter_layers=2, adapter_len=4, task_type="CAUSAL_LM"))
         adapted = adapted.to(self.torch_device)
         _ = adapted.generate(input_ids=input_ids)
 

@@ -1,19 +1,15 @@
-import math
-
-import torch
-import pytest
 import os
 import sys
-# two dirs back 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
-from src.models.layers.blockdiag_butterfly_multiply import blockdiag_butterfly_multiply_reference
-from src.models.layers.blockdiag_butterfly_multiply import blockdiag_butterfly_multiply
-from src.ops.blockdiag_butterfly_einsum import (
-    blockdiag_butterfly_multiply_einsum_simple, blockdiag_butterfly_project_einsum_simple,
-    blockdiag_butterfly_multiply_einsum, blockdiag_butterfly_project_einsum,
-    blockdiag_butterfly_multiply_einsum_rank, blockdiag_butterfly_project_einsum_rank
-)
 
+import pytest
+import torch
+
+# two dirs back
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+from src.ops.blockdiag_butterfly_einsum import (
+    blockdiag_butterfly_multiply_einsum_rank,
+    blockdiag_butterfly_project_einsum_rank,
+)
 
 # @pytest.mark.parametrize('dtype', [torch.float32, torch.complex64])
 # @pytest.mark.parametrize('device', ['cpu', 'cuda'])
@@ -112,7 +108,7 @@ from src.ops.blockdiag_butterfly_einsum import (
 #     assert torch.allclose(bfly_projected, bfly, rtol=1e-4, atol=1e-4)
 
 
-@pytest.mark.parametrize('device', ['cpu', 'cuda'])
+@pytest.mark.parametrize("device", ["cpu", "cuda"])
 def test_block_diag_butterfly_project_einsum_rank(device):
     # set seed
     torch.random.manual_seed(0)
@@ -120,20 +116,15 @@ def test_block_diag_butterfly_project_einsum_rank(device):
     x = torch.eye(n, device=device)
     nblocks1, nblocks2 = 4, 4
     rank = 8
-    w1_bfly = torch.randn(nblocks1, nblocks2 * rank, n // nblocks1, device=x.device, dtype=x.dtype,
-                          requires_grad=True)
-    w2_bfly = torch.randn(nblocks2, n // nblocks2, nblocks1 * rank, device=x.device, dtype=x.dtype,
-                          requires_grad=True)
+    w1_bfly = torch.randn(nblocks1, nblocks2 * rank, n // nblocks1, device=x.device, dtype=x.dtype, requires_grad=True)
+    w2_bfly = torch.randn(nblocks2, n // nblocks2, nblocks1 * rank, device=x.device, dtype=x.dtype, requires_grad=True)
     bfly = blockdiag_butterfly_multiply_einsum_rank(x, w1_bfly, w2_bfly).t()
-    w1_bfly_projected, w2_bfly_projected, w1_rev, w2_rev = blockdiag_butterfly_project_einsum_rank(bfly,
-                                                                                   nblocks1=nblocks1,
-                                                                                   nblocks2=nblocks2,
-                                                                                   rank=rank, reverse=True
-                                                                                   )
+    w1_bfly_projected, w2_bfly_projected, w1_rev, w2_rev = blockdiag_butterfly_project_einsum_rank(
+        bfly, nblocks1=nblocks1, nblocks2=nblocks2, rank=rank, reverse=True
+    )
     # assert w1_bfly_projected.shape == w1_bfly.shape
     # assert w2_bfly_projected.shape == w2_bfly.shape
-    bfly_projected = bfly - blockdiag_butterfly_multiply_einsum_rank(x, w1_bfly_projected,
-                                                              w2_bfly_projected).t()
+    bfly_projected = bfly - blockdiag_butterfly_multiply_einsum_rank(x, w1_bfly_projected, w2_bfly_projected).t()
     bfly_rev = blockdiag_butterfly_multiply_einsum_rank(x, w1_rev, w2_rev).t()
     print((bfly_projected - bfly_rev).abs().mean())
     torch.testing.assert_close(bfly_projected, bfly_rev, rtol=1e-4, atol=1e-4)

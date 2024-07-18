@@ -1,12 +1,11 @@
 import os
 from pathlib import Path
+
 current_dir = Path(__file__).parent.absolute()
 
 import pytest
-
-from munch import Munch
-
 import torch
+from munch import Munch
 
 from src.datamodules.language_modeling import WikiText2, WikiText103
 
@@ -17,25 +16,30 @@ def div_up(x: int, y: int) -> int:
 
 class TestWikiText2:
 
-    @pytest.mark.parametrize('vocab_type', ['word', 'bpe'])
+    @pytest.mark.parametrize("vocab_type", ["word", "bpe"])
     def test_dims(self, vocab_type):
         batch_size = 32
         max_length = 192
         seed = 2357
         num_shards = 8
-        data_dir = Path(os.getenv('DATA_DIR', current_dir.parent.parent / 'data')) / 'wikitext-2'
-        datamodule = WikiText2(data_dir, vocab_type=vocab_type,
-                               batch_size=batch_size, max_length=max_length,
-                               roll_seed=seed, batch_first=True)
+        data_dir = Path(os.getenv("DATA_DIR", current_dir.parent.parent / "data")) / "wikitext-2"
+        datamodule = WikiText2(
+            data_dir,
+            vocab_type=vocab_type,
+            batch_size=batch_size,
+            max_length=max_length,
+            roll_seed=seed,
+            batch_first=True,
+        )
         # Fake a trainer
         datamodule.trainer = Munch(global_rank=2, world_size=num_shards)
         datamodule.prepare_data()
-        datamodule.setup(stage='fit')
+        datamodule.setup(stage="fit")
         train_loader = datamodule.train_dataloader()
         val_loader = datamodule.val_dataloader()
-        datamodule.setup(stage='test')
+        datamodule.setup(stage="test")
         test_loader = datamodule.test_dataloader()
-        if vocab_type == 'word':
+        if vocab_type == "word":
             train_len = 2088628
             val_len = 217646
             test_len = 245569
@@ -57,25 +61,30 @@ class TestWikiText2:
 
 class TestWikiText103:
 
-    @pytest.mark.parametrize('vocab_type', ['word', 'bpe'])
+    @pytest.mark.parametrize("vocab_type", ["word", "bpe"])
     def test_dims(self, vocab_type):
         batch_size = 32
         max_length = 192
         seed = 2357
         num_shards = 8
-        data_dir = Path(os.getenv('DATA_DIR', current_dir.parent.parent / 'data')) / 'wikitext-103'
-        datamodule = WikiText103(data_dir, vocab_type=vocab_type,
-                                 batch_size=batch_size, max_length=max_length,
-                                 roll_seed=seed, batch_first=True)
+        data_dir = Path(os.getenv("DATA_DIR", current_dir.parent.parent / "data")) / "wikitext-103"
+        datamodule = WikiText103(
+            data_dir,
+            vocab_type=vocab_type,
+            batch_size=batch_size,
+            max_length=max_length,
+            roll_seed=seed,
+            batch_first=True,
+        )
         # Fake a trainer
         datamodule.trainer = Munch(global_rank=2, world_size=num_shards)
         datamodule.prepare_data()
-        datamodule.setup(stage='fit')
+        datamodule.setup(stage="fit")
         train_loader = datamodule.train_dataloader()
         val_loader = datamodule.val_dataloader()
-        datamodule.setup(stage='test')
+        datamodule.setup(stage="test")
         test_loader = datamodule.test_dataloader()
-        if vocab_type == 'word':
+        if vocab_type == "word":
             train_len = 103227021
             val_len = 217646
             test_len = 245569

@@ -1,57 +1,55 @@
 import os
 import sys
+
 sys.path.append("/fly")
 sys.path.append("/fly/pyreft/pyvene")
 sys.path.append("/fly/pyreft")
-os.environ["PYTHONPATH"] = "/fly:/fly/pyreft:/fly/pyreft/pyreft/:/fly/pyreft/pyvene" # Allow ray tune to copy dependencies
-from train_utils import *
-import torch
-import argparse
-from tqdm import tqdm, trange
-from transformers import (
-    AutoConfig,
-    AutoTokenizer, 
-    AutoModelForCausalLM, 
-    AutoModelForSequenceClassification,
-    DataCollatorForSeq2Seq,
-    DataCollatorWithPadding,
-    get_linear_schedule_with_warmup,
-    set_seed,
-    TrainingArguments,
-    RobertaForSequenceClassification
+os.environ["PYTHONPATH"] = (
+    "/fly:/fly/pyreft:/fly/pyreft/pyreft/:/fly/pyreft/pyvene"  # Allow ray tune to copy dependencies
 )
-from accelerate import load_checkpoint_and_dispatch
-from transformers.trainer_utils import EvalPrediction
-import wandb
-import evaluate
+import argparse
 import datetime
 import json
-import numpy as np
-from torch.nn import CrossEntropyLoss
-from torch.utils.data import DataLoader
-from datasets import Dataset
-from torch import profiler
 from contextlib import nullcontext
-from task_config import task_config
-from dataset import LoReftGLUEDataset, LoReftSupervisedDataset
-from compute_metrics import compute_metrics
 from copy import deepcopy
-from pyreft import (
-    TaskType,
-    get_reft_model,
-    ReftConfig,
-    ReftTrainerForCausalLM, 
-    ReftTrainerForSequenceClassification,
-    NoreftIntervention,
-    LoreftIntervention,
-    NoIntervention,
-    MoReIntervention,
-    ReftDataCollator,
-    ReftModel
-)
+
+import evaluate
+import numpy as np
+import torch
+from compute_metrics import compute_metrics
+from dataset import LoReftGLUEDataset, LoReftSupervisedDataset
 from ray import tune
 from ray.tune.schedulers import ASHAScheduler
+from task_config import task_config
+from torch import profiler
+from transformers import (
+    AutoConfig,
+    AutoModelForCausalLM,
+    AutoModelForSequenceClassification,
+    AutoTokenizer,
+    DataCollatorForSeq2Seq,
+    DataCollatorWithPadding,
+    TrainingArguments,
+    set_seed,
+)
+from transformers.trainer_utils import EvalPrediction
+
+import wandb
 from peft import PeftModel
+from pyreft import (
+    LoreftIntervention,
+    MoReIntervention,
+    NoIntervention,
+    NoreftIntervention,
+    ReftConfig,
+    ReftDataCollator,
+    ReftModel,
+    ReftTrainerForCausalLM,
+    ReftTrainerForSequenceClassification,
+    TaskType,
+    get_reft_model,
+)
+from train_utils import *
 
 args = None
 tokenizer = None
@@ -60,9 +58,7 @@ best_hyperparams = None
 config = None
 device = "cuda" if torch.cuda.is_available() else "cpu"
 classification_tasks = {"glue"}
-residual_stream_component_mapping = {
-    "robertaformaskedlm": "roberta.encoder.layer[%s].output"
-}
+residual_stream_component_mapping = {"robertaformaskedlm": "roberta.encoder.layer[%s].output"}
 dtype_mapping = {
     "float32": torch.float32,
     "float16": torch.float16,
@@ -71,11 +67,12 @@ dtype_mapping = {
 }
 peft_config = json.load(open("/fly/task_configs/llama_mmlu/peft_config.json", "r"))
 
+
 def model_init(hyperparams: dict = best_hyperparams):
     global peft_config, args, tokenizer, reft_model, config
     if hyperparams == None:
         hyperparams = {}
-        
+
     # everything is guarded by a single seed
     set_seed(args.seed)
     dtype = dtype_mapping[args.dtype]
@@ -98,19 +95,20 @@ def model_init(hyperparams: dict = best_hyperparams):
     if reft_model is None:
         if args.task in classification_tasks:
             config = AutoConfig.from_pretrained(
-                model_name, num_labels=args.num_labels,
+                model_name,
+                num_labels=args.num_labels,
                 finetuning_task=args.train_dataset,
                 load_in_8bit=True if args.dtype == "float8" else False,
-                device_map=device
+                device_map=device,
             )
             # full precision loading since usually for small models
             reft_model = AutoModelForSequenceClassification.from_pretrained(
                 model_name,
-                config=config, # just providing the label
+                config=config,  # just providing the label
                 torch_dtype=dtype if args.dtype != "float8" else None,
                 load_in_8bit=True if args.dtype == "float8" else False,
                 device_map=device,
-                max_memory={0: 0.8}, 
+                max_memory={0: 0.8},
                 # attn_implementation="flash_attention_2"
             )
 
@@ -120,11 +118,11 @@ def model_init(hyperparams: dict = best_hyperparams):
                 torch_dtype=dtype if args.dtype != "float8" else None,  # save memory
                 load_in_8bit=True if args.dtype == "float8" else False,
                 device_map=device,
-                max_memory={0: 0.8}, # device: memory
-                attn_implementation="flash_attention_2"
+                max_memory={0: 0.8},  # device: memory
+                attn_implementation="flash_attention_2",
             )
             config = reft_model.config
-    
+
     if not isinstance(reft_model, (ReftModel, PeftModel)):
         # Optionally apply ReFT
         if args.intervention_type == "LoreftIntervention":
@@ -135,32 +133,47 @@ def model_init(hyperparams: dict = best_hyperparams):
             intervention_type = partial(MoReIntervention, dtype=dtype, blk_r=args.blk_r, nblocks=args.nblocks)
         else:
             intervention_type = NoIntervention
-        
+
         # intervention config based on model type
         intervention_dtype = torch.bfloat16 if isinstance(dtype, str) else dtype
         model_arch = config.architectures[0].lower()
         if model_arch in residual_stream_component_mapping:
-            representations = [{
-                "component": residual_stream_component_mapping[model_arch] % l,
-                "intervention": intervention_type(
-                    embed_dim=config.hidden_size, low_rank_dimension=args.rank,
-                    dropout=args.dropout, dtype=intervention_dtype, act_fn=args.act_fn, device=device,
-                    add_bias=args.add_bias
-                )
-            } for l in args.layers]
-            task_type=TaskType.SEQ_CLS
+            representations = [
+                {
+                    "component": residual_stream_component_mapping[model_arch] % l,
+                    "intervention": intervention_type(
+                        embed_dim=config.hidden_size,
+                        low_rank_dimension=args.rank,
+                        dropout=args.dropout,
+                        dtype=intervention_dtype,
+                        act_fn=args.act_fn,
+                        device=device,
+                        add_bias=args.add_bias,
+                    ),
+                }
+                for l in args.layers
+            ]
+            TaskType.SEQ_CLS
         else:
-            representations = [{
-                "layer": l, "component": "block_output",
-                "low_rank_dimension": args.rank,
-                "intervention": intervention_type(
-                    embed_dim=config.hidden_size, low_rank_dimension=args.rank,
-                    dropout=args.dropout, dtype=intervention_dtype, act_fn=args.act_fn, device=device,
-                    add_bias=args.add_bias
-                )
-            } for l in args.layers]
-            task_type=TaskType.CAUSAL_LM
-        
+            representations = [
+                {
+                    "layer": l,
+                    "component": "block_output",
+                    "low_rank_dimension": args.rank,
+                    "intervention": intervention_type(
+                        embed_dim=config.hidden_size,
+                        low_rank_dimension=args.rank,
+                        dropout=args.dropout,
+                        dtype=intervention_dtype,
+                        act_fn=args.act_fn,
+                        device=device,
+                        add_bias=args.add_bias,
+                    ),
+                }
+                for l in args.layers
+            ]
+            TaskType.CAUSAL_LM
+
         reft_model.enable_input_require_grads()
         reft_config = ReftConfig(representations=representations)
         reft_model = get_reft_model(reft_model, reft_config, set_device=not isinstance(dtype, str))
@@ -170,23 +183,26 @@ def model_init(hyperparams: dict = best_hyperparams):
             for param in reft_model.model.classifier.parameters():
                 # reft_model with HF trainer will automatically pick up these params to optimize
                 param.requires_grad = True
-        
+
         # Monarch adaptation
-        args.monarch = not args.boft
-        if args.monarch:
+        if args.mode == "monarch":
             print("###### INIT MONARCH ######")
             peft_config["dtype"] = dtype
             init_monarch_layers(reft_model, peft_config)
-        else:
+        elif args.mode == "lora":
+            pass
+        elif args.mode == "boft":
             print("###### INIT BOFT ######")
             peft_config["dtype"] = dtype
             reft_model = init_boft(reft_model, peft_config)
+        else:
+            raise NotImplementedError()
 
     param_stats(reft_model, training=False)
     reft_model.print_trainable_parameters()
     return reft_model
-    
-    
+
+
 def finetune(
     act_fn: str,
     add_bias: bool,
@@ -229,18 +245,18 @@ def finetune(
     temperature: float,
     top_p: float,
     top_k: float,
-    **kwargs
+    **kwargs,
 ):
     """
     Generic Representation Finetuning.
     """
     global tokenizer, reft_model, peft_config
     use_wandb = kwargs.pop("wandb", True)
-    
+
     assert task in task_config
     if data_dir is not None:
         assert os.path.exists(data_dir), f"Data directory {data_dir} does not exist."
-    
+
     # store/log run details
     print(
         f"task: {task}, model: {model}, intervention_type: {intervention_type}, "
@@ -262,14 +278,14 @@ def finetune(
         eval_datasets = [train_dataset]
     else:
         eval_datasets = task_config[task]["eval_datasets"] if args.eval_dataset is None else [args.eval_dataset]
-    
+
     # initialize tokenizer
     tokenizer = AutoTokenizer.from_pretrained(
-            args.model,
-            model_max_length=args.max_length,
-            padding_side="right",
-            use_fast=False,
-        )
+        args.model,
+        model_max_length=args.max_length,
+        padding_side="right",
+        use_fast=False,
+    )
     tokenizer.pad_token = tokenizer.unk_token
     # which layers to intervene on
     if isinstance(args.layers, str):
@@ -285,44 +301,51 @@ def finetune(
         # fn or ln shares the same intervention.
         if "+" in args.position and not args.share_weights:
             args.layers += args.layers
-        
-    ReftDataset = LoReftGLUEDataset if task == "glue" else LoReftSupervisedDataset 
+
+    ReftDataset = LoReftGLUEDataset if task == "glue" else LoReftSupervisedDataset
     path = os.path.join(data_dir, train_datasets[0]) if data_dir is not None else train_datasets[0]
     if not args.do_train and not args.do_tune:
         max_n_train_example = 1
     train_dataset = ReftDataset(
-        task, train_datasets[0] if task == "glue" else path, 
-        tokenizer, data_split="train", seed=seed, max_n_example=max_n_train_example,
-        **{"num_interventions": len(args.layers), "position": position, 
-           "share_weights": share_weights}
+        task,
+        train_datasets[0] if task == "glue" else path,
+        tokenizer,
+        data_split="train",
+        seed=seed,
+        max_n_example=max_n_train_example,
+        **{"num_interventions": len(args.layers), "position": position, "share_weights": share_weights},
     )
     trigger_tokens = train_dataset.trigger_tokens
     args.num_labels = train_dataset.num_labels
-    
+
     all_eval_datasets = {}
     for eval_dataset in eval_datasets:
         test_splits = test_split.split(";")
         all_eval_datasets[eval_dataset] = {}
         for split in test_splits:
-            if args.do_tune: 
-                split = "train" # TODO: Ensure eval_loop doesn't throw a bug.. need to change later
-                
+            if args.do_tune:
+                split = "train"  # TODO: Ensure eval_loop doesn't throw a bug.. need to change later
+
             path = os.path.join(data_dir, eval_dataset) if data_dir is not None else eval_dataset
             raw_eval = ReftDataset(
-                task, eval_dataset if task == "glue" else path, 
-                tokenizer, data_split=split, seed=seed, max_n_example=max_n_eval_example,
-                **{"num_interventions": len(args.layers), "position": position, 
-                   "share_weights": share_weights}, is_eval=True
+                task,
+                eval_dataset if task == "glue" else path,
+                tokenizer,
+                data_split=split,
+                seed=seed,
+                max_n_example=max_n_eval_example,
+                **{"num_interventions": len(args.layers), "position": position, "share_weights": share_weights},
+                is_eval=True,
             )
             all_eval_datasets[eval_dataset][split] = [raw_eval, raw_eval.raw_dataset]
     eval_datasets = all_eval_datasets
     # Initialize model
     if args.all_linear:
         peft_config["layers_to_adapt"] += ["o_proj", "up_proj", "down_proj", "gate_proj"]
-        
+
     reft_model = model_init()
     n_params = reft_model.count_parameters(include_model=False)
-    
+
     if task == "glue":
         # we repartition the eval_datatsets into [1] 50% validation + [2] 50% test
         # we select the best model on [1] during training
@@ -334,9 +357,9 @@ def finetune(
             in_train_n_eval_sample = len(to_split_eval_datasets) // 2
 
         new_splits = torch.utils.data.random_split(
-            to_split_eval_datasets, [len(to_split_eval_datasets)-in_train_n_eval_sample, in_train_n_eval_sample]
+            to_split_eval_datasets, [len(to_split_eval_datasets) - in_train_n_eval_sample, in_train_n_eval_sample]
         )
-        
+
         in_test_eval_datasets, in_train_eval_datasets = new_splits[0], new_splits[1]
         eval_datasets[args.train_dataset][test_split][0] = in_test_eval_datasets
         print("GLUE validation split (in training): ", len(in_train_eval_datasets))
@@ -344,6 +367,7 @@ def finetune(
 
         is_regression = args.train_dataset == "stsb"
         metric = evaluate.load("glue", args.train_dataset)
+
         # You can define your custom compute_metrics function. It takes an `EvalPrediction` object (a namedtuple with a
         # predictions and label_ids field) and has to return a dictionary string to float.
         def in_training_compute_metrics(p: EvalPrediction):
@@ -354,50 +378,47 @@ def finetune(
                 result["combined_score"] = np.mean(list(result.values())).item()
             return result
 
-        
     # select collator based on the type
     if task in classification_tasks:
-        data_collator_fn = DataCollatorWithPadding(
-            tokenizer=tokenizer,
-            padding="longest"
-        )
+        data_collator_fn = DataCollatorWithPadding(tokenizer=tokenizer, padding="longest")
     else:
         data_collator_fn = DataCollatorForSeq2Seq(
-            tokenizer=tokenizer,
-            model=model,
-            label_pad_token_id=-100,
-            padding="longest"
+            tokenizer=tokenizer, model=model, label_pad_token_id=-100, padding="longest"
         )
-        
+
     data_collator = ReftDataCollator(data_collator=data_collator_fn)
 
     # start wandb logging
-    # if task == "tune_math": 
-        # task = "math"
+    # if task == "tune_math":
+    # task = "math"
     # Now datasets are set up, use the actual task name
     if "tune" in task:
         task = task.split("_")[-1]
     task_dir = os.path.join(output_dir, task)
     output_dir = os.path.join(task_dir, args.group) if args.group else task_dir
-    
+
     if args.notes:
         run_name = args.notes + "_" + run_name
-        
+
     # Must set env variables to carry to them ray tune workers!
     if args.wandb == False:
         os.environ["WANDB_MODE"] = "offline"
     if args.resume:
         group_path = os.path.join(output_dir, "full_group.txt")
         group = None
-        os.environ["WANDB_RUN_GROUP"] = group = get_run_group(task, group=args.group, notes=args.notes, do_tune=args.do_tune)
+        os.environ["WANDB_RUN_GROUP"] = group = get_run_group(
+            task, group=args.group, notes=args.notes, do_tune=args.do_tune
+        )
         if os.path.exists(group_path):
             os.environ["WANDB_RUN_GROUP"] = group = open(group_path, "r").read().strip()
     else:
-        os.environ["WANDB_RUN_GROUP"] = group = get_run_group(task, group=args.group, notes=args.notes, do_tune=args.do_tune)
+        os.environ["WANDB_RUN_GROUP"] = group = get_run_group(
+            task, group=args.group, notes=args.notes, do_tune=args.do_tune
+        )
 
     os.environ["WANDB_PROJECT"] = f"reft-monarch-{task}"
     run = wandb.init(
-        project=os.environ["WANDB_PROJECT"], 
+        project=os.environ["WANDB_PROJECT"],
         name=run_name,
         dir=wandb_dir,
         group=group,
@@ -405,9 +426,8 @@ def finetune(
     if not args.do_tune:
         watch_layers(reft_model.model)
     run.summary.update(vars(args))
-    wandb.log(
-        {"train/n_params": n_params})
-    
+    wandb.log({"train/n_params": n_params})
+
     # # training args
     training_args = TrainingArguments(
         output_dir=output_dir,
@@ -423,7 +443,7 @@ def finetune(
         metric_for_best_model=metric_for_best_model if task == "glue" else None,
         # load_best_model_at_end=True if task == "glue" else False,
         logging_strategy="steps",
-        save_total_limit=6, 
+        save_total_limit=6,
         logging_steps=logging_steps,
         lr_scheduler_type=schedule,
         learning_rate=lr,
@@ -435,30 +455,33 @@ def finetune(
         seed=seed,
         # until HF supports ReFT, this remains False! :)
         remove_unused_columns=False,
-        do_eval=True
+        do_eval=True,
     )
 
     # make trainer
-    trainer_class = ReftTrainerForSequenceClassification \
-        if task in classification_tasks else ReftTrainerForCausalLM
+    trainer_class = ReftTrainerForSequenceClassification if task in classification_tasks else ReftTrainerForCausalLM
     if task == "glue":
         eval_dataset = in_train_eval_datasets
     # Ray Tune requires eval. Otherwise the authors didn't use eval
     elif args.do_tune:
         assert len(eval_datasets) == 1, "Use only one eval set for HPO!"
-        raw_eval = list(list(eval_datasets.values())[0].values())[0][0] # TODO: beautify
+        raw_eval = list(list(eval_datasets.values())[0].values())[0][0]  # TODO: beautify
         eval_dataset = raw_eval
     elif task == "commonsense":
         eval_dataset = ReftDataset(
-            task,  train_datasets[0], 
-            tokenizer, data_split="train", seed=seed, max_n_example=max_n_eval_example,
-            **{"num_interventions": len(args.layers), "position": position, 
-                "share_weights": share_weights}, is_eval=True
+            task,
+            train_datasets[0],
+            tokenizer,
+            data_split="train",
+            seed=seed,
+            max_n_example=max_n_eval_example,
+            **{"num_interventions": len(args.layers), "position": position, "share_weights": share_weights},
+            is_eval=True,
         )
     else:
         eval_dataset = None
         training_args.evaluation_strategy = "no"
-        
+
     trainer = trainer_class(
         model=reft_model,
         model_init=model_init,
@@ -471,20 +494,21 @@ def finetune(
     )
     # Eval more than once per epoch
     evals_per_epoch = args.evals_per_epoch
-    trainer.args.eval_steps = len(train_dataset) \
-        // (training_args.per_device_train_batch_size * training_args.gradient_accumulation_steps * evals_per_epoch)
-        
+    trainer.args.eval_steps = len(train_dataset) // (
+        training_args.per_device_train_batch_size * training_args.gradient_accumulation_steps * evals_per_epoch
+    )
+
     if args.do_tune:
         # Save full tune group name for resuming
         with open(os.path.join(training_args.output_dir, "full_group.txt"), "w") as f:
             f.write(group)
-        
+
         _args = deepcopy(trainer.args)
-        trainer.args.save_total_limit = 0 # Avoid flooding the disk during HPO
+        trainer.args.save_total_limit = 0  # Avoid flooding the disk during HPO
         trainer.args.load_best_model_at_end = False
         trainer.args.save_strategy = "no"
-        trainer.args.evaluation_strategy = "steps" # Requried for Ray Tune
-    
+        trainer.args.evaluation_strategy = "steps"  # Requried for Ray Tune
+
         ######################### Need to change for each task #########################
         # PEFT monarch search space
         if task == "math":
@@ -494,63 +518,66 @@ def finetune(
         else:
             raise NotImplementedError(f"Don't forget to manually pick bs for task {task} !")
         grad_acc_steps = [i // args.batch_size for i in real_bs]
-        
+
         param_space = {
             # "nblocks": tune.choice(['sqrt(n)', 4]),
             "seed": training_args.seed,
             # "num_train_epochs": tune.choice([20, 25]),
-            "learning_rate": tune.quniform(1e-4, 9e-4, 1e-4), 
-            "gradient_accumulation_steps": tune.choice(grad_acc_steps), # Will OOM if tune batch size
+            "learning_rate": tune.quniform(1e-4, 9e-4, 1e-4),
+            "gradient_accumulation_steps": tune.choice(grad_acc_steps),  # Will OOM if tune batch size
             "weight_decay": tune.choice([0]),
-            "lr_scheduler_type": tune.choice(["cosine", "linear"]), # mostly linear underperforms
+            "lr_scheduler_type": tune.choice(["cosine", "linear"]),  # mostly linear underperforms
             "dropout": tune.choice([0.05, 0.1]),
             "blk_r": peft_config["blk_r"],
             "nblocks": peft_config["nblocks"],
         }
-        n_trials = args.n_trials 
-        
+        n_trials = args.n_trials
+
         # Set up scheduler and reporter etc.
-        metric = f'eval_loss'
-        direction = "min" if "loss" in metric else "max" # minimize eval loss
+        metric = f"eval_loss"
+        direction = "min" if "loss" in metric else "max"  # minimize eval loss
         tune_unit = "iter"
-        max_t = 40 * 60  if "tune_unit" == "time" else args.epochs * evals_per_epoch
-        grade_period = 4 * 60  if tune_unit == "time" else 2
+        max_t = 40 * 60 if "tune_unit" == "time" else args.epochs * evals_per_epoch
+        grade_period = 4 * 60 if tune_unit == "time" else 2
         time_attr = "time_total_s" if tune_unit == "time" else "training_iteration"
         ############################## End of task specific ##############################
-        
+
         scheduler = ASHAScheduler(
             time_attr=time_attr,
             max_t=max_t,
-            metric = metric,
-            mode = direction,
+            metric=metric,
+            mode=direction,
             grace_period=grade_period,
         )
         # Do hyperparam optimization with Ray Tune
-        best_run = trainer.hyperparameter_search(hp_space=lambda _: param_space,
+        best_run = trainer.hyperparameter_search(
+            hp_space=lambda _: param_space,
             backend="ray",
-            n_trials=n_trials, # under the hood it calls ray.tune.run(num_samples=n_trials, ...)
+            n_trials=n_trials,  # under the hood it calls ray.tune.run(num_samples=n_trials, ...)
             scheduler=scheduler,
             keep_checkpoints_num=None,
             resources_per_trial={"cpu": 1, "gpu": 1},
             name=group,
             local_dir="/fly/ray_results",
-            max_failures=9999, # tolerate OOM
+            max_failures=9999,  # tolerate OOM
             direction="maximize" if direction == "max" else "minimize",
             compute_objective=partial(get_hpo_metric, metric),
-            resume=args.resume 
+            resume=args.resume,
         )
-        del trainer.model; model = None; free_memory() # Re-init model
+        del trainer.model
+        model = None
+        free_memory()  # Re-init model
         trainer.args = _args
         best_hyperparams = best_run.hyperparameters
-        # Save the best HP for full training 
+        # Save the best HP for full training
         print("Best hyperparameters: ", best_hyperparams)
-        
+
         # Save hyperparams
         run_hp_path = os.path.join(training_args.output_dir, "best_hyperparams.json")
         task_hp_path = os.path.join(task_dir, "best_hyperparams.json")
         json.dump(best_hyperparams, open(run_hp_path, "w"))
         json.dump(best_hyperparams, open(task_hp_path, "w"))
-    
+
     last_ckpt, _ = get_last_checkpoint(training_args.output_dir)
     # last_ckpt = os.path.join(last_ckpt, "intervenable_model")
     if args.do_train:
@@ -572,12 +599,12 @@ def finetune(
                 trainer.train(resume_from_checkpoint=last_ckpt)
             else:
                 trainer.train()
-                
+
         # dump config
         args_dict = vars(args)
         args_dict["n_params"] = n_params
         json_file_name = f"{output_dir}/args.json"
-        with open(json_file_name, 'w') as json_file:
+        with open(json_file_name, "w") as json_file:
             json.dump(args_dict, json_file, indent=4)
 
         # save model
@@ -588,10 +615,10 @@ def finetune(
     else:
         print("Skipping training, loading last checkpoint...")
         trainer.model.load_intervention(last_ckpt, include_model=True)
-        
+
     # ensure everything is in eval mode
     reft_model.model.eval()
-    for k,v in reft_model.interventions.items():
+    for k, v in reft_model.interventions.items():
         _ = v[0].eval()
 
     print({"n_params": n_params})
@@ -600,12 +627,23 @@ def finetune(
     for dataset_name in eval_datasets:
         # split evalset into chunks
         for split, (eval_dataset, data_items) in eval_datasets[dataset_name].items():
-            
+
             generations, stats = compute_metrics(
-                task, dataset_name, reft_model, tokenizer, eval_dataset, data_items,
-                trigger_tokens, run_name, eval_batch_size, 
+                task,
+                dataset_name,
+                reft_model,
+                tokenizer,
+                eval_dataset,
+                data_items,
+                trigger_tokens,
+                run_name,
+                eval_batch_size,
                 data_collator if task in classification_tasks else None,
-                split, greedy_decoding, temperature, top_p, top_k
+                split,
+                greedy_decoding,
+                temperature,
+                top_p,
+                top_k,
             )
 
             # log
@@ -614,64 +652,65 @@ def finetune(
                 wandb.log(stats)
             generations = stats if generations is None else generations
             result_json_file_name = f"{output_dir}/{dataset_name}_{split}_outputs.json"
-            with open(result_json_file_name, 'w') as json_file:
+            with open(result_json_file_name, "w") as json_file:
                 json.dump(generations, json_file, indent=4)
 
     # log final eval stats
     result_json_file_name = f"{output_dir}/eval_results.json"
     eval_results["n_params"] = n_params
-    with open(result_json_file_name, 'w') as json_file:
+    with open(result_json_file_name, "w") as json_file:
         json.dump(eval_results, json_file, indent=4)
-        
+
 
 def main():
     parser = argparse.ArgumentParser(description="A simple script that takes different arguments.")
-    
-    parser.add_argument('-task', '--task', type=str, default=None)
-    parser.add_argument('-data_dir', '--data_dir', type=str, default=None)
-    parser.add_argument('-train_dataset', '--train_dataset', type=str, default=None)
-    parser.add_argument('-eval_dataset', '--eval_dataset', type=str, default=None)
-    parser.add_argument('-model', '--model', type=str, help='yahma/llama-7b-hf', default='yahma/llama-7b-hf')
-    parser.add_argument('-seed', '--seed', type=int, help='42', default=42)
-    parser.add_argument('-l', '--layers', type=str, help='2;10;18;26', default='2;10;18;26')
-    parser.add_argument('-r', '--rank', type=int, help=8, default=8)
-    parser.add_argument('-p', '--position', type=str, help='f1+l1', default='f1+l1')
-    parser.add_argument('-e', '--epochs', type=int, help='1', default=1)
-    parser.add_argument('-wandb', '--wandb', default=True, type=eval)
-    parser.add_argument('-wandb_name', '--wandb_name', type=str, default="reft")
-    parser.add_argument('-save_model', '--save_model', default=True, type=eval)
-    parser.add_argument('-max_n_train_example', '--max_n_train_example', type=int, default=None)
-    parser.add_argument('-max_n_eval_example', '--max_n_eval_example', type=int, default=None)
+
+    parser.add_argument("-task", "--task", type=str, default=None)
+    parser.add_argument("-data_dir", "--data_dir", type=str, default=None)
+    parser.add_argument("-train_dataset", "--train_dataset", type=str, default=None)
+    parser.add_argument("-eval_dataset", "--eval_dataset", type=str, default=None)
+    parser.add_argument("-model", "--model", type=str, help="yahma/llama-7b-hf", default="yahma/llama-7b-hf")
+    parser.add_argument("-seed", "--seed", type=int, help="42", default=42)
+    parser.add_argument("-l", "--layers", type=str, help="2;10;18;26", default="2;10;18;26")
+    parser.add_argument("-r", "--rank", type=int, help=8, default=8)
+    parser.add_argument("-p", "--position", type=str, help="f1+l1", default="f1+l1")
+    parser.add_argument("-e", "--epochs", type=int, help="1", default=1)
+    parser.add_argument("-wandb", "--wandb", default=True, type=eval)
+    parser.add_argument("-wandb_name", "--wandb_name", type=str, default="reft")
+    parser.add_argument("-save_model", "--save_model", default=True, type=eval)
+    parser.add_argument("-max_n_train_example", "--max_n_train_example", type=int, default=None)
+    parser.add_argument("-max_n_eval_example", "--max_n_eval_example", type=int, default=None)
     parser.add_argument(
-        '-type', '--intervention_type', type=str, 
-        help='LoreftIntervention', default="LoreftIntervention")
-    parser.add_argument('-gradient_accumulation_steps', '--gradient_accumulation_steps', type=int, default=4)
-    parser.add_argument('-batch_size', '--batch_size', type=int, default=4)
-    parser.add_argument('-eval_batch_size', '--eval_batch_size', type=int, default=4)
-    parser.add_argument('-output_dir', '--output_dir', type=str, default="./official_results")
-    parser.add_argument('-lr', '--lr', type=float, default=5e-3)
-    parser.add_argument('-schedule', '--schedule', type=str, default='linear')
-    parser.add_argument('-wu', '--warmup_ratio', type=float, default=0.00)
-    parser.add_argument('-wd', '--weight_decay', type=float, default=0.00)
-    parser.add_argument('-dropout', '--dropout', type=float, default=0.00)
-    parser.add_argument('-act_fn', '--act_fn', type=str, default=None)
-    parser.add_argument('-add_bias', '--add_bias', action='store_true')
-    parser.add_argument('-test_split', '--test_split', type=str, default="validation")
-    parser.add_argument('-train_on_inputs', '--train_on_inputs', action='store_true')
-    parser.add_argument('-max_length', '--max_length', type=int, help=512, default=512)
-    parser.add_argument('-nt', '--use_normalized_template', action='store_true')
-    parser.add_argument('-allow_cls_grad', '--allow_cls_grad', action='store_true')
-    parser.add_argument('-metric_for_best_model', '--metric_for_best_model', type=str, default="accuracy")
-    parser.add_argument('-dtype', '--dtype', type=str, default="bfloat16" if device == "cuda" else "float32")
-    parser.add_argument('-logging_steps', '--logging_steps', type=int, help=1, default=1)
-    parser.add_argument('-wandb_dir', '--wandb_dir', type=str, default='wandb')
-    parser.add_argument('-wandb_proj', '--wandb_proj', type=str, default='MyReFT')
-    parser.add_argument('-sw', '--share_weights', action='store_true')
-    parser.add_argument('-gd', '--greedy_decoding', action='store_true')
-    
+        "-type", "--intervention_type", type=str, help="LoreftIntervention", default="LoreftIntervention"
+    )
+    parser.add_argument("-gradient_accumulation_steps", "--gradient_accumulation_steps", type=int, default=4)
+    parser.add_argument("-batch_size", "--batch_size", type=int, default=4)
+    parser.add_argument("-eval_batch_size", "--eval_batch_size", type=int, default=4)
+    parser.add_argument("-output_dir", "--output_dir", type=str, default="./official_results")
+    parser.add_argument("-lr", "--lr", type=float, default=5e-3)
+    parser.add_argument("-schedule", "--schedule", type=str, default="linear")
+    parser.add_argument("-wu", "--warmup_ratio", type=float, default=0.00)
+    parser.add_argument("-wd", "--weight_decay", type=float, default=0.00)
+    parser.add_argument("-dropout", "--dropout", type=float, default=0.00)
+    parser.add_argument("-act_fn", "--act_fn", type=str, default=None)
+    parser.add_argument("-add_bias", "--add_bias", action="store_true")
+    parser.add_argument("-test_split", "--test_split", type=str, default="validation")
+    parser.add_argument("-train_on_inputs", "--train_on_inputs", action="store_true")
+    parser.add_argument("-max_length", "--max_length", type=int, help=512, default=512)
+    parser.add_argument("-nt", "--use_normalized_template", action="store_true")
+    parser.add_argument("-allow_cls_grad", "--allow_cls_grad", action="store_true")
+    parser.add_argument("-metric_for_best_model", "--metric_for_best_model", type=str, default="accuracy")
+    parser.add_argument("-dtype", "--dtype", type=str, default="bfloat16" if device == "cuda" else "float32")
+    parser.add_argument("-logging_steps", "--logging_steps", type=int, help=1, default=1)
+    parser.add_argument("-wandb_dir", "--wandb_dir", type=str, default="wandb")
+    parser.add_argument("-wandb_proj", "--wandb_proj", type=str, default="MyReFT")
+    parser.add_argument("-sw", "--share_weights", action="store_true")
+    parser.add_argument("-gd", "--greedy_decoding", action="store_true")
+
     # Monarch
-    parser.add_argument("--monarch", default=True, type=eval)
-    parser.add_argument("--boft", default=False, type=eval)
+    # parser.add_argument("--monarch", default=True, type=eval)
+    # parser.add_argument("--boft", default=False, type=eval)
+    parser.add_argument("--mode", type=str, default="monarch", choices=["monarch", "boft", "lora"])
     parser.add_argument("--nblocks", default=-1, type=int)
     parser.add_argument("--blk_r", default=-1, type=int)
     parser.add_argument("--do_tune", action="store_true")
@@ -685,9 +724,9 @@ def main():
     parser.add_argument("--evals_per_epoch", default=2, type=int)
     parser.add_argument("--group", type=str, default=None, help="Wandb run group for different model config etc.")
     # decoding params
-    parser.add_argument('-t', '--temperature', type=float, default=None)
-    parser.add_argument('-top_p', '--top_p', type=float, default=None)
-    parser.add_argument('-top_k', '--top_k', type=float, default=None)
+    parser.add_argument("-t", "--temperature", type=float, default=None)
+    parser.add_argument("-top_p", "--top_p", type=float, default=None)
+    parser.add_argument("-top_k", "--top_k", type=float, default=None)
 
     parser.add_argument("--notes", type=str, default="")
     parser.add_argument("--max_steps", type=int, default=-1)

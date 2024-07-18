@@ -120,7 +120,7 @@ prompt = tokenizer("GO->", return_tensors="pt").to("cuda")
 base_unit_location = prompt["input_ids"].shape[-1] - 1  # last position
 _, reft_response = reft_model.generate(
     prompt, unit_locations={"sources->base": (None, [[[base_unit_location]]])},
-    intervene_on_prompt=True, max_new_tokens=512, do_sample=False, 
+    intervene_on_prompt=True, max_new_tokens=512, do_sample=False,
     eos_token_id=tokenizer.eos_token_id, early_stopping=True
 )
 print(tokenizer.decode(reft_response[0], skip_special_tokens=True))
@@ -199,9 +199,9 @@ intervention_locations = torch.tensor([get_intervention_locations(
 
 # generate
 _, reft_response = reft_model.generate(
-    prompt, 
+    prompt,
     unit_locations={"sources->base": (None, intervention_locations)},
-    intervene_on_prompt=True, max_new_tokens=512, do_sample=False, 
+    intervene_on_prompt=True, max_new_tokens=512, do_sample=False,
     no_repeat_ngram_size=5, repetition_penalty=1.1,
     eos_token_id=tokenizer.eos_token_id, early_stopping=True
 )
@@ -209,7 +209,7 @@ print(tokenizer.decode(reft_response[0], skip_special_tokens=True))
 ```
 Note that Llama-2 models can follow instructions zero-shot. We encourage people to try on other more primitive base LMs and see if ReFT can work well!
 
-**Usage and License Notices**: Our chat-model is intended and licensed for research use only. The model is CC BY NC 4.0 (allowing only non-commercial use) and should not be used outside of research purposes. 
+**Usage and License Notices**: Our chat-model is intended and licensed for research use only. The model is CC BY NC 4.0 (allowing only non-commercial use) and should not be used outside of research purposes.
 
 
 ## Why should you use ReFT instead of PEFTs?
@@ -257,4 +257,3 @@ If you are interested in integrating this library into your workflow or in reimp
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=stanfordnlp/pyreft,stanfordnlp/pyvene&type=Date)](https://star-history.com/#stanfordnlp/pyreft&stanfordnlp/pyvene&Date)
-

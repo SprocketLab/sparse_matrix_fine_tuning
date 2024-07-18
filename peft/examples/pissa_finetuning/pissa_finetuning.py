@@ -18,7 +18,13 @@ from typing import List, Optional
 
 import torch
 from datasets import load_dataset
-from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig, HfArgumentParser, TrainingArguments
+from transformers import (
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    BitsAndBytesConfig,
+    HfArgumentParser,
+    TrainingArguments,
+)
 from trl import SFTTrainer
 
 from peft import LoraConfig, PeftModel, get_peft_model, prepare_model_for_kbit_training
@@ -93,9 +99,7 @@ elif script_args.residual_model_name_or_path is not None:
     tokenizer = AutoTokenizer.from_pretrained(script_args.residual_model_name_or_path)
 
 elif script_args.base_model_name_or_path is not None:
-    print(
-        f"No available pre-processed model, manually initialize a PiSSA using {script_args.base_model_name_or_path}."
-    )
+    print(f"No available pre-processed model, manually initialize a PiSSA using {script_args.base_model_name_or_path}.")
     model = AutoModelForCausalLM.from_pretrained(
         script_args.base_model_name_or_path,
         torch_dtype=(

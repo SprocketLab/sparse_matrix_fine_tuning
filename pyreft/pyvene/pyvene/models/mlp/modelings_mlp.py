@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Optional, Tuple
 
 import torch
@@ -5,9 +6,9 @@ import torch.nn as nn
 from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss
 from transformers import PretrainedConfig, PreTrainedModel
 from transformers.activations import ACT2FN
-from transformers.utils import ModelOutput
 from transformers.modeling_outputs import SequenceClassifierOutput
-from dataclasses import dataclass
+from transformers.utils import ModelOutput
+
 
 class MLPConfig(PretrainedConfig):
     model_type = "mlp"
@@ -39,6 +40,7 @@ class MLPConfig(PretrainedConfig):
         self.include_bias = include_bias
         self.squeeze_output = squeeze_output
         super().__init__(**kwargs)
+
 
 @dataclass
 class MLPModelOutput(ModelOutput):
@@ -100,9 +102,7 @@ class MLPModel(PreTrainedModel):
         if not return_dict:
             return tuple(v for v in [hidden_states, all_hidden_states] if v is not None)
 
-        return MLPModelOutput(
-            last_hidden_state=hidden_states, hidden_states=all_hidden_states
-        )
+        return MLPModelOutput(last_hidden_state=hidden_states, hidden_states=all_hidden_states)
 
 
 class MLPForClassification(PreTrainedModel):
@@ -142,9 +142,7 @@ class MLPForClassification(PreTrainedModel):
             if self.config.problem_type is None:
                 if self.num_classes == 1:
                     self.config.problem_type = "regression"
-                elif self.num_classes > 1 and (
-                    labels.dtype == torch.long or labels.dtype == torch.int
-                ):
+                elif self.num_classes > 1 and (labels.dtype == torch.long or labels.dtype == torch.int):
                     self.config.problem_type = "single_label_classification"
                 else:
                     self.config.problem_type = "multi_label_classification"
@@ -157,9 +155,7 @@ class MLPForClassification(PreTrainedModel):
                     loss = loss_fct(pooled_logits, labels)
             elif self.config.problem_type == "single_label_classification":
                 loss_fct = CrossEntropyLoss()
-                loss = loss_fct(
-                    pooled_logits.view(-1, self.num_classes), labels.view(-1)
-                )
+                loss = loss_fct(pooled_logits.view(-1, self.num_classes), labels.view(-1))
             elif self.config.problem_type == "multi_label_classification":
                 loss_fct = BCEWithLogitsLoss()
                 loss = loss_fct(pooled_logits, labels)

@@ -19,7 +19,6 @@ from peft.import_utils import is_eetq_available
 from peft.tuners.lora.layer import LoraLayer
 from peft.tuners.tuners_utils import BaseTunerLayer
 
-
 if is_eetq_available():
     from eetq import EetqLinear
 

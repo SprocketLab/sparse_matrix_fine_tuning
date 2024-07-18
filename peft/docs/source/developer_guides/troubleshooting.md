@@ -103,7 +103,7 @@ peft_model = PeftModel.from_pretrained(base_model, peft_model_id)
 
 ### Randomly initialized layers
 
-For some tasks, it is important to correctly configure `modules_to_save` in the config to account for randomly initialized layers. 
+For some tasks, it is important to correctly configure `modules_to_save` in the config to account for randomly initialized layers.
 
 As an example, this is necessary if you use LoRA to fine-tune a language model for sequence classification because 🤗 Transformers adds a randomly initialized classification head on top of the model. If you do not add this layer to `modules_to_save`, the classification head won't be saved. The next time you load the model, you'll get a _different_ randomly initialized classification head, resulting in completely different results.
 
@@ -144,7 +144,7 @@ For a complete example, please check out [this notebook](https://github.com/hugg
 
 ### Check layer and model status
 
-Sometimes a PEFT model can end up in a bad state, especially when handling multiple adapters. There can be some confusion around what adapters exist, which one is active, which one is merged, etc. To help investigate this issue, call the [`~peft.PeftModel.get_layer_status`] and the [`~peft.PeftModel.get_model_status`] methods. 
+Sometimes a PEFT model can end up in a bad state, especially when handling multiple adapters. There can be some confusion around what adapters exist, which one is active, which one is merged, etc. To help investigate this issue, call the [`~peft.PeftModel.get_layer_status`] and the [`~peft.PeftModel.get_model_status`] methods.
 
 The [`~peft.PeftModel.get_layer_status`] method gives you a detailed overview of each targeted layer's active, merged, and available adapters.
 

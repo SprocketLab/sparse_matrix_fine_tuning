@@ -7,7 +7,7 @@
     "dropout": 0.1,
     "boft": false,
     "boft_block_size": 8,
-    "boft_block_num": 0, 
+    "boft_block_num": 0,
     "boft_n_butterfly_factor": 2,
     "boft_dropout": 0.1,
     "bias": "none",
@@ -17,14 +17,14 @@
         "k_proj"
     ],
     "q_v": false,
-    "adapter": true, 
+    "adapter": true,
     "svd_init": false,
-    
+
     "scaler": false,
     "layernorm": true,
     "scaler_type": "scaler",
     "from_lora": "",
-    
+
     "mlp": false,
     "lora_style_init": false,
     "use_mult_factor": false,

@@ -11,9 +11,8 @@ from typing import Optional
 
 import torch
 import triton
-from torch.cuda.amp import custom_bwd, custom_fwd
-
 from einops import rearrange, repeat
+from torch.cuda.amp import custom_bwd, custom_fwd
 
 from src.ops.triton.k_softmax import _softmax, _softmax_backward
 
@@ -48,9 +47,7 @@ class _softmax_triton(torch.autograd.Function):
             x_ = x_.contiguous()
 
         y = torch.empty_like(x_)
-        assert (
-            y.stride(2) == 1 and x_.stride(2) == 1
-        ), f"{x.shape} - {x_.shape} - {x_.stride()}"
+        assert y.stride(2) == 1 and x_.stride(2) == 1, f"{x.shape} - {x_.shape} - {x_.stride()}"
 
         # SPMD launch grid
         grid_2d = (
@@ -66,8 +63,8 @@ class _softmax_triton(torch.autograd.Function):
         else:
             # Make sure that the mask is binary
             assert mask.dtype == x.dtype, "An additive mask is requested"
-            if mask_type == 'bk':
-                mask = repeat(mask, 'b 1 1 s -> b h 1 s', h=x_.shape[0] // mask.shape[0])
+            if mask_type == "bk":
+                mask = repeat(mask, "b 1 1 s -> b h 1 s", h=x_.shape[0] // mask.shape[0])
             mask = mask.flatten(0, -2).contiguous()
 
         _softmax[grid_2d](
@@ -105,9 +102,7 @@ class _softmax_triton(torch.autograd.Function):
             grad_out_.shape[1],
         )
 
-        grad_in = torch.empty_like(
-            out
-        )  # torch.zeros is measurably slower, we'll zero out in the kernel
+        grad_in = torch.empty_like(out)  # torch.zeros is measurably slower, we'll zero out in the kernel
 
         # Make sure that the tensor are contiguous
         grad_in, grad_out_, out = map(lambda x: x.contiguous(), [grad_in, grad_out_, out])
@@ -127,8 +122,7 @@ class _softmax_triton(torch.autograd.Function):
 
 
 def softmax(
-    x: torch.Tensor, mask: Optional[torch.Tensor] = None, causal: bool = False,
-    mask_type: str = 'qk'
+    x: torch.Tensor, mask: Optional[torch.Tensor] = None, causal: bool = False, mask_type: str = "qk"
 ) -> torch.Tensor:
     r"""Applies the Softmax function to an 3-dimensional input Tensor
     rescaling them so that the elements of the n-dimensional output Tensor
@@ -155,8 +149,7 @@ def softmax(
 
 
 def log_softmax(
-    x: torch.Tensor, mask: Optional[torch.Tensor] = None, causal: bool = False,
-    mask_type: str = 'qk'
+    x: torch.Tensor, mask: Optional[torch.Tensor] = None, causal: bool = False, mask_type: str = "qk"
 ) -> torch.Tensor:
     r"""Applies the :math:`\log(\text{Softmax}(x))` function to an 3-dimensional
     input Tensor. The LogSoftmax formulation can be simplified as:
@@ -175,8 +168,7 @@ def log_softmax(
 
 
 def _softmax_dispatch(
-    x: torch.Tensor, log: bool, mask: Optional[torch.Tensor], causal: bool = False,
-    mask_type: str = 'qk'
+    x: torch.Tensor, log: bool, mask: Optional[torch.Tensor], causal: bool = False, mask_type: str = "qk"
 ) -> torch.Tensor:
     # Triton is used if
     # - CUDA
@@ -199,10 +191,10 @@ def _softmax_dispatch(
         logging.warning(e)
 
     if mask is not None:
-        if mask_type == 'qk':
+        if mask_type == "qk":
             x = x + mask
-        elif mask_type == 'bk':
-            x = x + rearrange(mask, '... k -> ... 1 k')
+        elif mask_type == "bk":
+            x = x + rearrange(mask, "... k -> ... 1 k")
 
     if causal:
         x = x + torch.triu(torch.full_like(x, float("-inf")), diagonal=1)

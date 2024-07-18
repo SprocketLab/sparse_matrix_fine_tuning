@@ -1,51 +1,49 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-from collections import defaultdict
 import copy
 import json
 import os
+
 os.environ["PYTHONPATH"] = "/fly"
-from os.path import exists, join
-from dataclasses import dataclass, field
 import sys
 from copy import deepcopy
+from dataclasses import dataclass, field
+
 sys.path.append("/fly")
-from train_utils import *
-from typing import Optional, Dict, Sequence
-import numpy as np
-from tqdm import tqdm
-import logging
-import bitsandbytes as bnb
-import pandas as pd
-from functools import partial
-from packaging.version import parse
-from ray.air.integrations.wandb import WandbLoggerCallback
-import torch
-from torch import profiler
-import transformers
-from torch.nn.utils.rnn import pad_sequence
-from huggingface_hub import login
 import argparse
-from transformers import (
-    AutoTokenizer,
-    AutoModelForCausalLM,
-    set_seed,
-    Seq2SeqTrainer,
-    LlamaTokenizer,
-    EvalPrediction
-)
-from datasets import load_dataset, Dataset
-import evaluate
-import wandb
-from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
-from accelerate import load_checkpoint_and_dispatch
-from contextlib import nullcontext
-from ray import tune
-from ray.tune import CLIReporter
-from ray.tune.schedulers import ASHAScheduler
 import json
-if torch.cuda.is_available():   
+import logging
+from contextlib import nullcontext
+from functools import partial
+from typing import Dict, Optional, Sequence
+
+import evaluate
+import numpy as np
+import pandas as pd
+import torch
+import transformers
+from accelerate import load_checkpoint_and_dispatch
+from datasets import Dataset, load_dataset
+from huggingface_hub import login
+from ray import tune
+from ray.air.integrations.wandb import WandbLoggerCallback
+from ray.tune.schedulers import ASHAScheduler
+from torch import profiler
+from torch.nn.utils.rnn import pad_sequence
+from tqdm import tqdm
+from transformers import (
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    EvalPrediction,
+    LlamaTokenizer,
+    set_seed,
+)
+
+import wandb
+from train_utils import *
+
+if torch.cuda.is_available():
     torch.backends.cuda.matmul.allow_tf32 = True
 
 logger = logging.getLogger(__name__)
@@ -60,16 +58,12 @@ DEFAULT_PAD_TOKEN = "[PAD]"
 
 @dataclass
 class ModelArguments:
-    model_name_or_path: Optional[str] = field(
-        default="meta-llama/Llama-2-7b"
-    )
+    model_name_or_path: Optional[str] = field(default="meta-llama/Llama-2-7b")
 
 
 @dataclass
 class DataArguments:
-    eval_dataset_size: int = field(
-        default=1024, metadata={"help": "Size of validation dataset."}
-    )
+    eval_dataset_size: int = field(default=1024, metadata={"help": "Size of validation dataset."})
     max_train_samples: Optional[int] = field(
         default=None,
         metadata={
@@ -93,94 +87,86 @@ class DataArguments:
         metadata={"help": "Maximum target sequence length. Sequences will be right padded (and possibly truncated)."},
     )
     dataset: str = field(
-        default='alpaca',
-        metadata={"help": "Which dataset to finetune on. See datamodule for options."}
+        default="alpaca", metadata={"help": "Which dataset to finetune on. See datamodule for options."}
     )
     dataset_format: Optional[str] = field(
-        default=None,
-        metadata={"help": "Which dataset format is used. [alpaca|chip2|self-instruct|hh-rlhf]"}
+        default=None, metadata={"help": "Which dataset format is used. [alpaca|chip2|self-instruct|hh-rlhf]"}
     )
+
 
 @dataclass
 class TrainingArguments(transformers.Seq2SeqTrainingArguments):
-    full_group: Optional[str] = field(
-        default=None, metadata={"help": "Use the full group name for resuming HPO."}
-    ) 
-    resume: Optional[bool] = field(
-        default=False, metadata={"help": "Resume HPO"}
-    )
-    n_trials: Optional[int] = field(
-        default=20, metadata={"help": "Number of hyperparameter search trials."}
-    )
-    group: Optional[str] = field(
-        default="", metadata={"help": "The wandb group name for the run."}
-    )
-    notes: Optional[str] = field(
-        default="", metadata={"help": "Notes for the run."}
-    )
-    hf_token: Optional[str] = field(
-        default=""
-    )
-    do_tune: Optional[bool] = field(
-        default=False,
-        metadata={"help": "Whether to do Hyperparam tuning using ASHA."}
-    )
-    cache_dir: Optional[str] = field(
-        default=None
-    )
+    full_group: Optional[str] = field(default=None, metadata={"help": "Use the full group name for resuming HPO."})
+    resume: Optional[bool] = field(default=False, metadata={"help": "Resume HPO"})
+    n_trials: Optional[int] = field(default=20, metadata={"help": "Number of hyperparameter search trials."})
+    group: Optional[str] = field(default="", metadata={"help": "The wandb group name for the run."})
+    notes: Optional[str] = field(default="", metadata={"help": "Notes for the run."})
+    hf_token: Optional[str] = field(default="")
+    do_tune: Optional[bool] = field(default=False, metadata={"help": "Whether to do Hyperparam tuning using ASHA."})
+    cache_dir: Optional[str] = field(default=None)
     train_on_source: Optional[bool] = field(
-        default=False,
-        metadata={"help": "Whether to train on the input in addition to the target text."}
+        default=False, metadata={"help": "Whether to train on the input in addition to the target text."}
     )
-    mmlu_split: Optional[str] = field(
-        default='test',
-        metadata={"help": "The MMLU split to run on"}
-    )
+    mmlu_split: Optional[str] = field(default="test", metadata={"help": "The MMLU split to run on"})
     mmlu_dataset: Optional[str] = field(
-        default='mmlu-fs',
-        metadata={"help": "MMLU dataset to use: options are `mmlu-zs` for zero-shot or `mmlu-fs` for few shot."}
+        default="mmlu-fs",
+        metadata={"help": "MMLU dataset to use: options are `mmlu-zs` for zero-shot or `mmlu-fs` for few shot."},
     )
-    do_mmlu_eval: Optional[bool] = field(
-        default=False,
-        metadata={"help": "Whether to run the MMLU evaluation."}
-    )
+    do_mmlu_eval: Optional[bool] = field(default=False, metadata={"help": "Whether to run the MMLU evaluation."})
     max_mmlu_samples: Optional[int] = field(
-        default=None,
-        metadata={"help": "If set, only evaluates on `max_mmlu_samples` of the MMMLU dataset."}
+        default=None, metadata={"help": "If set, only evaluates on `max_mmlu_samples` of the MMMLU dataset."}
     )
-    mmlu_source_max_len: int = field(
-        default=2048,
-        metadata={"help": "Maximum source sequence length for mmlu."}
-    )
-    max_memory_MB: int = field(
-        default=38000,
-        metadata={"help": "Free memory per gpu."}
-    )
-    report_to: str = field(
-        default='wandb',
-        metadata={"help": "To use wandb or something else for reporting."}
-    )
+    mmlu_source_max_len: int = field(default=2048, metadata={"help": "Maximum source sequence length for mmlu."})
+    max_memory_MB: int = field(default=38000, metadata={"help": "Free memory per gpu."})
+    report_to: str = field(default="wandb", metadata={"help": "To use wandb or something else for reporting."})
     wandb: bool = field(default=True)
     profile: bool = field(default=False)
-    output_dir: str = field(default='./output', metadata={"help": 'The output dir for logs and checkpoints'})
-    optim: str = field(default='adamw_torch', metadata={"help": 'The optimizer to be used'})
-    per_device_train_batch_size: int = field(default=1, metadata={"help": 'The training batch size per GPU. Increase for better speed.'})
-    gradient_accumulation_steps: int = field(default=16, metadata={"help": 'How many gradients to accumulate before to perform an optimizer step'})
-    max_steps: int = field(default=-1, metadata={"help": 'How many optimizer update steps to take'})
-    weight_decay: float = field(default=0.0, metadata={"help": 'The L2 weight decay rate of AdamW'}) # use lora dropout instead for regularization if needed
-    learning_rate: float = field(default=0.0002, metadata={"help": 'The learnign rate'})
-    remove_unused_columns: bool = field(default=False, metadata={"help": 'Removed unused columns. Needed to make this codebase work.'})
-    max_grad_norm: float = field(default=0.3, metadata={"help": 'Gradient clipping max norm. This is tuned and works well for all models tested.'})
-    gradient_checkpointing: bool = field(default=True, metadata={"help": 'Use gradient checkpointing. You want to use this.'})
-    do_train: bool = field(default=False, metadata={"help": 'To train or not to train, that is the question?'})
-    lr_scheduler_type: str = field(default='constant', metadata={"help": 'Learning rate schedule. Constant a bit better than cosine, and has advantage for analysis'})
-    warmup_ratio: float = field(default=0.03, metadata={"help": 'Fraction of steps to do a warmup for'})
-    logging_steps: int = field(default=10, metadata={"help": 'The frequency of update steps after which to log the loss'})
-    group_by_length: bool = field(default=True, metadata={"help": 'Group sequences into batches with same length. Saves memory and speeds up training considerably.'})
-    save_strategy: str = field(default='steps', metadata={"help": 'When to save checkpoints'})
-    save_steps: int = field(default=250, metadata={"help": 'How often to save a model'})
-    save_total_limit: int = field(default=40, metadata={"help": 'How many checkpoints to save before the oldest is overwritten'})
-    all_linear: bool = field(default=False, metadata={"help": 'Whether to adapt all linear layers'})
+    output_dir: str = field(default="./output", metadata={"help": "The output dir for logs and checkpoints"})
+    optim: str = field(default="adamw_torch", metadata={"help": "The optimizer to be used"})
+    per_device_train_batch_size: int = field(
+        default=1, metadata={"help": "The training batch size per GPU. Increase for better speed."}
+    )
+    gradient_accumulation_steps: int = field(
+        default=16, metadata={"help": "How many gradients to accumulate before to perform an optimizer step"}
+    )
+    max_steps: int = field(default=-1, metadata={"help": "How many optimizer update steps to take"})
+    weight_decay: float = field(
+        default=0.0, metadata={"help": "The L2 weight decay rate of AdamW"}
+    )  # use lora dropout instead for regularization if needed
+    learning_rate: float = field(default=0.0002, metadata={"help": "The learnign rate"})
+    remove_unused_columns: bool = field(
+        default=False, metadata={"help": "Removed unused columns. Needed to make this codebase work."}
+    )
+    max_grad_norm: float = field(
+        default=0.3,
+        metadata={"help": "Gradient clipping max norm. This is tuned and works well for all models tested."},
+    )
+    gradient_checkpointing: bool = field(
+        default=True, metadata={"help": "Use gradient checkpointing. You want to use this."}
+    )
+    do_train: bool = field(default=False, metadata={"help": "To train or not to train, that is the question?"})
+    lr_scheduler_type: str = field(
+        default="constant",
+        metadata={"help": "Learning rate schedule. Constant a bit better than cosine, and has advantage for analysis"},
+    )
+    warmup_ratio: float = field(default=0.03, metadata={"help": "Fraction of steps to do a warmup for"})
+    logging_steps: int = field(
+        default=10, metadata={"help": "The frequency of update steps after which to log the loss"}
+    )
+    group_by_length: bool = field(
+        default=True,
+        metadata={
+            "help": "Group sequences into batches with same length. Saves memory and speeds up training considerably."
+        },
+    )
+    save_strategy: str = field(default="steps", metadata={"help": "When to save checkpoints"})
+    save_steps: int = field(default=250, metadata={"help": "How often to save a model"})
+    save_total_limit: int = field(
+        default=40, metadata={"help": "How many checkpoints to save before the oldest is overwritten"}
+    )
+    all_linear: bool = field(default=False, metadata={"help": "Whether to adapt all linear layers"})
+
+
 @dataclass
 class GenerationArguments:
     # For more hyperparameters check:
@@ -188,13 +174,12 @@ class GenerationArguments:
     # Length arguments
     max_new_tokens: Optional[int] = field(
         default=256,
-        metadata={"help": "Maximum number of new tokens to be generated in evaluation or prediction loops"
-                          "if predict_with_generate is set."}
+        metadata={
+            "help": "Maximum number of new tokens to be generated in evaluation or prediction loops"
+            "if predict_with_generate is set."
+        },
     )
-    min_new_tokens : Optional[int] = field(
-        default=None,
-        metadata={"help": "Minimum number of new tokens to generate."}
-    )
+    min_new_tokens: Optional[int] = field(default=None, metadata={"help": "Minimum number of new tokens to generate."})
 
     # Generation strategy
     do_sample: Optional[bool] = field(default=False)
@@ -229,19 +214,18 @@ def model_init(hyperparams: dict = best_hyperparams):
         n_gpus = 1
     else:
         n_gpus = 0
-        
-    max_memory = f'{args.max_memory_MB}MB'
+
+    max_memory = f"{args.max_memory_MB}MB"
     max_memory = {i: max_memory for i in range(n_gpus)}
     device_map = "auto"
 
     # if we are in a distributed setting, we need to set the device map and max memory per device
-    if os.environ.get('LOCAL_RANK') is not None:
-        local_rank = int(os.environ.get('LOCAL_RANK', '0'))
-        device_map = {'': local_rank}
-        max_memory = {'': max_memory[local_rank]}
+    if os.environ.get("LOCAL_RANK") is not None:
+        local_rank = int(os.environ.get("LOCAL_RANK", "0"))
+        device_map = {"": local_rank}
+        max_memory = {"": max_memory[local_rank]}
 
-
-    compute_dtype = (torch.float16 if args.fp16 else (torch.bfloat16 if args.bf16 else torch.float32))
+    compute_dtype = torch.float16 if args.fp16 else (torch.bfloat16 if args.bf16 else torch.float32)
     torch_dtype = compute_dtype if not peft_config["svd_init"] else torch.float32
     if model is None or getattr(args, "force_reinit", False):
         model = AutoModelForCausalLM.from_pretrained(
@@ -252,11 +236,11 @@ def model_init(hyperparams: dict = best_hyperparams):
             torch_dtype=torch_dtype,
             trust_remote_code=True,
             use_auth_token=True,
-            attn_implementation="flash_attention_2"
+            attn_implementation="flash_attention_2",
             # token=args.hf_token
         )
     model.enable_input_require_grads()
-    
+
     # Monarch adaptation
     if args.all_linear:
         peft_config["layers_to_adapt"] = find_all_linear_names(model)
@@ -265,13 +249,13 @@ def model_init(hyperparams: dict = best_hyperparams):
     # SVD doesn't support bf16
     if peft_config["svd_init"]:
         model = model.to(compute_dtype)
-        
+
     param_stats(model)
     watch_layers(model)
-    setattr(model, 'model_parallel', True)
-    setattr(model, 'is_parallelizable', True)
+    setattr(model, "model_parallel", True)
+    setattr(model, "is_parallelizable", True)
 
-    model.config.torch_dtype=(torch.float32 if args.fp16 else (torch.bfloat16 if args.bf16 else torch.float32))
+    model.config.torch_dtype = torch.float32 if args.fp16 else (torch.bfloat16 if args.bf16 else torch.float32)
 
     # Tokenizer
     global tokenizer
@@ -280,8 +264,8 @@ def model_init(hyperparams: dict = best_hyperparams):
             args.model_name_or_path,
             cache_dir=args.cache_dir,
             padding_side="right",
-            use_fast=False, # Fast tokenizer giving issues.
-            tokenizer_type='llama' if 'llama' in args.model_name_or_path else None, # Needed for HF name change
+            use_fast=False,  # Fast tokenizer giving issues.
+            tokenizer_type="llama" if "llama" in args.model_name_or_path else None,  # Needed for HF name change
             trust_remote_code=True,
             use_auth_token=True,
         )
@@ -291,20 +275,23 @@ def model_init(hyperparams: dict = best_hyperparams):
                 tokenizer=tokenizer,
                 model=model,
             )
-        if 'llama' in args.model_name_or_path or isinstance(tokenizer, LlamaTokenizer):
+        if "llama" in args.model_name_or_path or isinstance(tokenizer, LlamaTokenizer):
             # LLaMA tokenizer may not have correct special tokens set.
             # Check and add them if missing to prevent them from being parsed into different tokens.
             # Note that these are present in the vocabulary.
             # Note also that `model.config.pad_token_id` is 0 which corresponds to `<unk>` token.
-            print('Adding special tokens.')
-            tokenizer.add_special_tokens({
+            print("Adding special tokens.")
+            tokenizer.add_special_tokens(
+                {
                     "eos_token": tokenizer.convert_ids_to_tokens(model.config.eos_token_id),
                     "bos_token": tokenizer.convert_ids_to_tokens(model.config.bos_token_id),
                     "unk_token": tokenizer.convert_ids_to_tokens(
-                        model.config.pad_token_id if (model.config.pad_token_id != -1 and model.config.pad_token_id is not None) \
-                            else tokenizer.pad_token_id
+                        model.config.pad_token_id
+                        if (model.config.pad_token_id != -1 and model.config.pad_token_id is not None)
+                        else tokenizer.pad_token_id
                     ),
-            })
+                }
+            )
 
     return model
 
@@ -320,7 +307,7 @@ def smart_tokenizer_and_embedding_resize(
     """
     num_new_tokens = tokenizer.add_special_tokens(special_tokens_dict)
     model.resize_token_embeddings(len(tokenizer))
-    
+
     if num_new_tokens > 0:
         input_embeddings_data = model.get_input_embeddings().weight.data
         output_embeddings_data = model.get_output_embeddings().weight.data
@@ -330,6 +317,7 @@ def smart_tokenizer_and_embedding_resize(
 
         input_embeddings_data[-num_new_tokens:] = input_embeddings_avg
         output_embeddings_data[-num_new_tokens:] = output_embeddings_avg
+
 
 @dataclass
 class DataCollatorForCausalLM(object):
@@ -360,14 +348,15 @@ class DataCollatorForCausalLM(object):
         input_ids = []
         labels = []
         for tokenized_source, tokenized_target in zip(
-            tokenized_sources_with_prompt['input_ids'],
-            tokenized_targets['input_ids']
+            tokenized_sources_with_prompt["input_ids"], tokenized_targets["input_ids"]
         ):
             if not self.predict_with_generate:
                 input_ids.append(torch.tensor(tokenized_source + tokenized_target))
                 if not self.train_on_source:
                     labels.append(
-                        torch.tensor([IGNORE_INDEX for _ in range(len(tokenized_source))] + copy.deepcopy(tokenized_target))
+                        torch.tensor(
+                            [IGNORE_INDEX for _ in range(len(tokenized_source))] + copy.deepcopy(tokenized_target)
+                        )
                     )
                 else:
                     labels.append(torch.tensor(copy.deepcopy(tokenized_source + tokenized_target)))
@@ -375,31 +364,37 @@ class DataCollatorForCausalLM(object):
                 input_ids.append(torch.tensor(tokenized_source))
         # Apply padding
         input_ids = pad_sequence(input_ids, batch_first=True, padding_value=self.tokenizer.pad_token_id)
-        labels = pad_sequence(labels, batch_first=True, padding_value=IGNORE_INDEX) if not self.predict_with_generate else None
+        labels = (
+            pad_sequence(labels, batch_first=True, padding_value=IGNORE_INDEX)
+            if not self.predict_with_generate
+            else None
+        )
         data_dict = {
-            'input_ids': input_ids,
-            'attention_mask':input_ids.ne(self.tokenizer.pad_token_id),
+            "input_ids": input_ids,
+            "attention_mask": input_ids.ne(self.tokenizer.pad_token_id),
         }
         if labels is not None:
-            data_dict['labels'] = labels
+            data_dict["labels"] = labels
         return data_dict
+
 
 def extract_unnatural_instructions_data(examples, extract_reformulations=False):
     out = {
-        'input': [],
-        'output': [],
+        "input": [],
+        "output": [],
     }
-    for example_instances in examples['instances']:
+    for example_instances in examples["instances"]:
         for instance in example_instances:
-            out['input'].append(instance['instruction_with_input'])
-            out['output'].append(instance['output'])
+            out["input"].append(instance["instruction_with_input"])
+            out["output"].append(instance["output"])
     if extract_reformulations:
-        for example_reformulations in examples['reformulations']:
+        for example_reformulations in examples["reformulations"]:
             if example_reformulations is not None:
                 for instance in example_reformulations:
-                    out['input'].append(instance['instruction_with_input'])
-                    out['output'].append(instance['output'])
+                    out["input"].append(instance["instruction_with_input"])
+                    out["output"].append(instance["output"])
     return out
+
 
 ALPACA_PROMPT_DICT = {
     "prompt_input": (
@@ -414,25 +409,28 @@ ALPACA_PROMPT_DICT = {
     ),
 }
 
+
 def extract_alpaca_dataset(example):
     if example.get("input", "") != "":
         prompt_format = ALPACA_PROMPT_DICT["prompt_input"]
     else:
         prompt_format = ALPACA_PROMPT_DICT["prompt_no_input"]
-    return {'input': prompt_format.format(**example)}
+    return {"input": prompt_format.format(**example)}
+
 
 def local_dataset(dataset_name):
-    if dataset_name.endswith('.json') or dataset_name.endswith('.jsonl'):
+    if dataset_name.endswith(".json") or dataset_name.endswith(".jsonl"):
         full_dataset = Dataset.from_json(path_or_paths=dataset_name)
-    elif dataset_name.endswith('.csv'):
+    elif dataset_name.endswith(".csv"):
         full_dataset = Dataset.from_pandas(pd.read_csv(dataset_name))
-    elif dataset_name.endswith('.tsv'):
-        full_dataset = Dataset.from_pandas(pd.read_csv(dataset_name, delimiter='\t'))
+    elif dataset_name.endswith(".tsv"):
+        full_dataset = Dataset.from_pandas(pd.read_csv(dataset_name, delimiter="\t"))
     else:
         raise ValueError(f"Unsupported dataset format: {dataset_name}")
 
     split_dataset = full_dataset.train_test_split(test_size=0.1)
     return split_dataset
+
 
 def make_data_module(tokenizer: transformers.PreTrainedTokenizer, args) -> Dict:
     """
@@ -458,22 +456,23 @@ def make_data_module(tokenizer: transformers.PreTrainedTokenizer, args) -> Dict:
         - vicuna
 
     """
+
     def load_data(dataset_name):
-        if dataset_name == 'alpaca':
+        if dataset_name == "alpaca":
             return load_dataset("tatsu-lab/alpaca")
-        elif dataset_name == 'alpaca-clean':
+        elif dataset_name == "alpaca-clean":
             return load_dataset("yahma/alpaca-cleaned")
-        elif dataset_name == 'chip2':
-            return load_dataset("laion/OIG", data_files='unified_chip2.jsonl')
-        elif dataset_name == 'self-instruct':
-            return load_dataset("yizhongw/self_instruct", name='self_instruct')
-        elif dataset_name == 'hh-rlhf':
+        elif dataset_name == "chip2":
+            return load_dataset("laion/OIG", data_files="unified_chip2.jsonl")
+        elif dataset_name == "self-instruct":
+            return load_dataset("yizhongw/self_instruct", name="self_instruct")
+        elif dataset_name == "hh-rlhf":
             return load_dataset("Anthropic/hh-rlhf")
-        elif dataset_name == 'longform':
+        elif dataset_name == "longform":
             return load_dataset("akoksal/LongForm")
-        elif dataset_name == 'oasst1':
+        elif dataset_name == "oasst1":
             return load_dataset("timdettmers/openassistant-guanaco")
-        elif dataset_name == 'vicuna':
+        elif dataset_name == "vicuna":
             raise NotImplementedError("Vicuna data was not released.")
         else:
             if os.path.exists(dataset_name):
@@ -488,61 +487,61 @@ def make_data_module(tokenizer: transformers.PreTrainedTokenizer, args) -> Dict:
 
     def format_dataset(dataset, dataset_format):
         if (
-            dataset_format == 'alpaca' or dataset_format == 'alpaca-clean' or
-            (dataset_format is None and args.dataset in ['alpaca', 'alpaca-clean'])
+            dataset_format == "alpaca"
+            or dataset_format == "alpaca-clean"
+            or (dataset_format is None and args.dataset in ["alpaca", "alpaca-clean"])
         ):
-            dataset = dataset.map(extract_alpaca_dataset, remove_columns=['instruction'])
-        elif dataset_format == 'chip2' or (dataset_format is None and args.dataset == 'chip2'):
-            dataset = dataset.map(lambda x: {
-                'input': x['text'].split('\n<bot>: ')[0].replace('<human>: ', ''),
-                'output': x['text'].split('\n<bot>: ')[1],
-            })
-        elif dataset_format == 'self-instruct' or (dataset_format is None and args.dataset == 'self-instruct'):
+            dataset = dataset.map(extract_alpaca_dataset, remove_columns=["instruction"])
+        elif dataset_format == "chip2" or (dataset_format is None and args.dataset == "chip2"):
+            dataset = dataset.map(
+                lambda x: {
+                    "input": x["text"].split("\n<bot>: ")[0].replace("<human>: ", ""),
+                    "output": x["text"].split("\n<bot>: ")[1],
+                }
+            )
+        elif dataset_format == "self-instruct" or (dataset_format is None and args.dataset == "self-instruct"):
             for old, new in [["prompt", "input"], ["completion", "output"]]:
                 dataset = dataset.rename_column(old, new)
-        elif dataset_format == 'hh-rlhf' or (dataset_format is None and args.dataset == 'hh-rlhf'):
-            dataset = dataset.map(lambda x: {
-                'input': '',
-                'output': x['chosen']
-            })
-        elif dataset_format == 'oasst1' or (dataset_format is None and args.dataset == 'oasst1'):
-            dataset = dataset.map(lambda x: {
-                'input': '',
-                'output': x['text'],
-            })
-        elif dataset_format == 'input-output':
+        elif dataset_format == "hh-rlhf" or (dataset_format is None and args.dataset == "hh-rlhf"):
+            dataset = dataset.map(lambda x: {"input": "", "output": x["chosen"]})
+        elif dataset_format == "oasst1" or (dataset_format is None and args.dataset == "oasst1"):
+            dataset = dataset.map(
+                lambda x: {
+                    "input": "",
+                    "output": x["text"],
+                }
+            )
+        elif dataset_format == "input-output":
             # leave as is
             pass
         # Remove unused columns.
         dataset = dataset.remove_columns(
-            [col for col in dataset.column_names['train'] if col not in ['input', 'output']]
+            [col for col in dataset.column_names["train"] if col not in ["input", "output"]]
         )
         return dataset
 
-     # Load dataset.
+    # Load dataset.
     dataset = load_data(args.dataset)
     dataset = format_dataset(dataset, args.dataset_format)
 
     # Split train/eval, reduce size
     if args.do_eval or args.do_predict:
-        if 'eval' in dataset:
-            eval_dataset = dataset['eval']
+        if "eval" in dataset:
+            eval_dataset = dataset["eval"]
         else:
-            print('Splitting train dataset in train and validation according to `eval_dataset_size`')
-            dataset = dataset["train"].train_test_split(
-                test_size=args.eval_dataset_size, shuffle=True, seed=42
-            )
-            eval_dataset = dataset['test']
+            print("Splitting train dataset in train and validation according to `eval_dataset_size`")
+            dataset = dataset["train"].train_test_split(test_size=args.eval_dataset_size, shuffle=True, seed=42)
+            eval_dataset = dataset["test"]
         if args.max_eval_samples is not None and len(eval_dataset) > args.max_eval_samples:
             eval_dataset = eval_dataset.select(range(args.max_eval_samples))
         if args.group_by_length:
-            eval_dataset = eval_dataset.map(lambda x: {'length': len(x['input']) + len(x['output'])})
+            eval_dataset = eval_dataset.map(lambda x: {"length": len(x["input"]) + len(x["output"])})
     if args.do_train:
-        train_dataset = dataset['train']
+        train_dataset = dataset["train"]
         if args.max_train_samples is not None and len(train_dataset) > args.max_train_samples:
             train_dataset = train_dataset.select(range(args.max_train_samples))
         if args.group_by_length:
-            train_dataset = train_dataset.map(lambda x: {'length': len(x['input']) + len(x['output'])})
+            train_dataset = train_dataset.map(lambda x: {"length": len(x["input"]) + len(x["output"])})
 
     data_collator = DataCollatorForCausalLM(
         tokenizer=tokenizer,
@@ -555,40 +554,35 @@ def make_data_module(tokenizer: transformers.PreTrainedTokenizer, args) -> Dict:
         train_dataset=train_dataset if args.do_train else None,
         eval_dataset=eval_dataset if args.do_eval else None,
         predict_dataset=eval_dataset if args.do_predict else None,
-        data_collator=data_collator
+        data_collator=data_collator,
     )
-
-
 
 
 def train():
     global args, model, peft_config, best_hyperparams
-    hfparser = transformers.HfArgumentParser((
-        ModelArguments, DataArguments, TrainingArguments, GenerationArguments
-    ))
-    model_args, data_args, training_args, generation_args, extra_args = \
-        hfparser.parse_args_into_dataclasses(return_remaining_strings=True)
-    args = argparse.Namespace(
-        **vars(model_args), **vars(data_args), **vars(training_args)
+    hfparser = transformers.HfArgumentParser((ModelArguments, DataArguments, TrainingArguments, GenerationArguments))
+    model_args, data_args, training_args, generation_args, extra_args = hfparser.parse_args_into_dataclasses(
+        return_remaining_strings=True
     )
-    # Group by hpo runs 
+    args = argparse.Namespace(**vars(model_args), **vars(data_args), **vars(training_args))
+    # Group by hpo runs
     task_dir = args.output_dir
     if args.group is not None:
-        args.output_dir = training_args.output_dir = os.path.join(args.output_dir, args.group) 
+        args.output_dir = training_args.output_dir = os.path.join(args.output_dir, args.group)
     print(f"output dir: {args.output_dir}")
-    
+
     best_hyperparams = load_best_hp(args.output_dir, task_dir)
     if best_hyperparams is not None:
         override_config([best_hyperparams], extra_args)
     override_config([training_args, peft_config], best_hyperparams)
-    override_config([training_args, peft_config], extra_args) # CLA args can override best hp
+    override_config([training_args, peft_config], extra_args)  # CLA args can override best hp
     training_args.generation_config = transformers.GenerationConfig(**vars(generation_args))
-    
+
     print(args)
     login(args.hf_token)
     if not args.wandb:
         os.environ["WANDB_MODE"] = "offline"
-        
+
     group = "mmlu"
     if args.do_tune:
         os.environ["WANDB_PROJECT"] = "llama-mmlu-tune"
@@ -602,44 +596,52 @@ def train():
         if os.path.exists(path):
             with open(path, "r") as f:
                 os.environ["WANDB_RUN_GROUP"] = f.read()
-    wandb.init(project=os.environ["WANDB_PROJECT"], group=os.environ["WANDB_RUN_GROUP"], config=vars(args).update(peft_config)) 
+    wandb.init(
+        project=os.environ["WANDB_PROJECT"], group=os.environ["WANDB_RUN_GROUP"], config=vars(args).update(peft_config)
+    )
     print(f"wandb group name: {os.environ['WANDB_RUN_GROUP']}")
     checkpoint_dir, completed_training = get_last_checkpoint(args.output_dir)
     if completed_training:
-        print('Detected that training was already completed!')
+        print("Detected that training was already completed!")
 
     _ = model_init(vars(args))
     import gc
+
     gc.collect()
     torch.cuda.empty_cache()
     global tokenizer
 
     model.config.use_cache = False
-    print('loaded model')
+    print("loaded model")
 
     data_module = make_data_module(tokenizer=tokenizer, args=args)
     trainer = MySeq2SeqTrainer(
         model_init=model_init,
         tokenizer=tokenizer,
         args=training_args,
-        **{k:v for k,v in data_module.items() if k != 'predict_dataset'},
+        **{k: v for k, v in data_module.items() if k != "predict_dataset"},
     )
-    
+
     # Callbacks
-    coompute_metrics = None
     if args.do_mmlu_eval:
-        if args.mmlu_dataset == 'mmlu-zs':
-            mmlu_dataset = load_dataset("json", data_files={
-                'eval': 'data/mmlu/zero_shot_mmlu_val.json',
-                'test': 'data/mmlu/zero_shot_mmlu_test.json',
-            })
-            mmlu_dataset = mmlu_dataset.remove_columns('subject')
+        if args.mmlu_dataset == "mmlu-zs":
+            mmlu_dataset = load_dataset(
+                "json",
+                data_files={
+                    "eval": "data/mmlu/zero_shot_mmlu_val.json",
+                    "test": "data/mmlu/zero_shot_mmlu_test.json",
+                },
+            )
+            mmlu_dataset = mmlu_dataset.remove_columns("subject")
         # MMLU Five-shot (Eval/Test only)
-        elif args.mmlu_dataset == 'mmlu' or args.mmlu_dataset == 'mmlu-fs':
-            mmlu_dataset = load_dataset("json", data_files={
-                'eval': 'data/mmlu/five_shot_mmlu_val.json',
-                'test': 'data/mmlu/five_shot_mmlu_test.json',
-            })
+        elif args.mmlu_dataset == "mmlu" or args.mmlu_dataset == "mmlu-fs":
+            mmlu_dataset = load_dataset(
+                "json",
+                data_files={
+                    "eval": "data/mmlu/five_shot_mmlu_val.json",
+                    "test": "data/mmlu/five_shot_mmlu_test.json",
+                },
+            )
             # mmlu_dataset = mmlu_dataset.remove_columns('subject')
         mmlu_dataset = mmlu_dataset[args.mmlu_split]
         if args.max_mmlu_samples is not None:
@@ -661,109 +663,115 @@ def train():
             preds, refs = [], []
             loss_mmlu = 0
             for batch in tqdm(data_loader, total=len(data_loader)):
-                (loss, logits, labels) = trainer.prediction_step(trainer.model, batch, prediction_loss_only=False,)
+                (loss, logits, labels) = trainer.prediction_step(
+                    trainer.model,
+                    batch,
+                    prediction_loss_only=False,
+                )
                 # There are two tokens, the output, and eos token.
                 for i, logit in enumerate(logits):
-                    label_non_zero_id = (batch['labels'][i] != -100).nonzero()[0][0]
-                    logit_abcd = logit[label_non_zero_id-1][abcd_idx]
+                    label_non_zero_id = (batch["labels"][i] != -100).nonzero()[0][0]
+                    logit_abcd = logit[label_non_zero_id - 1][abcd_idx]
                     preds.append(torch.argmax(logit_abcd).item())
-                labels = labels[labels != IGNORE_INDEX].view(-1, 2)[:,0]
+                labels = labels[labels != IGNORE_INDEX].view(-1, 2)[:, 0]
                 refs += [abcd_idx.index(label) for label in labels.tolist()]
                 loss_mmlu += loss.item()
             # Extract results by subject.
-            results = {'eval_mmlu_loss':loss_mmlu/len(data_loader)}
-            subject = mmlu_dataset['subject']
-            subjects = {s:{'refs':[], 'preds':[]} for s in set(subject)}
-            for s,p,r in zip(subject, preds, refs):
-                subjects[s]['preds'].append(p)
-                subjects[s]['refs'].append(r)
+            results = {"eval_mmlu_loss": loss_mmlu / len(data_loader)}
+            subject = mmlu_dataset["subject"]
+            subjects = {s: {"refs": [], "preds": []} for s in set(subject)}
+            for s, p, r in zip(subject, preds, refs):
+                subjects[s]["preds"].append(p)
+                subjects[s]["refs"].append(r)
             subject_scores = []
             for subject in subjects:
                 subject_score = accuracy.compute(
-                    references=subjects[subject]['refs'],
-                    predictions=subjects[subject]['preds']
-                )['accuracy']
-                results[f'eval_mmlu_{args.mmlu_split}_accuracy_{subject}'] = subject_score
+                    references=subjects[subject]["refs"], predictions=subjects[subject]["preds"]
+                )["accuracy"]
+                results[f"eval_mmlu_{args.mmlu_split}_accuracy_{subject}"] = subject_score
                 subject_scores.append(subject_score)
-                
+
             # Average acc over all tasks?
-            results[f'eval_mmlu_{args.mmlu_split}_accuracy'] = np.mean(subject_scores)
+            results[f"eval_mmlu_{args.mmlu_split}_accuracy"] = np.mean(subject_scores)
             trainer.log(results)
             # save results locally
-            json.dump(results, open(os.path.join(args.output_dir, f'mmlu_{args.mmlu_split}_results.json'), 'w'))
+            json.dump(results, open(os.path.join(args.output_dir, f"mmlu_{args.mmlu_split}_results.json"), "w"))
             trainer.data_collator.source_max_len = source_max_len
             return results
-        
+
     trainer.compute_metrics = compute_metrics
     all_metrics = {"run_name": args.run_name}
-    
+
     if args.do_tune:
         # Save full tune group name for resuming
         with open(os.path.join(training_args.output_dir, "full_group.txt"), "w") as f:
             f.write(os.environ["WANDB_RUN_GROUP"])
-        
+
         _args = deepcopy(trainer.args)
-        
+
         # Avoid flooding the disk during HPO
-        trainer.args.save_total_limit = 0 
+        trainer.args.save_total_limit = 0
         trainer.args.load_best_model_at_end = False
         trainer.args.save_strategy = "no"
-        
+
         # PEFT monarch search space
         param_space = {
             # "nblocks": tune.choice(['sqrt(n)', 4]),
             "seed": training_args.seed,
             # "num_train_epochs": tune.choice([20, 25]),
-            "learning_rate": tune.quniform(8e-5, 6e-4, 2e-5), 
-            "gradient_accumulation_steps": tune.choice([16, 32]), # Will OOM if tune batch size
+            "learning_rate": tune.quniform(8e-5, 6e-4, 2e-5),
+            "gradient_accumulation_steps": tune.choice([16, 32]),  # Will OOM if tune batch size
             "weight_decay": tune.choice([0]),
-            "lr_scheduler_type": tune.choice(["cosine", "linear"]), # mostly linear underperforms
+            "lr_scheduler_type": tune.choice(["cosine", "linear"]),  # mostly linear underperforms
             "blk_r": peft_config["blk_r"],
             "nblocks": peft_config["nblocks"],
         }
-        n_trials = args.n_trials 
-        
+        n_trials = args.n_trials
+
         # Set up scheduler and reporter etc.
         direction = "min"
         tune_unit = "iter"
-        max_t = 40 * 60  if "tune_unit" == "time" else 7
-        metric = f'train_mmlu_eval_accuracy'
-        grade_period = 4 * 60  if tune_unit == "time" else 2
+        max_t = 40 * 60 if "tune_unit" == "time" else 7
+        metric = f"train_mmlu_eval_accuracy"
+        grade_period = 4 * 60 if tune_unit == "time" else 2
         time_attr = "time_total_s" if tune_unit == "time" else "training_iteration"
-        
+
         scheduler = ASHAScheduler(
             time_attr=time_attr,
             max_t=max_t,
-            metric = metric,
-            mode = direction,
+            metric=metric,
+            mode=direction,
             grace_period=grade_period,
         )
         # Do hyperparam optimization with Ray Tune
         best_run = trainer.hyperparameter_search(
             hp_space=lambda _: param_space,
             backend="ray",
-            n_trials=n_trials, # under the hood it calls ray.tune.run(num_samples=n_trials, ...)
+            n_trials=n_trials,  # under the hood it calls ray.tune.run(num_samples=n_trials, ...)
             scheduler=scheduler,
             keep_checkpoints_num=None,
             resources_per_trial={"cpu": 1, "gpu": 1},
             name=os.environ["WANDB_RUN_GROUP"],
             local_dir="/fly/ray_results",
-            max_failures=9999, # tolerate OOM
+            max_failures=9999,  # tolerate OOM
             direction="maximize" if direction == "max" else "minimize",
             compute_objective=partial(get_hpo_metric, metric),
             resume=args.resume,
-            callbacks=[WandbLoggerCallback(project=os.environ["WANDB_PROJECT"], group=os.environ["WANDB_RUN_GROUP"], log_config=True)]
+            callbacks=[
+                WandbLoggerCallback(
+                    project=os.environ["WANDB_PROJECT"], group=os.environ["WANDB_RUN_GROUP"], log_config=True
+                )
+            ],
         )
         trainer.args = _args
         best_hyperparams = best_run.hyperparameters
-            
-        # Save the best HP for full training 
+
+        # Save the best HP for full training
         print("Best hyperparameters: ", best_hyperparams)
         # Save in the run dir
         cur_tune_path = os.path.join(training_args.output_dir, "best_hyperparams.json")
         json.dump(best_hyperparams, open(cur_tune_path, "w"))
 
-    
     # Training
     if args.do_train:
         logger.info("*** Train ***")
@@ -778,17 +786,16 @@ def train():
                 record_shapes=True,
                 profile_memory=True,
                 with_stack=True,
-            ) 
+            )
             trainer.add_callback(ProfCallback(prof=ctx))
         with ctx:
             train_result = trainer.train(resume_from_checkpoint=ckpt)
-            
+
         metrics = train_result.metrics
         trainer.log_metrics("train", metrics)
         trainer.save_metrics("train", metrics)
         trainer.save_state()
         all_metrics.update(metrics)
-        
 
     # Evaluation
     if args.do_eval:
@@ -796,22 +803,22 @@ def train():
             args.force_reinit = True
             # Reset base model; load trained adapters
             # del trainer.model; model = None; torch.cuda.empty_cache()
-            trainer.model_init() 
+            trainer.model_init()
             trainer._load_best_model()
         else:
             last_checkpoint, _ = get_last_checkpoint(args.output_dir)
             print(f"Loading checkpoint from {last_checkpoint}")
             if last_checkpoint is not None:
-                load_checkpoint_and_dispatch(trainer.model, last_checkpoint) 
+                load_checkpoint_and_dispatch(trainer.model, last_checkpoint)
             else:
                 warnings.warn("No checkpoint found!")
         # NOTE: to avoid merging monarch weights twice. Removed due to using 'MySeq2SeqTrainer'
-        
+
         # 1. models are often saved in safetensors instead of pickle, which don't store variables or code like self.merged
         # 2. load_checkpoint_and_dispatch actually loads the merged state dict; we shouldn't re-merge it.
         # We would NOT need this if we only save the monarch weights, not the merged dense weights
         # set_merged(trainer.model)
-        
+
         logger.info("*** Evaluate ***")
         # trainer.add_callback(MMLUEvalCallback)
         metrics = trainer.evaluate(metric_key_prefix="eval")
@@ -821,26 +828,25 @@ def train():
     # Prediction
     if args.do_predict:
         logger.info("*** Predict ***")
-        prediction_output = trainer.predict(test_dataset=data_module['predict_dataset'],metric_key_prefix="predict")
+        prediction_output = trainer.predict(test_dataset=data_module["predict_dataset"], metric_key_prefix="predict")
         prediction_metrics = prediction_output.metrics
         predictions = prediction_output.predictions
         predictions = np.where(predictions != -100, predictions, tokenizer.pad_token_id)
-        predictions = tokenizer.batch_decode(
-            predictions, skip_special_tokens=True, clean_up_tokenization_spaces=True
-        )
-        with open(os.path.join(args.output_dir, 'predictions.jsonl'), 'w') as fout:
-            for i, example in enumerate(data_module['predict_dataset']):
-                example['prediction_with_input'] = predictions[i].strip()
-                example['prediction'] = predictions[i].replace(example['input'], '').strip()
-                fout.write(json.dumps(example) + '\n')
+        predictions = tokenizer.batch_decode(predictions, skip_special_tokens=True, clean_up_tokenization_spaces=True)
+        with open(os.path.join(args.output_dir, "predictions.jsonl"), "w") as fout:
+            for i, example in enumerate(data_module["predict_dataset"]):
+                example["prediction_with_input"] = predictions[i].strip()
+                example["prediction"] = predictions[i].replace(example["input"], "").strip()
+                fout.write(json.dumps(example) + "\n")
         print(prediction_metrics)
         trainer.log_metrics("predict", prediction_metrics)
         trainer.save_metrics("predict", prediction_metrics)
         all_metrics.update(prediction_metrics)
 
-    if (args.do_train or args.do_eval or args.do_predict):
+    if args.do_train or args.do_eval or args.do_predict:
         with open(os.path.join(args.output_dir, "metrics.json"), "w") as fout:
             fout.write(json.dumps(all_metrics))
+
 
 if __name__ == "__main__":
     train()

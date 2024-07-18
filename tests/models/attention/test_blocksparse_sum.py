@@ -1,9 +1,8 @@
-import torch
-import triton
 import pytest
+import torch
 
 from src.models.attention.blocksparse_sum import blocksparse_sum
-from src.models.attention.blocksparse_utils import sparsify_tensor, mask_tensor
+from src.models.attention.blocksparse_utils import mask_tensor, sparsify_tensor
 
 
 @pytest.mark.parametrize(
@@ -23,11 +22,11 @@ def test_logsumexp(BLOCK, WIDTH, DTYPE=torch.float32):
     tx = sparsify_tensor(x, layout)
     ty = op(tx * scale)
     grad = torch.randn_like(ty)
-    tdx, = torch.autograd.grad(ty, x, grad)
+    (tdx,) = torch.autograd.grad(ty, x, grad)
     # torch result
     rx = mask_tensor(x, layout, value=0)
     ry = torch.sum(rx * scale, -1)
-    rdx, = torch.autograd.grad(ry, x, grad)
+    (rdx,) = torch.autograd.grad(ry, x, grad)
     # compare
     assert torch.allclose(ry, ty, rtol=1e-4, atol=1e-5)
     assert torch.allclose(rdx, tdx)

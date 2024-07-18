@@ -34,8 +34,8 @@ pipeline = DiffusionPipeline.from_pretrained(
     "stabilityai/stable-diffusion-xl-base-1.0", torch_dtype=torch.float16
 ).to("cuda")
 pipeline.load_lora_weights(
-    "peft-internal-testing/artificialguybr__3DRedmond-V1", 
-    weight_name="3DRedmond-3DRenderStyle-3DRenderAF.safetensors", 
+    "peft-internal-testing/artificialguybr__3DRedmond-V1",
+    weight_name="3DRedmond-3DRenderStyle-3DRenderAF.safetensors",
     adapter_name="3d"
 )
 image = pipeline("sushi rolls shaped like kawaii cat faces").images[0]
@@ -50,8 +50,8 @@ Now let's try another cool LoRA model, [ostris/super-cereal-sdxl-lora](https://h
 
 ```py
 pipeline.load_lora_weights(
-    "ostris/super-cereal-sdxl-lora", 
-    weight_name="cereal_box_sdxl_v1.safetensors", 
+    "ostris/super-cereal-sdxl-lora",
+    weight_name="cereal_box_sdxl_v1.safetensors",
     adapter_name="cereal"
 )
 pipeline.set_adapters("cereal")

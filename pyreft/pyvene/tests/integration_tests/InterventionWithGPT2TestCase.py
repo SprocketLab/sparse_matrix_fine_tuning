@@ -1,4 +1,5 @@
 import unittest
+
 from ..utils import *
 
 
@@ -69,12 +70,8 @@ class InterventionWithGPT2TestCase(unittest.TestCase):
             b_s = len(positions)
         else:
             b_s = 10
-        base = {
-            "input_ids": torch.randint(0, 10, (b_s, max_position + 1)).to(self.device)
-        }
-        source = {
-            "input_ids": torch.randint(0, 10, (b_s, max_position + 2)).to(self.device)
-        }
+        base = {"input_ids": torch.randint(0, 10, (b_s, max_position + 1)).to(self.device)}
+        source = {"input_ids": torch.randint(0, 10, (b_s, max_position + 2)).to(self.device)}
 
         config = IntervenableConfig(
             model_type=type(self.gpt2),
@@ -111,9 +108,7 @@ class InterventionWithGPT2TestCase(unittest.TestCase):
                         base_activations[_key][:, head, position],
                         source_activations[_key][:, head, position],
                     )
-        golden_out = GPT2_RUN(
-            self.gpt2, base["input_ids"], {}, {_key: base_activations[_key]}
-        )
+        golden_out = GPT2_RUN(self.gpt2, base["input_ids"], {}, {_key: base_activations[_key]})
 
         if isinstance(positions[0], list):
             _, out_output = intervenable(
@@ -134,7 +129,6 @@ class InterventionWithGPT2TestCase(unittest.TestCase):
             )
 
         self.assertTrue(torch.allclose(out_output[0], golden_out))
-
 
     def test_with_multiple_heads_positions_vanilla_intervention_positive(self):
         """
@@ -158,75 +152,35 @@ class InterventionWithGPT2TestCase(unittest.TestCase):
                 positions=[7, 2],
             )
 
-            
+
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(InterventionWithGPT2TestCase("test_clean_run_positive"))
+    suite.addTest(InterventionWithGPT2TestCase("test_invalid_unit_negative"))
+    suite.addTest(InterventionWithGPT2TestCase("test_with_single_position_vanilla_intervention_positive"))
+    suite.addTest(InterventionWithGPT2TestCase("test_with_multiple_position_vanilla_intervention_positive"))
+    suite.addTest(InterventionWithGPT2TestCase("test_with_complex_position_vanilla_intervention_positive"))
+    suite.addTest(InterventionWithGPT2TestCase("test_with_single_head_position_vanilla_intervention_positive"))
+    suite.addTest(InterventionWithGPT2TestCase("test_with_multiple_heads_positions_vanilla_intervention_positive"))
+    suite.addTest(InterventionWithGPT2TestCase("test_with_use_fast_vanilla_intervention_positive"))
+    suite.addTest(InterventionWithGPT2TestCase("test_with_location_broadcast_vanilla_intervention_positive"))
     suite.addTest(
-        InterventionWithGPT2TestCase(
-            "test_invalid_unit_negative"
-        )
+        InterventionWithGPT2TestCase("test_with_position_intervention_constant_source_vanilla_intervention_positive")
     )
     suite.addTest(
-        InterventionWithGPT2TestCase(
-            "test_with_single_position_vanilla_intervention_positive"
-        )
+        InterventionWithGPT2TestCase("test_with_position_intervention_constant_source_addition_intervention_positive")
     )
-    suite.addTest(
-        InterventionWithGPT2TestCase(
-            "test_with_multiple_position_vanilla_intervention_positive"
-        )
-    )
-    suite.addTest(
-        InterventionWithGPT2TestCase(
-            "test_with_complex_position_vanilla_intervention_positive"
-        )
-    )
-    suite.addTest(
-        InterventionWithGPT2TestCase(
-            "test_with_single_head_position_vanilla_intervention_positive"
-        )
-    )
-    suite.addTest(
-        InterventionWithGPT2TestCase(
-            "test_with_multiple_heads_positions_vanilla_intervention_positive"
-        )
-    )
-    suite.addTest(
-        InterventionWithGPT2TestCase(
-            "test_with_use_fast_vanilla_intervention_positive"
-        )
-    )
-    suite.addTest(
-        InterventionWithGPT2TestCase(
-            "test_with_location_broadcast_vanilla_intervention_positive"
-        )
-    ) 
-    suite.addTest(
-        InterventionWithGPT2TestCase(
-            "test_with_position_intervention_constant_source_vanilla_intervention_positive"
-        )
-    ) 
-    suite.addTest(
-        InterventionWithGPT2TestCase(
-            "test_with_position_intervention_constant_source_addition_intervention_positive"
-        )
-    ) 
     suite.addTest(
         InterventionWithGPT2TestCase(
             "test_with_position_intervention_constant_source_subtraction_intervention_positive"
         )
     )
     suite.addTest(
-        InterventionWithGPT2TestCase(
-            "test_with_position_intervention_constant_source_zero_intervention_positive"
-        )
-    ) 
+        InterventionWithGPT2TestCase("test_with_position_intervention_constant_source_zero_intervention_positive")
+    )
     suite.addTest(
-        InterventionWithGPT2TestCase(
-            "_test_with_long_sequence_position_intervention_constant_source_positive"
-        )
-    ) 
+        InterventionWithGPT2TestCase("_test_with_long_sequence_position_intervention_constant_source_positive")
+    )
     return suite
 
 

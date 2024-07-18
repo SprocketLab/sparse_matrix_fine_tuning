@@ -15,5 +15,4 @@
 from .config import PromptEncoderConfig, PromptEncoderReparameterizationType
 from .model import PromptEncoder
 
-
 __all__ = ["PromptEncoder", "PromptEncoderConfig", "PromptEncoderReparameterizationType"]

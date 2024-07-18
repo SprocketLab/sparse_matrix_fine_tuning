@@ -27,14 +27,22 @@ import packaging.version
 import torch
 import transformers
 from accelerate import dispatch_model, infer_auto_device_map
-from accelerate.hooks import AlignDevicesHook, add_hook_to_module, remove_hook_from_submodules
+from accelerate.hooks import (
+    AlignDevicesHook,
+    add_hook_to_module,
+    remove_hook_from_submodules,
+)
 from accelerate.utils import get_balanced_memory, named_module_tensors
 from huggingface_hub import ModelCard, ModelCardData, hf_hub_download
 from safetensors import safe_open
 from safetensors.torch import save_file as safe_save_file
 from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss
 from transformers import PreTrainedModel
-from transformers.modeling_outputs import QuestionAnsweringModelOutput, SequenceClassifierOutput, TokenClassifierOutput
+from transformers.modeling_outputs import (
+    QuestionAnsweringModelOutput,
+    SequenceClassifierOutput,
+    TokenClassifierOutput,
+)
 from transformers.utils import PushToHubMixin
 
 from . import __version__
@@ -74,7 +82,6 @@ from .utils import (
     set_peft_model_state_dict,
     shift_tokens_right,
 )
-
 
 PEFT_TYPE_TO_MODEL_MAPPING = {
     PeftType.LORA: LoraModel,
@@ -382,7 +389,10 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
             kwargs: (`optional`):
                 Additional keyword arguments passed along to the specific PEFT configuration class.
         """
-        from .mapping import MODEL_TYPE_TO_PEFT_MODEL_MAPPING, PEFT_TYPE_TO_CONFIG_MAPPING
+        from .mapping import (
+            MODEL_TYPE_TO_PEFT_MODEL_MAPPING,
+            PEFT_TYPE_TO_CONFIG_MAPPING,
+        )
 
         # load the config
         if config is None:
@@ -572,9 +582,7 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
             )
             if peft_config.num_transformer_submodules == 2:
                 past_key_values = torch.cat([past_key_values, past_key_values], dim=2)
-            past_key_values = past_key_values.permute([2, 0, 3, 1, 4]).split(
-                peft_config.num_transformer_submodules * 2
-            )
+            past_key_values = past_key_values.permute([2, 0, 3, 1, 4]).split(peft_config.num_transformer_submodules * 2)
             if TRANSFORMERS_MODELS_TO_PREFIX_TUNING_POSTPROCESS_MAPPING.get(self.config.model_type, None) is not None:
                 post_process_fn = TRANSFORMERS_MODELS_TO_PREFIX_TUNING_POSTPROCESS_MAPPING[self.config.model_type]
                 past_key_values = post_process_fn(past_key_values)
@@ -1731,9 +1739,7 @@ class PeftModelForSeq2SeqLM(PeftModel):
 
             if attention_mask is not None:
                 # concat prompt attention mask
-                prefix_attention_mask = torch.ones(batch_size, peft_config.num_virtual_tokens).to(
-                    attention_mask.device
-                )
+                prefix_attention_mask = torch.ones(batch_size, peft_config.num_virtual_tokens).to(attention_mask.device)
                 kwargs["attention_mask"] = torch.cat((prefix_attention_mask, attention_mask), dim=1)
 
             prompts = self.get_prompt(batch_size=batch_size)
@@ -1757,9 +1763,7 @@ class PeftModelForSeq2SeqLM(PeftModel):
 
             if attention_mask is not None:
                 # concat prompt attention mask
-                prefix_attention_mask = torch.ones(batch_size, peft_config.num_virtual_tokens).to(
-                    attention_mask.device
-                )
+                prefix_attention_mask = torch.ones(batch_size, peft_config.num_virtual_tokens).to(attention_mask.device)
                 kwargs["attention_mask"] = torch.cat((prefix_attention_mask, attention_mask), dim=1)
             # concat prompt labels
             if labels is not None:
@@ -2519,10 +2523,9 @@ def get_layer_status(model: torch.nn.Module) -> list[TunerLayerStatus]:
             if isinstance(adapter_module, torch.nn.ModuleDict):
                 for key, submodule in adapter_module.items():
                     devices_dd[key].extend([param.device.type for param in submodule.parameters()])
-            elif (
-                isinstance(adapter_module, torch.nn.ParameterDict)
-                or (adapter_module.__class__.__name__ == "BufferDict")  # VeRA
-            ):
+            elif isinstance(adapter_module, torch.nn.ParameterDict) or (
+                adapter_module.__class__.__name__ == "BufferDict"
+            ):  # VeRA
                 for key, param in adapter_module.items():
                     devices_dd[key].append(param.device.type)
         devices = {key: sorted(set(val)) for key, val in devices_dd.items()}

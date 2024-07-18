@@ -1,28 +1,14 @@
-import itertools
+import copy
+import os
+import random
+from typing import Dict
+
 import matplotlib.pyplot as plt
-import numpy as np
-from functools import partial
-from typing import Dict, Optional, Sequence
-from torch.nn import functional as F
-import re
-import evaluate
-import os, random, argparse, sys, pickle, time, datasets, json
-import copy, torch
-from torch.utils.data import DataLoader, SequentialSampler, RandomSampler
-from torch.utils.data.distributed import DistributedSampler
-from tqdm import tqdm, trange
-import numpy as np
-import pandas as pd
+import torch
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
-from datasets import Dataset
-from torch.utils.data import DataLoader
-from dataclasses import dataclass, field
-from collections import Counter
 import networkx as nx
-import ipywidgets as widgets
-from ipywidgets import interact
-from matplotlib.patches import Rectangle
+from datasets import Dataset
 
 IGNORE_INDEX = -100
 
@@ -41,9 +27,7 @@ def chunk(iterable, chunksize):
                 chunks.append(iterable.select(list(range(i, len(iterable)))))
         return chunks
     else:
-        raise Exception(
-            f"Unrecognizable type of iterable for batchification: {type(iterable)}"
-        )
+        raise Exception(f"Unrecognizable type of iterable for batchification: {type(iterable)}")
 
 
 def reject_sample(lst, exception):
@@ -97,11 +81,7 @@ def sample_factual_inputs(program, all_vocab, synonyms_pairs, synonyms_dict):
         else:
             # here, we can either be the same as input1, or random sample
             if input1 != input2:
-                input3 = (
-                    input1
-                    if random.random() > 0.5
-                    else reject_sample(all_vocab, exception=[input2])
-                )
+                input3 = input1 if random.random() > 0.5 else reject_sample(all_vocab, exception=[input2])
             else:
                 input3 = reject_sample(all_vocab, exception=[input2])
     value_map[input_id3] = input3
@@ -134,14 +114,8 @@ def sample_factual_inputs(program, all_vocab, synonyms_pairs, synonyms_dict):
     arg2_value = first_level_values[program[1][0][1] - 5]
     arg3_value = first_level_values[program[-1][0] - 5]
 
-    op_value_map["op4"] = (
-        (arg1_value or arg2_value) if op4 == "OR" else (arg1_value and arg2_value)
-    )
-    op_value_map["op5"] = (
-        (op_value_map["op4"] or arg3_value)
-        if op5 == "OR"
-        else (op_value_map["op4"] and arg3_value)
-    )
+    op_value_map["op4"] = (arg1_value or arg2_value) if op4 == "OR" else (arg1_value and arg2_value)
+    op_value_map["op5"] = (op_value_map["op4"] or arg3_value) if op5 == "OR" else (op_value_map["op4"] and arg3_value)
 
     for k, v in value_map.items():
         op_value_map[k] = v  # this is a more complete map.
@@ -149,9 +123,7 @@ def sample_factual_inputs(program, all_vocab, synonyms_pairs, synonyms_dict):
 
 
 def fetch_metadata(input_dir, use_token=True):
-    synonyms_path = os.path.join(
-        input_dir, "token_cos_synonyms.txt" if use_token else "synonyms.txt"
-    )
+    synonyms_path = os.path.join(input_dir, "token_cos_synonyms.txt" if use_token else "synonyms.txt")
     with open(synonyms_path, "r") as file:
         synonyms_lines = file.readlines()
     if not use_token:
@@ -159,9 +131,7 @@ def fetch_metadata(input_dir, use_token=True):
         with open(antonyms_path, "r") as file:
             antonyms_lines = file.readlines()
 
-    synonyms_pairs_uni = set(
-        [tuple(sorted(l.strip().split(" - "))) for l in synonyms_lines]
-    )
+    synonyms_pairs_uni = set([tuple(sorted(l.strip().split(" - "))) for l in synonyms_lines])
     synonyms_pairs = set([])
 
     synonyms_dict = {}
@@ -227,35 +197,23 @@ def sample_factual_input_instruction(program):
     first_logic_gate = "and" if program[1][-1] == "AND" else "or"
     second_logic_gate = "and" if program[-1][-1] == "AND" else "or"
 
-    first_left_var = (
-        "A" if program[1][0][0] == 5 else "B" if program[1][0][0] == 6 else "C"
-    )
-    first_right_var = (
-        "A" if program[1][0][1] == 5 else "B" if program[1][0][1] == 6 else "C"
-    )
+    first_left_var = "A" if program[1][0][0] == 5 else "B" if program[1][0][0] == 6 else "C"
+    first_right_var = "A" if program[1][0][1] == 5 else "B" if program[1][0][1] == 6 else "C"
     second_var = "A" if program[-1][0] == 5 else "B" if program[-1][0] == 6 else "C"
 
-    fourth_part = (
-        f"D is True if "
-        f"{first_left_var} {first_logic_gate} {first_right_var} is True, otherwise False."
-    )
+    fourth_part = f"D is True if " f"{first_left_var} {first_logic_gate} {first_right_var} is True, otherwise False."
 
-    fifth_part = (
-        f"The output is True if "
-        f"{second_var} {second_logic_gate} D is True, otherwise False."
-    )
+    fifth_part = f"The output is True if " f"{second_var} {second_logic_gate} D is True, otherwise False."
 
     # test_demo = "What is the output? "
 
-    program_str = "\n".join(
-        [second_part, third_part, first_part, fourth_part, fifth_part]
-    )
+    program_str = "\n".join([second_part, third_part, first_part, fourth_part, fifth_part])
     return program_str
 
 
 """
-To make this more compatible with HF, maybe let's 
-make this as a seq to seq task where the input is 
+To make this more compatible with HF, maybe let's
+make this as a seq to seq task where the input is
 a sentence of words, and the output is also a single
 word in this case.
 """
@@ -271,12 +229,11 @@ def prepare_factual_training_data_single_program(
     program_uuid=None,
     mode="E",  # ["[E]xplainations", "[N]umber"]
 ):
-    task_instruction = sample_factual_input_instruction(program)
+    sample_factual_input_instruction(program)
     instruction_template = """%s
 %s"""
     all_vocab, synonyms_pairs, synonyms_dict = fetch_metadata(data_path, use_token=True)
     demo_sep = "\n"
-    count = 0
     examples = []
     unique_hash_set = set([])
     while len(examples) < n_sample:
@@ -289,9 +246,7 @@ def prepare_factual_training_data_single_program(
                 input_words = [inputs[i] for i in range(len(inputs))]
                 input_sentence = ",".join(input_words)
                 output_word = value_maps[f"op{len(inputs)}"]
-                single_demo = (
-                    f"{input_trigger}{input_sentence}{output_trigger}{output_word}"
-                )
+                single_demo = f"{input_trigger}{input_sentence}{output_trigger}{output_word}"
                 demos += [single_demo]
             program, inputs, op_maps, value_maps = sample_factual_inputs(
                 program, all_vocab, synonyms_pairs, synonyms_dict
@@ -366,10 +321,7 @@ def make_icl_test_data_module(
         sources = examples["question"]
         targets = examples["answers"]
         # We added in a '=' to be the trigger word of answer.
-        examples = [
-            s + f"{clm_new_token_trigger}" + f"{t}{tokenizer.eos_token}"
-            for s, t in zip(sources, targets)
-        ]
+        examples = [s + f"{clm_new_token_trigger}" + f"{t}{tokenizer.eos_token}" for s, t in zip(sources, targets)]
 
         examples_tokenized = tokenizer(
             examples,
@@ -449,10 +401,7 @@ def make_icl_data_module(
         sources = examples["question"]
         targets = examples["answers"]
         # We added in a '=' to be the trigger word of answer.
-        examples = [
-            s + f"{clm_new_token_trigger}" + f"{t}{tokenizer.eos_token}"
-            for s, t in zip(sources, targets)
-        ]
+        examples = [s + f"{clm_new_token_trigger}" + f"{t}{tokenizer.eos_token}" for s, t in zip(sources, targets)]
 
         examples_tokenized = tokenizer(
             examples,
@@ -612,20 +561,12 @@ def fetch_counterfactual_value_input_only(
     intervention_on = int(intervention_on[-1])  # rewrite
     value_map = copy.deepcopy(base_value_maps)
     value_map[intervention_on] = source_value_maps[intervention_on]
-    is_op1 = eval(
-        f"'{value_map[program[0][2][0]]}'{program[0][-1][0]}'{value_map[program[0][2][1]]}'"
-    )
-    is_op2 = eval(
-        f"'{value_map[program[0][2][1]]}'{program[0][-1][1]}'{value_map[program[0][2][2]]}'"
-    )
+    is_op1 = eval(f"'{value_map[program[0][2][0]]}'{program[0][-1][0]}'{value_map[program[0][2][1]]}'")
+    is_op2 = eval(f"'{value_map[program[0][2][1]]}'{program[0][-1][1]}'{value_map[program[0][2][2]]}'")
     is_synonym = (
         True
-        if (
-            (value_map[program[0][0][0]], value_map[program[0][0][1]]) in synonyms_pairs
-        )
-        or (
-            (value_map[program[0][0][1]], value_map[program[0][0][0]]) in synonyms_pairs
-        )
+        if ((value_map[program[0][0][0]], value_map[program[0][0][1]]) in synonyms_pairs)
+        or ((value_map[program[0][0][1]], value_map[program[0][0][0]]) in synonyms_pairs)
         else False
     )
     first_level_values = [is_op1, is_op2, is_synonym]
@@ -634,9 +575,7 @@ def fetch_counterfactual_value_input_only(
     arg3_value = first_level_values[program[-1][0] - 5]
     op4 = program[1][-1]
     op5 = program[-1][-1]
-    op4_value = (
-        (arg1_value or arg2_value) if op4 == "OR" else (arg1_value and arg2_value)
-    )
+    op4_value = (arg1_value or arg2_value) if op4 == "OR" else (arg1_value and arg2_value)
     op5_value = (op4_value or arg3_value) if op5 == "OR" else (op4_value and arg3_value)
 
     return {
@@ -673,9 +612,9 @@ def fetch_counterfactual_value(
     intervened_value_maps = copy.deepcopy(base_op_value_maps)
     intervened_value_maps[intervention_on] = source_op_value_maps[intervention_on]
 
-    op1 = program[0][-1][0]
-    op2 = program[0][-1][1]
-    op3 = program[0][1]
+    program[0][-1][0]
+    program[0][-1][1]
+    program[0][1]
     op4 = program[1][-1]
     op5 = program[-1][-1]
     first_level_values = [
@@ -688,9 +627,7 @@ def fetch_counterfactual_value(
     arg3_value = first_level_values[program[-1][0] - 5]
 
     if intervention_on in ["op1", "op2", "op3"]:
-        intervened_value_maps["op4"] = (
-            (arg1_value or arg2_value) if op4 == "OR" else (arg1_value and arg2_value)
-        )
+        intervened_value_maps["op4"] = (arg1_value or arg2_value) if op4 == "OR" else (arg1_value and arg2_value)
         intervened_value_maps["op5"] = (
             (intervened_value_maps["op4"] or arg3_value)
             if op5 == "OR"
@@ -718,9 +655,7 @@ def sample_demos(
 ):
     demos = []
     for _ in range(n_in_context_demo):
-        _, inputs, _, value_maps = sample_factual_inputs(
-            program, all_vocab, synonyms_pairs, synonyms_dict
-        )
+        _, inputs, _, value_maps = sample_factual_inputs(program, all_vocab, synonyms_pairs, synonyms_dict)
         input_words = [inputs[i] for i in range(len(inputs))]
         input_sentence = ",".join(input_words)
         output_word = value_maps[f"op{len(inputs)}"]
@@ -740,18 +675,15 @@ def prepare_counterfactual_alignment_data(
     program_uuid=None,
     mode="E",  # ["[E]xplainations", "[N]umber"]
 ):
-    task_instruction = sample_factual_input_instruction(program)
+    sample_factual_input_instruction(program)
     instruction_template = """%s
 %s"""
     all_vocab, synonyms_pairs, synonyms_dict = fetch_metadata(data_path, use_token=True)
     demo_sep = "\n"
-    count = 0
     examples = []
     unique_hash_set = set([])
     while len(examples) < n_sample:
-        _, inputs, _, value_maps = sample_factual_inputs(
-            program, all_vocab, synonyms_pairs, synonyms_dict
-        )
+        _, inputs, _, value_maps = sample_factual_inputs(program, all_vocab, synonyms_pairs, synonyms_dict)
         _, source_inputs, _, source_value_maps = sample_factual_inputs(
             program, all_vocab, synonyms_pairs, synonyms_dict
         )
@@ -797,26 +729,20 @@ def prepare_counterfactual_alignment_data(
             base_test_demo = f"{input_trigger}{base_test_sentence}"
             base_question = instruction_template % (base_demos, base_test_demo)
 
-            source_test_sentence = ",".join(
-                [source_inputs[i] for i in range(len(source_inputs))]
-            )
+            source_test_sentence = ",".join([source_inputs[i] for i in range(len(source_inputs))])
             source_test_demo = f"{input_trigger}{source_test_sentence}"
             source_question = instruction_template % (source_demos, source_test_demo)
 
-            task_name = "word_logic_E"
         elif mode == "N":
             assert program_uuid is not None, "The mode N requires a program UUID."
             base_test_sentence = ",".join([inputs[i] for i in range(len(inputs))])
             base_test_demo = f"{input_trigger}{base_test_sentence}"
             base_question = instruction_template % (program_uuid, base_test_demo)
 
-            source_test_sentence = ",".join(
-                [source_inputs[i] for i in range(len(source_inputs))]
-            )
+            source_test_sentence = ",".join([source_inputs[i] for i in range(len(source_inputs))])
             source_test_demo = f"{input_trigger}{source_test_sentence}"
             source_question = instruction_template % (program_uuid, source_test_demo)
 
-            task_name = "word_logic_N"
         else:
             assert False, f"The mode {mode} is unknown."
 
@@ -860,19 +786,16 @@ def prepare_mismatch_counterfactual_alignment_data(
     program_uuid=None,
     mode="E",  # ["[E]xplainations", "[N]umber"]
 ):
-    task_instruction = sample_factual_input_instruction(program)
+    sample_factual_input_instruction(program)
     instruction_template = """%s
 %s"""
     all_vocab, synonyms_pairs, synonyms_dict = fetch_metadata(data_path, use_token=True)
     demo_sep = "\n"
-    count = 0
     examples = []
     unique_hash_set = set([])
     while len(examples) < n_sample:
         # the counterfactual lable is from the mismatched program
-        _, inputs, _, value_maps = sample_factual_inputs(
-            mismatch_program, all_vocab, synonyms_pairs, synonyms_dict
-        )
+        _, inputs, _, value_maps = sample_factual_inputs(mismatch_program, all_vocab, synonyms_pairs, synonyms_dict)
         _, source_inputs, _, source_value_maps = sample_factual_inputs(
             mismatch_program, all_vocab, synonyms_pairs, synonyms_dict
         )
@@ -917,26 +840,20 @@ def prepare_mismatch_counterfactual_alignment_data(
             base_test_demo = f"{input_trigger}{base_test_sentence}"
             base_question = instruction_template % (base_demos, base_test_demo)
 
-            source_test_sentence = ",".join(
-                [source_inputs[i] for i in range(len(source_inputs))]
-            )
+            source_test_sentence = ",".join([source_inputs[i] for i in range(len(source_inputs))])
             source_test_demo = f"{input_trigger}{source_test_sentence}"
             source_question = instruction_template % (source_demos, source_test_demo)
 
-            task_name = "word_logic_E"
         elif mode == "N":
             assert program_uuid is not None, "The mode N requires a program UUID."
             base_test_sentence = ",".join([inputs[i] for i in range(len(inputs))])
             base_test_demo = f"{input_trigger}{base_test_sentence}"
             base_question = instruction_template % (program_uuid, base_test_demo)
 
-            source_test_sentence = ",".join(
-                [source_inputs[i] for i in range(len(source_inputs))]
-            )
+            source_test_sentence = ",".join([source_inputs[i] for i in range(len(source_inputs))])
             source_test_demo = f"{input_trigger}{source_test_sentence}"
             source_question = instruction_template % (program_uuid, source_test_demo)
 
-            task_name = "word_logic_N"
         else:
             assert False, f"The mode {mode} is unknown."
 
@@ -1032,16 +949,14 @@ def make_mismatch_supervised_counterfactual_data_module(
         examples,
     ):
         base_examples = [
-            s + f"{clm_new_token_trigger}" + f"{t}"
-            for s, t in zip(examples["question"], examples["base_answers"])
+            s + f"{clm_new_token_trigger}" + f"{t}" for s, t in zip(examples["question"], examples["base_answers"])
         ]
         source_examples = [
             s + f"{clm_new_token_trigger}" + f"{t}"
             for s, t in zip(examples["source_question"], examples["source_answers"])
         ]
         counterfactual_examples = [
-            s + f"{clm_new_token_trigger}" + f"{t}"
-            for s, t in zip(examples["question"], examples["answers"])
+            s + f"{clm_new_token_trigger}" + f"{t}" for s, t in zip(examples["question"], examples["answers"])
         ]
 
         base_examples_tokenized = tokenizer(
@@ -1059,9 +974,7 @@ def make_mismatch_supervised_counterfactual_data_module(
             max_length=tokenizer.model_max_length,
             truncation=True,
         )  # we only need the label
-        counterfactual_labels = copy.deepcopy(
-            counterfactual_examples_tokenized["input_ids"]
-        )
+        counterfactual_labels = copy.deepcopy(counterfactual_examples_tokenized["input_ids"])
 
         for i in range(len(counterfactual_labels)):
             labels_t = torch.tensor(counterfactual_labels[i])
@@ -1170,16 +1083,14 @@ def make_supervised_counterfactual_data_module(
         examples,
     ):
         base_examples = [
-            s + f"{clm_new_token_trigger}" + f"{t}"
-            for s, t in zip(examples["question"], examples["base_answers"])
+            s + f"{clm_new_token_trigger}" + f"{t}" for s, t in zip(examples["question"], examples["base_answers"])
         ]
         source_examples = [
             s + f"{clm_new_token_trigger}" + f"{t}"
             for s, t in zip(examples["source_question"], examples["source_answers"])
         ]
         counterfactual_examples = [
-            s + f"{clm_new_token_trigger}" + f"{t}"
-            for s, t in zip(examples["question"], examples["answers"])
+            s + f"{clm_new_token_trigger}" + f"{t}" for s, t in zip(examples["question"], examples["answers"])
         ]
 
         base_examples_tokenized = tokenizer(
@@ -1197,9 +1108,7 @@ def make_supervised_counterfactual_data_module(
             max_length=tokenizer.model_max_length,
             truncation=True,
         )  # we only need the label
-        counterfactual_labels = copy.deepcopy(
-            counterfactual_examples_tokenized["input_ids"]
-        )
+        counterfactual_labels = copy.deepcopy(counterfactual_examples_tokenized["input_ids"])
 
         for i in range(len(counterfactual_labels)):
             labels_t = torch.tensor(counterfactual_labels[i])
@@ -1263,18 +1172,15 @@ def prepare_serialized_counterfactual_alignment_data(
     program_uuid=None,
     mode="E",  # ["[E]xplainations", "[N]umber"]
 ):
-    task_instruction = sample_factual_input_instruction(program)
+    sample_factual_input_instruction(program)
     instruction_template = """%s
 %s"""
     all_vocab, synonyms_pairs, synonyms_dict = fetch_metadata(data_path, use_token=True)
     demo_sep = "\n"
-    count = 0
     examples = []
     unique_hash_set = set([])
     while len(examples) < n_sample:
-        _, inputs, _, value_maps = sample_factual_inputs(
-            program, all_vocab, synonyms_pairs, synonyms_dict
-        )
+        _, inputs, _, value_maps = sample_factual_inputs(program, all_vocab, synonyms_pairs, synonyms_dict)
         _, source0_inputs, _, source0_value_maps = sample_factual_inputs(
             program, all_vocab, synonyms_pairs, synonyms_dict
         )
@@ -1340,13 +1246,11 @@ def prepare_serialized_counterfactual_alignment_data(
                 synonyms_dict,
                 n_in_context_demo,
             )
-            task_name = "word_logic_E"
         elif mode == "N":
             assert program_uuid is not None, "The mode N requires a program UUID."
             base_instruction_prompt = program_uuid
             source0_instruction_prompt = program_uuid
             source1_instruction_prompt = program_uuid
-            task_name = "word_logic_N"
         else:
             assert False, f"The mode {mode} is unknown."
 
@@ -1354,28 +1258,21 @@ def prepare_serialized_counterfactual_alignment_data(
         base_test_demo = f"{input_trigger}{base_test_sentence}"
         base_question = instruction_template % (base_instruction_prompt, base_test_demo)
 
-        source0_test_sentence = ",".join(
-            [source0_inputs[i] for i in range(len(source0_inputs))]
-        )
+        source0_test_sentence = ",".join([source0_inputs[i] for i in range(len(source0_inputs))])
         source0_test_demo = f"{input_trigger}{source0_test_sentence}"
         source0_question = instruction_template % (
             source0_instruction_prompt,
             source0_test_demo,
         )
 
-        source1_test_sentence = ",".join(
-            [source1_inputs[i] for i in range(len(source1_inputs))]
-        )
+        source1_test_sentence = ",".join([source1_inputs[i] for i in range(len(source1_inputs))])
         source1_test_demo = f"{input_trigger}{source1_test_sentence}"
         source1_question = instruction_template % (
             source1_instruction_prompt,
             source1_test_demo,
         )
 
-        if (
-            f"{base_question} {source0_question} {source1_question}"
-            not in unique_hash_set
-        ):
+        if f"{base_question} {source0_question} {source1_question}" not in unique_hash_set:
             example = {
                 "question": base_question,
                 "source0_question": source0_question,
@@ -1386,9 +1283,7 @@ def prepare_serialized_counterfactual_alignment_data(
                 "source1_answers": source1_answers,
             }
             examples += [example]
-            unique_hash_set.add(
-                f"{base_question} {source0_question} {source1_question}"
-            )
+            unique_hash_set.add(f"{base_question} {source0_question} {source1_question}")
 
     input_output_dict = {
         "question": [],
@@ -1475,8 +1370,7 @@ def make_supervised_serialized_counterfactual_data_module(
         examples,
     ):
         base_examples = [
-            s + f"{clm_new_token_trigger}" + f"{t}"
-            for s, t in zip(examples["question"], examples["base_answers"])
+            s + f"{clm_new_token_trigger}" + f"{t}" for s, t in zip(examples["question"], examples["base_answers"])
         ]
         source0_examples = [
             s + f"{clm_new_token_trigger}" + f"{t}"
@@ -1487,8 +1381,7 @@ def make_supervised_serialized_counterfactual_data_module(
             for s, t in zip(examples["source1_question"], examples["source1_answers"])
         ]
         counterfactual_examples = [
-            s + f"{clm_new_token_trigger}" + f"{t}"
-            for s, t in zip(examples["question"], examples["answers"])
+            s + f"{clm_new_token_trigger}" + f"{t}" for s, t in zip(examples["question"], examples["answers"])
         ]
 
         base_examples_tokenized = tokenizer(
@@ -1511,9 +1404,7 @@ def make_supervised_serialized_counterfactual_data_module(
             max_length=tokenizer.model_max_length,
             truncation=True,
         )  # we only need the label
-        counterfactual_labels = copy.deepcopy(
-            counterfactual_examples_tokenized["input_ids"]
-        )
+        counterfactual_labels = copy.deepcopy(counterfactual_examples_tokenized["input_ids"])
 
         for i in range(len(counterfactual_labels)):
             labels_t = torch.tensor(counterfactual_labels[i])
@@ -1523,13 +1414,9 @@ def make_supervised_serialized_counterfactual_data_module(
         examples["input_ids"] = base_examples_tokenized["input_ids"]
         examples["attention_mask"] = base_examples_tokenized["attention_mask"]
         examples["source0_input_ids"] = source0_examples_tokenized["input_ids"]
-        examples["source0_attention_mask"] = source0_examples_tokenized[
-            "attention_mask"
-        ]
+        examples["source0_attention_mask"] = source0_examples_tokenized["attention_mask"]
         examples["source1_input_ids"] = source1_examples_tokenized["input_ids"]
-        examples["source1_attention_mask"] = source1_examples_tokenized[
-            "attention_mask"
-        ]
+        examples["source1_attention_mask"] = source1_examples_tokenized["attention_mask"]
         examples["labels"] = counterfactual_labels
 
         return examples

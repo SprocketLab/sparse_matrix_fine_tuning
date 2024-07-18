@@ -25,5 +25,3 @@ accelerate launch eval.py \
   --output_dir=$OUTPUT_DIR \
   --dataset_name=$DATASET_NAME \
   --vis_overlays \
-
-

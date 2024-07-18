@@ -1,24 +1,20 @@
-import copy
-import logging
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Sequence
+from typing import Dict, Optional
 
 import torch
 import transformers
-from torch.utils.data import Dataset
-from transformers import Trainer
 
 from pyreft import (
-    TaskType,
-    get_reft_model,
-    ReftConfig,
-    ReftTrainerForCausalLM, 
     LoreftIntervention,
+    ReftConfig,
     ReftDataCollator,
-    ReftSupervisedDataset
+    ReftSupervisedDataset,
+    ReftTrainerForCausalLM,
+    get_reft_model,
 )
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
+
 
 @dataclass
 class ModelArguments:
@@ -38,7 +34,7 @@ class TrainingArguments(transformers.TrainingArguments):
         default=512,
         metadata={"help": "Maximum sequence length. Sequences will be right padded (and possibly truncated)."},
     )
-    
+
     layers: str = field(
         default="all",
         metadata={"help": "Intervening layers."},
@@ -53,19 +49,25 @@ class TrainingArguments(transformers.TrainingArguments):
     max_n_train_example: int = field(default=None)
 
 
-def make_supervised_data_module(tokenizer: transformers.PreTrainedTokenizer, model, layers, training_args, data_args) -> Dict:
+def make_supervised_data_module(
+    tokenizer: transformers.PreTrainedTokenizer, model, layers, training_args, data_args
+) -> Dict:
     """Make dataset and collator for supervised fine-tuning."""
     train_dataset = ReftSupervisedDataset(
-        "alpaca", data_args.data_path, tokenizer, data_split="train", seed=training_args.seed,
+        "alpaca",
+        data_args.data_path,
+        tokenizer,
+        data_split="train",
+        seed=training_args.seed,
         max_n_example=training_args.max_n_train_example,
-        **{"num_interventions": len(layers), "position": training_args.position, 
-           "share_weights": training_args.share_weights}
+        **{
+            "num_interventions": len(layers),
+            "position": training_args.position,
+            "share_weights": training_args.share_weights,
+        },
     )
     data_collator_fn = transformers.DataCollatorForSeq2Seq(
-        tokenizer=tokenizer,
-        model=model,
-        label_pad_token_id=-100,
-        padding="longest"
+        tokenizer=tokenizer, model=model, label_pad_token_id=-100, padding="longest"
     )
     data_collator = ReftDataCollator(data_collator=data_collator_fn)
     return dict(train_dataset=train_dataset, eval_dataset=None, data_collator=data_collator)
@@ -95,17 +97,19 @@ def train():
 
     # get reft model
     model = transformers.AutoModelForCausalLM.from_pretrained(
-        model_args.model_name_or_path,
-        torch_dtype=torch.bfloat16, 
-        device_map=device
+        model_args.model_name_or_path, torch_dtype=torch.bfloat16, device_map=device
     )
-    representations = [{
-        "layer": l, "component": "block_output",
-        "intervention": LoreftIntervention(
-            embed_dim=model.config.hidden_size, 
-            low_rank_dimension=training_args.rank,
-        )
-    } for l in layers]
+    representations = [
+        {
+            "layer": l,
+            "component": "block_output",
+            "intervention": LoreftIntervention(
+                embed_dim=model.config.hidden_size,
+                low_rank_dimension=training_args.rank,
+            ),
+        }
+        for l in layers
+    ]
 
     reft_config = ReftConfig(representations=representations)
     reft_model = get_reft_model(model, reft_config)
@@ -113,12 +117,11 @@ def train():
 
     # get training data
     data_module = make_supervised_data_module(
-        tokenizer=tokenizer, model=model, layers=layers,
-        training_args=training_args, data_args=data_args)
+        tokenizer=tokenizer, model=model, layers=layers, training_args=training_args, data_args=data_args
+    )
 
     # train
-    trainer = ReftTrainerForCausalLM(
-        model=reft_model, tokenizer=tokenizer, args=training_args, **data_module)
+    trainer = ReftTrainerForCausalLM(model=reft_model, tokenizer=tokenizer, args=training_args, **data_module)
     trainer.train()
     trainer.save_state()
     trainer.save_model(output_dir=training_args.output_dir)

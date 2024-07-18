@@ -50,8 +50,11 @@ from peft import (
 )
 from peft.import_utils import is_bnb_4bit_available, is_bnb_available
 
-from .testing_utils import require_bitsandbytes, require_torch_gpu, require_torch_multi_gpu
-
+from .testing_utils import (
+    require_bitsandbytes,
+    require_torch_gpu,
+    require_torch_multi_gpu,
+)
 
 if is_bnb_available():
     import bitsandbytes as bnb

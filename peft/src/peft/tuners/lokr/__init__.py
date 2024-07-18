@@ -16,5 +16,4 @@ from .config import LoKrConfig
 from .layer import Conv2d, Linear, LoKrLayer
 from .model import LoKrModel
 
-
 __all__ = ["LoKrConfig", "LoKrModel", "Conv2d", "Linear", "LoKrLayer"]

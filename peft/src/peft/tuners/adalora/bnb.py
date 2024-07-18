@@ -20,7 +20,6 @@ from peft.import_utils import is_bnb_4bit_available, is_bnb_available
 
 from .layer import AdaLoraLayer
 
-
 if is_bnb_available():
 
     class SVDLinear8bitLt(torch.nn.Module, AdaLoraLayer):

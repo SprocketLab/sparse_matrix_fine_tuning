@@ -1,4 +1,5 @@
 import unittest
+
 from ..utils import *
 
 
@@ -7,10 +8,7 @@ class InterventionWithMLPTestCase(unittest.TestCase):
     def setUpClass(self):
         print("=== Test Suite: InterventionWithMLPTestCase ===")
         self.config, self.tokenizer, self.mlp = create_mlp_classifier(
-            MLPConfig(
-                h_dim=3, n_layer=1, pdrop=0.0, num_classes=5,
-                include_bias=False, squeeze_output=False
-            )
+            MLPConfig(h_dim=3, n_layer=1, pdrop=0.0, num_classes=5, include_bias=False, squeeze_output=False)
         )
 
         self.test_subspace_intervention_link_config = IntervenableConfig(
@@ -42,64 +40,60 @@ class InterventionWithMLPTestCase(unittest.TestCase):
             intervention_types=VanillaIntervention,
         )
 
-        self.test_subspace_no_intervention_link_config = (
-            IntervenableConfig(
-                model_type=type(self.mlp),
-                representations=[
-                    RepresentationConfig(
-                        0,
-                        "mlp_activation",
-                        "pos",  # mlp layer creates a single token reprs
-                        1,
-                        subspace_partition=[
-                            [0, 1],
-                            [1, 3],
-                        ],  # partition into two sets of subspaces
-                    ),
-                    RepresentationConfig(
-                        0,
-                        "mlp_activation",
-                        "pos",  # mlp layer creates a single token reprs
-                        1,
-                        subspace_partition=[
-                            [0, 1],
-                            [1, 3],
-                        ],  # partition into two sets of subspaces
-                    ),
-                ],
-                intervention_types=VanillaIntervention,
-            )
+        self.test_subspace_no_intervention_link_config = IntervenableConfig(
+            model_type=type(self.mlp),
+            representations=[
+                RepresentationConfig(
+                    0,
+                    "mlp_activation",
+                    "pos",  # mlp layer creates a single token reprs
+                    1,
+                    subspace_partition=[
+                        [0, 1],
+                        [1, 3],
+                    ],  # partition into two sets of subspaces
+                ),
+                RepresentationConfig(
+                    0,
+                    "mlp_activation",
+                    "pos",  # mlp layer creates a single token reprs
+                    1,
+                    subspace_partition=[
+                        [0, 1],
+                        [1, 3],
+                    ],  # partition into two sets of subspaces
+                ),
+            ],
+            intervention_types=VanillaIntervention,
         )
 
-        self.test_subspace_no_intervention_link_trainable_config = (
-            IntervenableConfig(
-                model_type=type(self.mlp),
-                representations=[
-                    RepresentationConfig(
-                        0,
-                        "mlp_activation",
-                        "pos",  # mlp layer creates a single token reprs
-                        1,
-                        low_rank_dimension=2,
-                        subspace_partition=[
-                            [0, 1],
-                            [1, 2],
-                        ],  # partition into two sets of subspaces
-                    ),
-                    RepresentationConfig(
-                        0,
-                        "mlp_activation",
-                        "pos",  # mlp layer creates a single token reprs
-                        1,
-                        low_rank_dimension=2,
-                        subspace_partition=[
-                            [0, 1],
-                            [1, 2],
-                        ],  # partition into two sets of subspaces
-                    ),
-                ],
-                intervention_types=LowRankRotatedSpaceIntervention,
-            )
+        self.test_subspace_no_intervention_link_trainable_config = IntervenableConfig(
+            model_type=type(self.mlp),
+            representations=[
+                RepresentationConfig(
+                    0,
+                    "mlp_activation",
+                    "pos",  # mlp layer creates a single token reprs
+                    1,
+                    low_rank_dimension=2,
+                    subspace_partition=[
+                        [0, 1],
+                        [1, 2],
+                    ],  # partition into two sets of subspaces
+                ),
+                RepresentationConfig(
+                    0,
+                    "mlp_activation",
+                    "pos",  # mlp layer creates a single token reprs
+                    1,
+                    low_rank_dimension=2,
+                    subspace_partition=[
+                        [0, 1],
+                        [1, 2],
+                    ],  # partition into two sets of subspaces
+                ),
+            ],
+            intervention_types=LowRankRotatedSpaceIntervention,
         )
 
     def test_clean_run_positive(self):
@@ -107,22 +101,17 @@ class InterventionWithMLPTestCase(unittest.TestCase):
         Positive test case to check whether vanilla forward pass work
         with our object.
         """
-        intervenable = IntervenableModel(
-            self.test_subspace_intervention_link_config, self.mlp
-        )
+        intervenable = IntervenableModel(self.test_subspace_intervention_link_config, self.mlp)
         base = {"inputs_embeds": torch.rand(10, 1, 3)}
         self.assertTrue(
-            torch.allclose(ONE_MLP_CLEAN_RUN(base, self.mlp), intervenable(
-                base, output_original_output=True)[0][0])
+            torch.allclose(ONE_MLP_CLEAN_RUN(base, self.mlp), intervenable(base, output_original_output=True)[0][0])
         )
 
     def test_with_subspace_positive(self):
         """
         Positive test case to intervene only a set of subspace.
         """
-        intervenable = IntervenableModel(
-            self.test_subspace_intervention_link_config, self.mlp
-        )
+        intervenable = IntervenableModel(self.test_subspace_intervention_link_config, self.mlp)
         # golden label
         b_s = 10
         base = {"inputs_embeds": torch.rand(b_s, 1, 3)}
@@ -148,9 +137,7 @@ class InterventionWithMLPTestCase(unittest.TestCase):
         """
         Negative test case to check input length.
         """
-        intervenable = IntervenableModel(
-            self.test_subspace_intervention_link_config, self.mlp
-        )
+        intervenable = IntervenableModel(self.test_subspace_intervention_link_config, self.mlp)
         # golden label
         b_s = 10
         base = {"inputs_embeds": torch.rand(b_s, 1, 3)}
@@ -173,9 +160,7 @@ class InterventionWithMLPTestCase(unittest.TestCase):
         """
         Positive test case to intervene linked subspace.
         """
-        intervenable = IntervenableModel(
-            self.test_subspace_intervention_link_config, self.mlp
-        )
+        intervenable = IntervenableModel(self.test_subspace_intervention_link_config, self.mlp)
         # golden label
         b_s = 10
         base = {"inputs_embeds": torch.rand(b_s, 1, 3)}
@@ -219,9 +204,7 @@ class InterventionWithMLPTestCase(unittest.TestCase):
         """
         Positive test case to intervene not linked subspace (overwrite).
         """
-        intervenable = IntervenableModel(
-            self.test_subspace_no_intervention_link_config, self.mlp
-        )
+        intervenable = IntervenableModel(self.test_subspace_no_intervention_link_config, self.mlp)
         # golden label
         b_s = 10
         base = {"inputs_embeds": torch.rand(b_s, 1, 3)}
@@ -284,7 +267,7 @@ class InterventionWithMLPTestCase(unittest.TestCase):
         intervened_act = base_act.clone()  # relentless clone
         intervened_act[..., 0] = source_1_act[..., 0]
         intervened_act[..., 1] = source_2_act[..., 1]
-        golden_out_overwrite = ONE_MLP_WITH_W1_ACT_RUN(intervened_act, self.mlp)
+        ONE_MLP_WITH_W1_ACT_RUN(intervened_act, self.mlp)
 
         # overwrite
         _, our_out_overwrite = intervenable(
@@ -302,15 +285,9 @@ def suite():
     suite.addTest(InterventionWithMLPTestCase("test_clean_run_positive"))
     suite.addTest(InterventionWithMLPTestCase("test_with_subspace_positive"))
     suite.addTest(InterventionWithMLPTestCase("test_with_subspace_negative"))
-    suite.addTest(
-        InterventionWithMLPTestCase("test_intervention_link_positive")
-    )
-    suite.addTest(
-        InterventionWithMLPTestCase("test_no_intervention_link_positive")
-    )
-    suite.addTest(
-        InterventionWithMLPTestCase("test_no_intervention_link_negative")
-    )
+    suite.addTest(InterventionWithMLPTestCase("test_intervention_link_positive"))
+    suite.addTest(InterventionWithMLPTestCase("test_no_intervention_link_positive"))
+    suite.addTest(InterventionWithMLPTestCase("test_no_intervention_link_negative"))
     return suite
 
 

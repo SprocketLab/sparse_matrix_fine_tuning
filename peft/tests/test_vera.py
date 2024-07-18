@@ -69,20 +69,16 @@ class TestVera:
     def test_multiple_adapters_same_prng_weights(self, mlp_same_prng):
         # we can have multiple adapters with the same prng key, in which case the weights should be shared
         assert (
-            mlp_same_prng.base_model.model.lin1.vera_A["default"]
-            is mlp_same_prng.base_model.model.lin1.vera_A["other"]
+            mlp_same_prng.base_model.model.lin1.vera_A["default"] is mlp_same_prng.base_model.model.lin1.vera_A["other"]
         )
         assert (
-            mlp_same_prng.base_model.model.lin1.vera_B["default"]
-            is mlp_same_prng.base_model.model.lin1.vera_B["other"]
+            mlp_same_prng.base_model.model.lin1.vera_B["default"] is mlp_same_prng.base_model.model.lin1.vera_B["other"]
         )
         assert (
-            mlp_same_prng.base_model.model.lin2.vera_A["default"]
-            is mlp_same_prng.base_model.model.lin2.vera_A["other"]
+            mlp_same_prng.base_model.model.lin2.vera_A["default"] is mlp_same_prng.base_model.model.lin2.vera_A["other"]
         )
         assert (
-            mlp_same_prng.base_model.model.lin2.vera_B["default"]
-            is mlp_same_prng.base_model.model.lin2.vera_B["other"]
+            mlp_same_prng.base_model.model.lin2.vera_B["default"] is mlp_same_prng.base_model.model.lin2.vera_B["other"]
         )
 
         input = torch.randn(5, 10)

@@ -31,28 +31,21 @@ import transformers
 from accelerate import Accelerator
 from accelerate.logging import get_logger
 from accelerate.utils import set_seed
-from diffusers import (
-    AutoencoderKL,
-    DDIMScheduler,
-)
+from diffusers import AutoencoderKL, DDIMScheduler
 from diffusers.optimization import get_scheduler
 from diffusers.utils import check_min_version
 from diffusers.utils.import_utils import is_xformers_available
 from packaging import version
 from tqdm.auto import tqdm
 from transformers import AutoTokenizer
-from utils.args_loader import (
-    import_model_class_from_model_name_or_path,
-    parse_args,
-)
+
+from peft import BOFTConfig, get_peft_model
+from peft.peft_model import PeftModel
+from utils.args_loader import import_model_class_from_model_name_or_path, parse_args
 from utils.dataset import collate_fn, log_validation, make_dataset
 from utils.light_controlnet import ControlNetModel
 from utils.tracemalloc import TorchTracemalloc, b2mb
 from utils.unet_2d_condition import UNet2DConditionNewModel
-
-from peft import BOFTConfig, get_peft_model
-from peft.peft_model import PeftModel
-
 
 # Will error if the minimal version of diffusers is not installed. Remove at your own risks.
 check_min_version("0.16.0.dev0")
@@ -267,9 +260,7 @@ def main(args):
         try:
             import bitsandbytes as bnb
         except ImportError:
-            raise ImportError(
-                "To use 8-bit Adam, please install the bitsandbytes library: `pip install bitsandbytes`."
-            )
+            raise ImportError("To use 8-bit Adam, please install the bitsandbytes library: `pip install bitsandbytes`.")
 
         optimizer_class = bnb.optim.AdamW8bit
     else:

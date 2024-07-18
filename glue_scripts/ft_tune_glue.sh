@@ -13,7 +13,7 @@ fi
 
 # Use the group name in your commands
 python run_glue.py /fly/task_configs/mrpc.json --do_tune=True --group="$GROUP_NAME" --monarch=False
-python run_glue.py /fly/task_configs/cola.json --do_tune=True --group="$GROUP_NAME" --monarch=False 
+python run_glue.py /fly/task_configs/cola.json --do_tune=True --group="$GROUP_NAME" --monarch=False
 python run_glue.py /fly/task_configs/qnli.json --do_tune=True --group="$GROUP_NAME" --monarch=False
 python run_glue.py /fly/task_configs/rte.json  --do_tune=True --group="$GROUP_NAME" --monarch=False
 python run_glue.py /fly/task_configs/sst-2.json --do_tune=True --group="$GROUP_NAME" --monarch=False

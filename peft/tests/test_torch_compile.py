@@ -51,7 +51,6 @@ from peft import (
 
 from .testing_utils import require_bitsandbytes
 
-
 # only run (very slow) torch.compile tests when explicitly asked to
 if os.environ.get("PEFT_DEBUG_WITH_TORCH_COMPILE") != "1":
     pytest.skip(allow_module_level=True)

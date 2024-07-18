@@ -11,7 +11,7 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists*
 
-# Install audio-related libraries 
+# Install audio-related libraries
 RUN apt-get update && \
     apt install -y ffmpeg
 
@@ -59,7 +59,7 @@ RUN source activate peft && \
     git clone https://github.com/TimDettmers/bitsandbytes && cd bitsandbytes && \
     cmake -B . -DCOMPUTE_BACKEND=cuda -S . && \
     cmake --build . && \
-    pip install -e . && \ 
+    pip install -e . && \
     pip freeze | grep bitsandbytes
 
 RUN echo "source activate peft" >> ~/.profile

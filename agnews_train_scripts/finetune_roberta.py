@@ -3,24 +3,25 @@
 
 
 import os
+
 # change cwd to last level
 os.chdir(os.path.dirname(os.getcwd()))
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-import torch
-from tqdm import tqdm 
-from datasets import load_dataset
-from sklearn.metrics import accuracy_score
 import logging
-from transformers import (
-    RobertaTokenizerFast,
-    RobertaForSequenceClassification,
-    TrainingArguments,
-    Trainer,
-    AutoModel,
-    AutoConfig,
-)
-from train_utils import * 
 import time
+
+import torch
+from sklearn.metrics import accuracy_score
+from tqdm import tqdm
+from transformers import (
+    AutoConfig,
+    RobertaForSequenceClassification,
+    RobertaTokenizerFast,
+    Trainer,
+    TrainingArguments,
+)
+
+from train_utils import *
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 if device == "cpu":
@@ -32,14 +33,14 @@ dataset_id = "ag_news"
 model_id = "roberta-base"
 tokenizer = RobertaTokenizerFast.from_pretrained(model_id)
 
-# split dataset 
+# split dataset
 dataset, train_dataset, val_dataset, test_dataset = prep_data(dataset_id, tokenizer)
-num_labels = dataset['train'].features['label'].num_classes
+num_labels = dataset["train"].features["label"].num_classes
 class_names = dataset["train"].features["label"].names
 print(f"number of labels: {num_labels}")
 print(f"the labels: {class_names}")
 
-# update training classes 
+# update training classes
 id2label = {i: label for i, label in enumerate(class_names)}
 config = AutoConfig.from_pretrained(model_id)
 config.update({"id2label": id2label})
@@ -73,7 +74,7 @@ training_args = TrainingArguments(
     logging_steps=100,
     evaluation_strategy="epoch",
     save_strategy="epoch",
-    load_best_model_at_end=True
+    load_best_model_at_end=True,
 )
 
 trainer = Trainer(
@@ -91,8 +92,11 @@ with torch.autocast(device, cache_enabled=False):
     finetuned_roberta_outputs = trainer.predict(test_dataset)
     print("Inferece time: ", time.time() - t1)
     finetuned_roberta_predictions = finetuned_roberta_outputs[1]
-    print("fine-tuned roberta accuracy: ", round(accuracy_score(test_dataset["label"], finetuned_roberta_predictions), 3))
+    print(
+        "fine-tuned roberta accuracy: ", round(accuracy_score(test_dataset["label"], finetuned_roberta_predictions), 3)
+    )
 
 # Check loading Load fine-tuned Roberta
-finetuned_model = RobertaForSequenceClassification.from_pretrained("./results/fine_tuned_agnews/checkpoint-667/", local_files_only=True)
-
+finetuned_model = RobertaForSequenceClassification.from_pretrained(
+    "./results/fine_tuned_agnews/checkpoint-667/", local_files_only=True
+)

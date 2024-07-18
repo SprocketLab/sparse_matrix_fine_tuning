@@ -20,14 +20,17 @@ from unittest import TestCase
 import pytest
 import torch
 from parameterized import parameterized
+from tests.testing_common import PeftCommonTester
 from torch.testing import assert_close
 
 from peft.mapping import get_peft_model
 from peft.peft_model import PeftModel
-from peft.tuners.multitask_prompt_tuning import MultitaskPromptTuningConfig, MultitaskPromptTuningInit
+from peft.tuners.multitask_prompt_tuning import (
+    MultitaskPromptTuningConfig,
+    MultitaskPromptTuningInit,
+)
 from peft.utils.other import WEIGHTS_NAME, prepare_model_for_kbit_training
 from peft.utils.save_and_load import get_peft_model_state_dict
-from tests.testing_common import PeftCommonTester
 
 
 def is_llama_available() -> bool:

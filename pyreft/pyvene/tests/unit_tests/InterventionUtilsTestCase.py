@@ -1,13 +1,13 @@
 import unittest
+
 import torch.nn.functional as F
+from pyvene.models.interventions import CollectIntervention, VanillaIntervention
+
 from ..utils import *
-from pyvene.models.intervention_utils import _do_intervention_by_swap
-from pyvene.models.interventions import VanillaIntervention
-from pyvene.models.interventions import CollectIntervention
 
 
 class InterventionUtilsTestCase(unittest.TestCase):
-    
+
     @classmethod
     def setUpClass(self):
         print("=== Test Suite: InterventionUtilsTestCase ===")
@@ -27,7 +27,7 @@ class InterventionUtilsTestCase(unittest.TestCase):
         )
         self.test_output_dir_prefix = "test_tmp_output"
         self.test_output_dir_pool = []
-        
+
     def test_initialization_positive(self):
         config = IntervenableConfig(
             model_type=type(self.gpt2),
@@ -55,7 +55,6 @@ class InterventionUtilsTestCase(unittest.TestCase):
         assert intervenable.use_fast == False
 
         assert len(intervenable.interventions) == 2
-        key_list = []
         counter = 0
         for k, _ in intervenable.interventions.items():
             assert "#" in k
@@ -100,10 +99,7 @@ class InterventionUtilsTestCase(unittest.TestCase):
         self.assertTrue(os.path.isfile(os.path.join(_test_dir, "config.json")))
         for file in os.listdir(_test_dir):
             if file.endswith(".bin"):
-                raise ValueError(
-                    "For non-trainable interventions, "
-                    "there should not be any model binary file!"
-                )
+                raise ValueError("For non-trainable interventions, " "there should not be any model binary file!")
 
     def test_local_trainable_save_positive(self):
         config = IntervenableConfig(
@@ -138,10 +134,7 @@ class InterventionUtilsTestCase(unittest.TestCase):
             if file.endswith(".bin"):
                 binary_count += 1
         if binary_count != 2:
-            raise ValueError(
-                "For trainable interventions, "
-                "there should binary file for each of them."
-            )
+            raise ValueError("For trainable interventions, " "there should binary file for each of them.")
 
     def _test_local_trainable_load_positive(self, intervention_types):
         b_s = 10
@@ -149,12 +142,8 @@ class InterventionUtilsTestCase(unittest.TestCase):
         config = IntervenableConfig(
             model_type=type(self.gpt2),
             representations=[
-                RepresentationConfig(
-                    0, "block_output", "pos", 1, low_rank_dimension=4
-                ),
-                RepresentationConfig(
-                    1, "block_output", "pos", 1, low_rank_dimension=4
-                ),
+                RepresentationConfig(0, "block_output", "pos", 1, low_rank_dimension=4),
+                RepresentationConfig(1, "block_output", "pos", 1, low_rank_dimension=4),
             ],
             intervention_types=intervention_types,
         )
@@ -190,7 +179,7 @@ class InterventionUtilsTestCase(unittest.TestCase):
         self._test_local_trainable_load_positive(VanillaIntervention)
         self._test_local_trainable_load_positive(RotatedSpaceIntervention)
         self._test_local_trainable_load_positive(LowRankRotatedSpaceIntervention)
-        
+
     def test_vanilla_intervention_positive(self):
         intervention = VanillaIntervention(embed_dim=2)
         base = torch.arange(36).view(2, 3, 6)
@@ -218,7 +207,7 @@ class InterventionUtilsTestCase(unittest.TestCase):
         # Shape cannot broadcast
         source = torch.arange(36, 42).view(1, 6)
         try:
-            output = intervention(base, source)
+            intervention(base, source)
         except ValueError:
             pass
 
@@ -308,9 +297,7 @@ class InterventionUtilsTestCase(unittest.TestCase):
         self.assertTrue(torch.allclose(golden, output))
 
     def test_vanilla_intervention_fast_positive(self):
-        intervention = VanillaIntervention(
-            subspace_partition=[[0, 2], [2, 4], [4, 6]], use_fast=True
-        )
+        intervention = VanillaIntervention(subspace_partition=[[0, 2], [2, 4], [4, 6]], use_fast=True)
         base = torch.arange(36).view(2, 3, 6)
         source = torch.arange(36, 42).view(6)
         output = intervention(base, source, subspaces=[[1, 0], [0, 1], [1, 2]])
@@ -356,11 +343,16 @@ class InterventionUtilsTestCase(unittest.TestCase):
         base = torch.arange(12).view(2, 6)
         source = torch.arange(12, 24).view(2, 6)
         output = intervention(base, source)
-        golden = torch.tensor([[3, 4, 5, 6, 7, 8], [9, 10, 11, 12, 13, 14],])
+        golden = torch.tensor(
+            [
+                [3, 4, 5, 6, 7, 8],
+                [9, 10, 11, 12, 13, 14],
+            ]
+        )
         self.assertTrue(torch.allclose(golden, output))
 
     def test_brs_gradient_positive(self):
-        
+
         _retry = 10
         while _retry > 0:
             try:
@@ -374,7 +366,12 @@ class InterventionUtilsTestCase(unittest.TestCase):
                 optimizer_params += [{"params": intervention.intervention_boundaries}]
                 optimizer = torch.optim.Adam(optimizer_params, lr=1e-1)
 
-                golden = torch.tensor([[5, 6, 7, 8, 9, 10], [11, 12, 13, 14, 15, 16],]).float()
+                golden = torch.tensor(
+                    [
+                        [5, 6, 7, 8, 9, 10],
+                        [11, 12, 13, 14, 15, 16],
+                    ]
+                ).float()
 
                 for _ in range(1000):
                     optimizer.zero_grad()
@@ -391,13 +388,10 @@ class InterventionUtilsTestCase(unittest.TestCase):
         if _retry > 0:
             pass  # succeed
         else:
-            raise AssertionError(
-                "test_brs_gradient_positive with retries"
-            )
-        
+            raise AssertionError("test_brs_gradient_positive with retries")
 
     def test_sigmoid_mask_gradient_positive(self):
-        
+
         _retry = 10
         while _retry > 0:
             try:
@@ -410,7 +404,12 @@ class InterventionUtilsTestCase(unittest.TestCase):
                 optimizer_params += [{"params": intervention.temperature}]
                 optimizer = torch.optim.Adam(optimizer_params, lr=1e-1)
 
-                golden = torch.tensor([[0, 1, 14, 15, 16, 17], [6, 7, 20, 21, 22, 23],]).float()
+                golden = torch.tensor(
+                    [
+                        [0, 1, 14, 15, 16, 17],
+                        [6, 7, 20, 21, 22, 23],
+                    ]
+                ).float()
 
                 for _ in range(2000):
                     optimizer.zero_grad()
@@ -419,9 +418,7 @@ class InterventionUtilsTestCase(unittest.TestCase):
                     loss.backward()
                     optimizer.step()
                 res = torch.sigmoid(intervention.mask)
-                self.assertTrue(
-                    torch.allclose(res, torch.tensor([0.0, 0.0, 1.0, 1.0, 1.0, 1.0]))
-                )
+                self.assertTrue(torch.allclose(res, torch.tensor([0.0, 0.0, 1.0, 1.0, 1.0, 1.0])))
             except:
                 pass  # retry
             finally:
@@ -430,19 +427,14 @@ class InterventionUtilsTestCase(unittest.TestCase):
         if _retry > 0:
             pass  # succeed
         else:
-            raise AssertionError(
-                "test_sigmoid_mask_gradient_positive with retries"
-            )
-        
+            raise AssertionError("test_sigmoid_mask_gradient_positive with retries")
 
     def test_low_rank_gradient_positive(self):
-        
+
         _retry = 10
         while _retry > 0:
             try:
-                intervention = LowRankRotatedSpaceIntervention(
-                    embed_dim=6, low_rank_dimension=1
-                )
+                intervention = LowRankRotatedSpaceIntervention(embed_dim=6, low_rank_dimension=1)
                 base = torch.arange(12).float().view(2, 6)
                 source = torch.arange(12, 24).float().view(2, 6)
 
@@ -450,7 +442,12 @@ class InterventionUtilsTestCase(unittest.TestCase):
                 optimizer_params += [{"params": intervention.rotate_layer.parameters()}]
                 optimizer = torch.optim.Adam(optimizer_params, lr=1e-1)
 
-                golden = torch.tensor([[0, 1, 14, 15, 16, 17], [6, 7, 20, 21, 22, 23],]).float()
+                golden = torch.tensor(
+                    [
+                        [0, 1, 14, 15, 16, 17],
+                        [6, 7, 20, 21, 22, 23],
+                    ]
+                ).float()
 
                 for _ in range(2000):
                     optimizer.zero_grad()
@@ -468,9 +465,7 @@ class InterventionUtilsTestCase(unittest.TestCase):
         if _retry > 0:
             pass  # succeed
         else:
-            raise AssertionError(
-                "test_sigmoid_mask_gradient_positive with retries"
-            )
+            raise AssertionError("test_sigmoid_mask_gradient_positive with retries")
 
     @classmethod
     def tearDownClass(self):

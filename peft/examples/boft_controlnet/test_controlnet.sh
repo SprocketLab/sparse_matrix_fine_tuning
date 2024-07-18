@@ -25,5 +25,3 @@ accelerate launch test_controlnet.py \
   --adapter_name=$RUN_NAME \
   --output_dir=$RESULTS_PATH \
   --dataset_name=$DATASET_NAME \
-
-

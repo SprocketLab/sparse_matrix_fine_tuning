@@ -8,10 +8,9 @@ config the dimensions of intervention based on model config
 defined in the huggingface library.
 """
 
-
 import torch
-from ..constants import *
 
+from ..constants import *
 
 gemma_type_to_module_mapping = {
     "block_input": ("layers[%s]", CONST_INPUT_HOOK),
@@ -69,11 +68,9 @@ for k, v in gemma_type_to_module_mapping.items():
 gemma_classifier_type_to_dimension_mapping = gemma_type_to_dimension_mapping
 
 
-def create_gemma(
-    name="google/gemma-2b-it", cache_dir=None, dtype=torch.bfloat16
-):
+def create_gemma(name="google/gemma-2b-it", cache_dir=None, dtype=torch.bfloat16):
     """Creates a Gemma Causal LM model, config, and tokenizer from the given name and revision"""
-    from transformers import GemmaForCausalLM, GemmaTokenizer, GemmaConfig
+    from transformers import GemmaConfig, GemmaForCausalLM, GemmaTokenizer
 
     config = GemmaConfig.from_pretrained(name, cache_dir=cache_dir)
     tokenizer = GemmaTokenizer.from_pretrained(name, cache_dir=cache_dir)

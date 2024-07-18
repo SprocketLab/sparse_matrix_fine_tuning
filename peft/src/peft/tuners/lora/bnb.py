@@ -26,7 +26,6 @@ from peft.utils.other import transpose
 
 from .layer import LoraLayer
 
-
 if is_bnb_available():
 
     class Linear8bitLt(torch.nn.Module, LoraLayer):
@@ -80,9 +79,7 @@ if is_bnb_available():
                 if active_adapter not in self.lora_A.keys():
                     continue
 
-                warnings.warn(
-                    "Merge lora module to 8-bit linear may get different generations due to rounding errors."
-                )
+                warnings.warn("Merge lora module to 8-bit linear may get different generations due to rounding errors.")
                 lora_data = self.get_delta_weight(active_adapter)
 
                 weight = self.get_base_layer().weight
@@ -333,9 +330,7 @@ if is_bnb_4bit_available():
                 if active_adapter not in self.lora_A.keys():
                     continue
 
-                warnings.warn(
-                    "Merge lora module to 4-bit linear may get different generations due to rounding errors."
-                )
+                warnings.warn("Merge lora module to 4-bit linear may get different generations due to rounding errors.")
                 # Refer to https://gist.github.com/ChrisHayduk/1a53463331f52dca205e55982baf9930
                 weight = self.get_base_layer().weight
                 kwargs = weight.__dict__

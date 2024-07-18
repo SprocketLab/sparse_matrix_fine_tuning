@@ -28,9 +28,9 @@ from skimage.io import imread
 from torchvision.utils import save_image
 from tqdm import tqdm
 from transformers import AutoTokenizer
+
 from utils.args_loader import parse_args
 from utils.dataset import make_dataset
-
 
 detect_model = face_alignment.FaceAlignment(face_alignment.LandmarksType.TWO_D, device="cuda:0", flip_input=False)
 

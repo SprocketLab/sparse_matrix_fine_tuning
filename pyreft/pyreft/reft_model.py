@@ -10,9 +10,11 @@ class ReftModel(pv.IntervenableModel):
     """
     Base model for Reft methods.
     """
+
     def __init__(self, config, model, **kwargs):
         super().__init__(config, model, **kwargs)
         self.model.enable_input_require_grads()
+
     @staticmethod
     def _convert_to_reft_model(intervenable_model):
         reft_model = ReftModel(intervenable_model.config, intervenable_model.model)
@@ -41,16 +43,13 @@ class ReftModel(pv.IntervenableModel):
                 else:
                     trainable_intervention_parameters += count_parameters(v[0])
 
-        trainable_model_parameters = sum(
-            p.numel() for p in self.model.parameters() if p.requires_grad)
+        trainable_model_parameters = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
 
-        all_model_parameters = sum(
-            p.numel() for p in self.model.parameters())
+        all_model_parameters = sum(p.numel() for p in self.model.parameters())
 
         total_trainable_parameters = trainable_intervention_parameters + trainable_model_parameters
-        
+
         print(
             f"trainable intervention params: {trainable_intervention_parameters:,d} || trainable model params: {trainable_model_parameters:,d}\n"
             f"model params: {all_model_parameters:,d} || trainable%: {100 * total_trainable_parameters / all_model_parameters}"
         )
-

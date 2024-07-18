@@ -282,9 +282,7 @@ class LoraConfig(PeftConfig):
 
     def __post_init__(self):
         self.peft_type = PeftType.LORA
-        self.target_modules = (
-            set(self.target_modules) if isinstance(self.target_modules, list) else self.target_modules
-        )
+        self.target_modules = set(self.target_modules) if isinstance(self.target_modules, list) else self.target_modules
         # if target_modules is a regex expression, then layers_to_transform should be None
         if isinstance(self.target_modules, str) and self.layers_to_transform is not None:
             raise ValueError("`layers_to_transform` cannot be used when `target_modules` is a str.")

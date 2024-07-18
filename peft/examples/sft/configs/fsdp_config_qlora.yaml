@@ -1,5 +1,5 @@
-compute_environment: LOCAL_MACHINE                                                                                                                                           
-debug: false                                                                                                                                                                 
+compute_environment: LOCAL_MACHINE
+debug: false
 distributed_type: FSDP
 downcast_bf16: 'no'
 fsdp_config:

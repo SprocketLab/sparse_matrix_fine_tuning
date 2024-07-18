@@ -145,7 +145,7 @@ VALIDATION_PROMPT=${PROMPT_LIST[@]}
 INSTANCE_PROMPT="a photo of ${UNIQUE_TOKEN} ${CLASS_TOKEN}"
 CLASS_PROMPT="a photo of ${CLASS_TOKEN}"
 
-export MODEL_NAME="stabilityai/stable-diffusion-2-1" 
+export MODEL_NAME="stabilityai/stable-diffusion-2-1"
 # export MODEL_NAME="runwayml/stable-diffusion-v1-5"
 
 PEFT_TYPE="boft"

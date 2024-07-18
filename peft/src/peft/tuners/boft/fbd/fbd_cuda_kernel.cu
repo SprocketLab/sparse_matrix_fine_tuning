@@ -31,8 +31,8 @@ __global__ void forward_fast_block_diag_cuda_kernel(
 
 template <typename scalar_t>
 __global__ void backward_fast_block_diag_cuda_kernel(
-        const scalar_t* __restrict__ grad_output, 
-        scalar_t*  grad_input, 
+        const scalar_t* __restrict__ grad_output,
+        scalar_t*  grad_input,
         int z, int N, int b
     ) {
 
@@ -44,7 +44,7 @@ __global__ void backward_fast_block_diag_cuda_kernel(
     const int Ni = (i%(N*b*b))/(b*b);
     const int x = ((i%(N*b*b))%(b*b))/b;
     const int y = ((i%(N*b*b))%(b*b))%b;
-    
+
     grad_input[zi*N*b*b + Ni*b*b + x*b + y] = grad_output[zi*N*b*N*b + (Ni*b+x)*N*b + Ni*b + y];
 
 } // namespace
@@ -70,9 +70,9 @@ std::vector<at::Tensor> forward_fast_block_diag_cuda(
         z, N, b);
       }));
 
-   
+
     cudaError_t err = cudaGetLastError();
-    if (err != cudaSuccess) 
+    if (err != cudaSuccess)
             printf("Error in forward_fast_block_diag_cuda_kernel: %s\n", cudaGetErrorString(err));
 
     return {output};
@@ -86,11 +86,11 @@ std::vector<at::Tensor> backward_fast_block_diag_cuda(
     const auto z = input.size(0);
     const auto N = input.size(1);
     const auto b = input.size(2);
-    
+
     // print(channel_size)
     const int threads = 512;
     const dim3 blocks_1 ((z*N*b*b - 1) / threads +1);
-    
+
     // initialize grad input
     auto grad_input = at::zeros_like(input);
 
@@ -100,9 +100,9 @@ std::vector<at::Tensor> backward_fast_block_diag_cuda(
         grad_input.data<scalar_t>(),
         z, N, b);
       }));
-    
+
     cudaError_t err = cudaGetLastError();
-    if (err != cudaSuccess) 
+    if (err != cudaSuccess)
             printf("Error in backward_fast_block_diag_cuda_kernel: %s\n", cudaGetErrorString(err));
 
     return {grad_input};

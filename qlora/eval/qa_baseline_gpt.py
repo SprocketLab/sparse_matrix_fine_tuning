@@ -2,17 +2,18 @@
 """Generate answers with GPT-3.5"""
 # Note: you need to be using OpenAI Python v0.27.0 for the code below to work
 import argparse
+import concurrent.futures
 import json
 import os
 import time
-import concurrent.futures
 
 import openai
-import tqdm
 import shortuuid
+import tqdm
+
 openai.api_key = os.getenv("OPENAI_API_KEY")
-MODEL="gpt-4"
-MODEL_ID="gpt-4:20230520"
+MODEL = "gpt-4"
+MODEL_ID = "gpt-4:20230520"
 
 
 def get_answer(question_id: int, question: str, max_tokens: int):
@@ -71,9 +72,7 @@ if __name__ == "__main__":
             future = executor.submit(get_answer, qid, question, args.max_tokens)
             futures.append(future)
 
-        for future in tqdm.tqdm(
-            concurrent.futures.as_completed(futures), total=len(futures)
-        ):
+        for future in tqdm.tqdm(concurrent.futures.as_completed(futures), total=len(futures)):
             answers.append(future.result())
 
     answers.sort(key=lambda x: x["question_id"])

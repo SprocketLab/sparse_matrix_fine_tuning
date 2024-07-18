@@ -38,7 +38,6 @@ from .tuners import (
 )
 from .utils import PeftType, _set_adapter, _set_trainable
 
-
 PEFT_TYPE_TO_MODEL_MAPPING = {
     PeftType.LORA: LoraModel,
     PeftType.LOHA: LoHaModel,

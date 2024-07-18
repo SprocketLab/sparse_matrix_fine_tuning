@@ -47,6 +47,8 @@ from diffusers.utils.import_utils import is_xformers_available
 from huggingface_hub import Repository
 from tqdm.auto import tqdm
 from transformers import AutoTokenizer
+
+from peft import BOFTConfig, get_peft_model
 from utils.args_loader import (
     get_full_repo_name,
     import_model_class_from_model_name_or_path,
@@ -54,9 +56,6 @@ from utils.args_loader import (
 )
 from utils.dataset import DreamBoothDataset, PromptDataset, collate_fn
 from utils.tracemalloc import TorchTracemalloc, b2mb
-
-from peft import BOFTConfig, get_peft_model
-
 
 # Will error if the minimal version of diffusers is not installed. Remove at your own risks.
 check_min_version("0.16.0.dev0")
@@ -289,9 +288,7 @@ def main(args):
         try:
             import bitsandbytes as bnb
         except ImportError:
-            raise ImportError(
-                "To use 8-bit Adam, please install the bitsandbytes library: `pip install bitsandbytes`."
-            )
+            raise ImportError("To use 8-bit Adam, please install the bitsandbytes library: `pip install bitsandbytes`.")
 
         optimizer_class = bnb.optim.AdamW8bit
     else:

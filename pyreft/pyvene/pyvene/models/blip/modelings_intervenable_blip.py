@@ -8,7 +8,6 @@ config the dimensions of intervention based on model config
 defined in the huggingface library.
 """
 
-
 from ..constants import *
 
 """blip base model"""
@@ -74,14 +73,10 @@ blip_type_to_dimension_mapping = {
     "mlp_activation": ("projection_dim",),
     "mlp_output": ("image_text_hidden_size",),
     "mlp_input": ("image_text_hidden_size",),
-    "attention_value_output": (
-        "image_text_hidden_size/text_config.num_attention_heads",
-    ),
+    "attention_value_output": ("image_text_hidden_size/text_config.num_attention_heads",),
     "attention_output": ("image_text_hidden_size",),
     "attention_input": ("image_text_hidden_size",),
-    "cross_attention_value_output": (
-        "image_text_hidden_size/text_config.num_attention_heads",
-    ),
+    "cross_attention_value_output": ("image_text_hidden_size/text_config.num_attention_heads",),
     "cross_attention_output": ("image_text_hidden_size",),
     "cross_attention_input": ("image_text_hidden_size",),
 }
@@ -101,12 +96,10 @@ blip_wrapper_type_to_dimension_mapping = blip_type_to_dimension_mapping
 
 def create_blip(name="Salesforce/blip-vqa-base", cache_dir=None):
     """Creates a BLIP VQA model, config, and tokenizer from the given name and revision"""
-    from transformers import BlipConfig, BlipProcessor, BlipForQuestionAnswering
+    from transformers import BlipConfig, BlipForQuestionAnswering, BlipProcessor
 
     config = BlipConfig.from_pretrained(name)
     processor = BlipProcessor.from_pretrained(name)
-    blip = BlipForQuestionAnswering.from_pretrained(
-        name, config=config, cache_dir=cache_dir
-    )
+    blip = BlipForQuestionAnswering.from_pretrained(name, config=config, cache_dir=cache_dir)
     print("loaded model")
     return config, processor, blip

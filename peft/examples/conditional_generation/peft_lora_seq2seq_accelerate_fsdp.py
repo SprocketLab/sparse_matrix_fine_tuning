@@ -5,7 +5,12 @@ from accelerate import Accelerator
 from datasets import load_dataset
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, default_data_collator, get_linear_schedule_with_warmup
+from transformers import (
+    AutoModelForSeq2SeqLM,
+    AutoTokenizer,
+    default_data_collator,
+    get_linear_schedule_with_warmup,
+)
 
 from peft import LoraConfig, TaskType, get_peft_model
 from peft.utils.other import fsdp_auto_wrap_policy
@@ -67,9 +72,7 @@ def main():
     train_dataloader = DataLoader(
         train_dataset, shuffle=True, collate_fn=default_data_collator, batch_size=batch_size, pin_memory=True
     )
-    eval_dataloader = DataLoader(
-        eval_dataset, collate_fn=default_data_collator, batch_size=batch_size, pin_memory=True
-    )
+    eval_dataloader = DataLoader(eval_dataset, collate_fn=default_data_collator, batch_size=batch_size, pin_memory=True)
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
     lr_scheduler = get_linear_schedule_with_warmup(

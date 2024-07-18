@@ -14,5 +14,4 @@
 
 from .model import COMPATIBLE_TUNER_TYPES, MixedModel
 
-
 __all__ = ["COMPATIBLE_TUNER_TYPES", "MixedModel"]

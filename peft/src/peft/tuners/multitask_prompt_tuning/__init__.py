@@ -15,5 +15,4 @@
 from .config import MultitaskPromptTuningConfig, MultitaskPromptTuningInit
 from .model import MultitaskPromptEmbedding
 
-
 __all__ = ["MultitaskPromptTuningConfig", "MultitaskPromptTuningInit", "MultitaskPromptEmbedding"]

@@ -78,7 +78,6 @@ from peft import (
 )
 from peft.utils import infer_device
 
-
 PEFT_VERSION = peft.__version__
 REGRESSION_DIR = tempfile.mkdtemp(prefix="peft_regression_")
 HF_TOKEN = os.environ.get("HF_TOKEN")

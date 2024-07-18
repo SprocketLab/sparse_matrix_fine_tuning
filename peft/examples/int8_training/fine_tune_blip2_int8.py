@@ -18,7 +18,6 @@ from transformers import AutoModelForVision2Seq, AutoProcessor, BitsAndBytesConf
 
 from peft import LoraConfig, get_peft_model
 
-
 # Let's define the LoraConfig
 config = LoraConfig(
     r=16,
@@ -65,9 +64,7 @@ def collator(batch):
         if key != "text":
             processed_batch[key] = torch.stack([example[key] for example in batch])
         else:
-            text_inputs = processor.tokenizer(
-                [example["text"] for example in batch], padding=True, return_tensors="pt"
-            )
+            text_inputs = processor.tokenizer([example["text"] for example in batch], padding=True, return_tensors="pt")
             processed_batch["input_ids"] = text_inputs["input_ids"]
             processed_batch["attention_mask"] = text_inputs["attention_mask"]
     return processed_batch

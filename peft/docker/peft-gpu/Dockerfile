@@ -11,7 +11,7 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists*
 
-# Install audio-related libraries 
+# Install audio-related libraries
 RUN apt-get update && \
     apt install -y ffmpeg
 
@@ -37,7 +37,7 @@ ENV PATH /opt/conda/bin:$PATH
 
 RUN chsh -s /bin/bash
 SHELL ["/bin/bash", "-c"]
-RUN source activate peft && \ 
+RUN source activate peft && \
     python3 -m pip install --no-cache-dir bitsandbytes optimum auto-gptq
 
 # Add autoawq for quantization testing
@@ -74,7 +74,7 @@ RUN source activate peft && \
 RUN source activate peft && \
 pip install hqq
 
-RUN source activate peft && \ 
+RUN source activate peft && \
     pip freeze | grep transformers
 
 RUN echo "source activate peft" >> ~/.profile

@@ -1,6 +1,6 @@
+import pytest
 import torch
 import triton
-import pytest
 
 # from triton.ops.blocksparse import matmul
 from src.models.attention.blocksparse_matmul import matmul
@@ -9,8 +9,12 @@ from src.models.attention.blocksparse_matmul import matmul
 @pytest.mark.parametrize(
     "MODE, TRANS_A, TRANS_B, BLOCK, DTYPE",
     [
-        (mode, at, bt, block, dtype) for dtype in ["float32"] for mode in ["sdd"]
-        for at in [False] for bt in [True] for block in [16]
+        (mode, at, bt, block, dtype)
+        for dtype in ["float32"]
+        for mode in ["sdd"]
+        for at in [False]
+        for bt in [True]
+        for block in [16]
     ],
 )
 # def test_matmul(MODE, TRANS_A, TRANS_B, BLOCK, DTYPE, Z=3, H=2, M=512, N=384, K=256):
@@ -31,7 +35,7 @@ def test_matmul(MODE, TRANS_A, TRANS_B, BLOCK, DTYPE, Z=3, H=2, M=64, N=64, K=48
     op = matmul(layout, BLOCK, MODE, trans_a=TRANS_A, trans_b=TRANS_B)
     ra = triton.testing.sparsify_tensor(a, layout, BLOCK) if MODE == "dsd" else a
     rb = triton.testing.sparsify_tensor(b, layout, BLOCK) if MODE == "dds" else b
-    rc = triton.testing.catch_oor(lambda : op(ra, rb), pytest)
+    rc = triton.testing.catch_oor(lambda: op(ra, rb), pytest)
     # torch result
     ta = triton.testing.mask_tensor(a, layout, BLOCK) if MODE == "dsd" else a
     tb = triton.testing.mask_tensor(b, layout, BLOCK) if MODE == "dds" else b

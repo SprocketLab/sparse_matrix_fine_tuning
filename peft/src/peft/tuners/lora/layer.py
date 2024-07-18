@@ -411,9 +411,7 @@ class Linear(nn.Module, LoraLayer):
                         # since delta_weight already includes scaling, set it to 1 here
                         weight_norm = (
                             self.lora_magnitude_vector[active_adapter]
-                            .get_weight_norm(
-                                base_layer.weight, transpose(delta_weight, self.fan_in_fan_out), scaling=1
-                            )
+                            .get_weight_norm(base_layer.weight, transpose(delta_weight, self.fan_in_fan_out), scaling=1)
                             .detach()
                         )
                         # We need to cache weight_norm because it has to be based on the original weights. We

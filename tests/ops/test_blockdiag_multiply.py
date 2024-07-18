@@ -1,15 +1,11 @@
-import math
-
-import torch
 import pytest
+import torch
 
-from einops import rearrange
-
-from src.ops.blockdiag_multiply import blockdiag_multiply_reference, blockdiag_multiply
+from src.ops.blockdiag_multiply import blockdiag_multiply, blockdiag_multiply_reference
 
 
-@pytest.mark.parametrize('dtype', [torch.float32, torch.complex64])
-@pytest.mark.parametrize('device', ['cpu', 'cuda'])
+@pytest.mark.parametrize("dtype", [torch.float32, torch.complex64])
+@pytest.mark.parametrize("device", ["cpu", "cuda"])
 def test_blockdiag_multiply(device, dtype):
     # set seed
     torch.random.manual_seed(0)

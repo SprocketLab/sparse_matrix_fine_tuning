@@ -1,4 +1,5 @@
 import unittest
+
 from ..utils import *
 
 
@@ -52,9 +53,7 @@ class ComplexInterventionWithGPT2TestCase(unittest.TestCase):
         config = IntervenableConfig(
             model_type=type(self.gpt2),
             representations=[
-                RepresentationConfig(
-                    0, "block_output", "pos", 1, subspace_partition=[[0, 6], [6, 24]]
-                ),
+                RepresentationConfig(0, "block_output", "pos", 1, subspace_partition=[[0, 6], [6, 24]]),
             ],
             intervention_types=VanillaIntervention,
         )
@@ -65,9 +64,7 @@ class ComplexInterventionWithGPT2TestCase(unittest.TestCase):
         our_output = intervenable(base, output_original_output=True)[0][0]
         self.assertTrue(torch.allclose(golden_out, our_output))
         # make sure the toolkit also works
-        self.assertTrue(
-            torch.allclose(GPT2_RUN(self.gpt2, base["input_ids"], {}, {}), golden_out)
-        )
+        self.assertTrue(torch.allclose(GPT2_RUN(self.gpt2, base["input_ids"], {}, {}), golden_out))
 
     def _test_subspace_partition_in_forward(self, intervention_type):
         """
@@ -88,9 +85,7 @@ class ComplexInterventionWithGPT2TestCase(unittest.TestCase):
             ],
             intervention_types=intervention_type,
         )
-        intervenable = IntervenableModel(
-            with_partition_config, self.gpt2, use_fast=False
-        )
+        intervenable = IntervenableModel(with_partition_config, self.gpt2, use_fast=False)
         intervenable.set_device(self.device)
         base = {"input_ids": torch.randint(0, 10, (batch_size, 5)).to(self.device)}
         source = {"input_ids": torch.randint(0, 10, (batch_size, 5)).to(self.device)}
@@ -104,23 +99,17 @@ class ComplexInterventionWithGPT2TestCase(unittest.TestCase):
         without_partition_config = IntervenableConfig(
             model_type=type(self.gpt2),
             representations=[
-                RepresentationConfig(
-                    0, "block_output", "pos", 1, low_rank_dimension=24
-                ),
+                RepresentationConfig(0, "block_output", "pos", 1, low_rank_dimension=24),
             ],
             intervention_types=intervention_type,
         )
-        fast = IntervenableModel(
-            without_partition_config, self.gpt2, use_fast=True
-        )
+        fast = IntervenableModel(without_partition_config, self.gpt2, use_fast=True)
         fast.set_device(self.device)
         if intervention_type in {
             RotatedSpaceIntervention,
             LowRankRotatedSpaceIntervention,
         }:
-            list(fast.interventions.values())[0][
-                0
-            ].rotate_layer.weight = list(intervenable.interventions.values())[0][
+            list(fast.interventions.values())[0][0].rotate_layer.weight = list(intervenable.interventions.values())[0][
                 0
             ].rotate_layer.weight
 
@@ -132,11 +121,7 @@ class ComplexInterventionWithGPT2TestCase(unittest.TestCase):
         )
 
         # make sure the toolkit also works
-        self.assertTrue(
-            torch.allclose(
-                with_partition_our_output[0], without_partition_our_output[0]
-            )
-        )
+        self.assertTrue(torch.allclose(with_partition_our_output[0], without_partition_our_output[0]))
 
     def test_vanilla_subspace_partition_in_forward_positive(self):
         self._test_subspace_partition_in_forward(VanillaIntervention)
@@ -148,9 +133,7 @@ class ComplexInterventionWithGPT2TestCase(unittest.TestCase):
         _retry = 10
         while _retry > 0:
             try:
-                self._test_subspace_partition_in_forward(
-                    LowRankRotatedSpaceIntervention
-                )
+                self._test_subspace_partition_in_forward(LowRankRotatedSpaceIntervention)
             except:
                 pass  # retry
             finally:
@@ -159,31 +142,15 @@ class ComplexInterventionWithGPT2TestCase(unittest.TestCase):
         if _retry > 0:
             pass  # succeed
         else:
-            raise AssertionError(
-                "test_lowrank_rotate_subspace_partition_in_forward_positive with retries"
-            )
+            raise AssertionError("test_lowrank_rotate_subspace_partition_in_forward_positive with retries")
 
 
 def suite():
     suite = unittest.TestSuite()
-    suite.addTest(
-        ComplexInterventionWithGPT2TestCase("test_clean_run_positive")
-    )
-    suite.addTest(
-        ComplexInterventionWithGPT2TestCase(
-            "test_vanilla_subspace_partition_in_forward_positive"
-        )
-    )
-    suite.addTest(
-        ComplexInterventionWithGPT2TestCase(
-            "test_rotate_subspace_partition_in_forward_positive"
-        )
-    )
-    suite.addTest(
-        ComplexInterventionWithGPT2TestCase(
-            "test_lowrank_rotate_subspace_partition_in_forward_positive"
-        )
-    )
+    suite.addTest(ComplexInterventionWithGPT2TestCase("test_clean_run_positive"))
+    suite.addTest(ComplexInterventionWithGPT2TestCase("test_vanilla_subspace_partition_in_forward_positive"))
+    suite.addTest(ComplexInterventionWithGPT2TestCase("test_rotate_subspace_partition_in_forward_positive"))
+    suite.addTest(ComplexInterventionWithGPT2TestCase("test_lowrank_rotate_subspace_partition_in_forward_positive"))
     return suite
 
 

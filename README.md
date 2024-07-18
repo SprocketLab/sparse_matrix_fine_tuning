@@ -14,23 +14,23 @@ Check src/models/layers/monarch_linear.py for a basic setup of Monarch.\
 Check src/ops/blockdiag_butterfly_einsum.py to understand D2S projection.\
 See src/models/modeling_roberta.py for my modified Roberta supporting LoRA and Monarch.
 
-Full finetuning: 
+Full finetuning:
 ```
-python finetune_roberta.py 
+python finetune_roberta.py
 ```
-LoRA PEFT (modify peft_config for ranks, etc.): 
+LoRA PEFT (modify peft_config for ranks, etc.):
 ```
-python lora_roberta.py 
+python lora_roberta.py
 ```
-Monarch PEFT: 
-``` 
+Monarch PEFT:
+```
 python monarch_roberta.py  --peft
 ```
-For GLUE tasks 
+For GLUE tasks
 Training hyperparams are in task_configs/[task].json
 Tune block size, rank, etc. in task_configs/peft_config.json.
 Or try run_glue_hf.py with default args below
 ```
 export WANDB_API_KEY="YOUR_KEY"
-python run_glue.py task_configs/monarch_roberta_glue/peft_con/cola.json --do_tune=False --wandb=True 
+python run_glue.py task_configs/monarch_roberta_glue/peft_con/cola.json --do_tune=False --wandb=True
 ```

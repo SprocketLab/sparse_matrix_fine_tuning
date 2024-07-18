@@ -23,14 +23,14 @@ fi
 time=$(date "+%m-%d-%H")
 # python run_glue.py /fly/task_configs/monarch_roberta_glue/cola.json   --time=$time "${FLAGS[@]}" &
 # wait for the previous job to occupy GPU memory to pick the correct vacant device for the next
-# sleep 20; python run_glue.py /fly/task_configs/monarch_roberta_glue/mrpc.json   --time=$time "${FLAGS[@]}" 
+# sleep 20; python run_glue.py /fly/task_configs/monarch_roberta_glue/mrpc.json   --time=$time "${FLAGS[@]}"
 sleep 20; python run_glue.py /fly/task_configs/monarch_roberta_glue/qnli.json   --time=$time "${FLAGS[@]}" &
-# sleep 20; python run_glue.py /fly/task_configs/monarch_roberta_glue/rte.json    --time=$time "${FLAGS[@]}" 
-# sleep 20; python run_glue.py /fly/task_configs/monarch_roberta_glue/sst-2.json  --time=$time "${FLAGS[@]}"& 
+# sleep 20; python run_glue.py /fly/task_configs/monarch_roberta_glue/rte.json    --time=$time "${FLAGS[@]}"
+# sleep 20; python run_glue.py /fly/task_configs/monarch_roberta_glue/sst-2.json  --time=$time "${FLAGS[@]}"&
 sleep 20; python run_glue.py /fly/task_configs/monarch_roberta_glue/stsb.json   --time=$time "${FLAGS[@]}"
 
 sleep 20; python run_glue.py /fly/task_configs/monarch_roberta_glue/qqp.json    --time=$time "${FLAGS[@]}" &
-sleep 20; python run_glue.py /fly/task_configs/monarch_roberta_glue/mnli.json   --time=$time "${FLAGS[@]}" 
+sleep 20; python run_glue.py /fly/task_configs/monarch_roberta_glue/mnli.json   --time=$time "${FLAGS[@]}"
 
 out_path="results/monarch_monarch_roberta_glue"
 # find all .tsv files in results/monarch_monarch_roberta_glue and zip them

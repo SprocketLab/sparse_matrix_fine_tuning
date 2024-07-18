@@ -19,10 +19,16 @@ import torch
 from parameterized import parameterized
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from peft import AdaLoraConfig, BOFTConfig, LoraConfig, PromptTuningConfig, PromptTuningInit, get_peft_model
+from peft import (
+    AdaLoraConfig,
+    BOFTConfig,
+    LoraConfig,
+    PromptTuningConfig,
+    PromptTuningInit,
+    get_peft_model,
+)
 
 from .testing_common import PeftCommonTester, PeftTestConfigManager
-
 
 PEFT_DECODER_MODELS_TO_TEST = [
     "hf-internal-testing/tiny-random-OPTForCausalLM",
