@@ -708,8 +708,6 @@ def main():
     parser.add_argument("-gd", "--greedy_decoding", action="store_true")
 
     # Monarch
-    # parser.add_argument("--monarch", default=True, type=eval)
-    # parser.add_argument("--boft", default=False, type=eval)
     parser.add_argument("--mode", type=str, default="monarch", choices=["monarch", "boft", "lora"])
     parser.add_argument("--nblocks", default=-1, type=int)
     parser.add_argument("--blk_r", default=-1, type=int)

@@ -467,6 +467,7 @@ def main(config: dict = None):
         config.label2id = {l: i for i, l in enumerate(label_list)}
         config.id2label = {id: label for label, id in config.label2id.items()}
 
+    breakpoint()
     if data_args.max_seq_length > tokenizer.model_max_length:
         logger.warning(
             f"The max_seq_length passed ({data_args.max_seq_length}) is larger than the maximum length for the"
@@ -820,13 +821,6 @@ def main(config: dict = None):
 
     print(f"Used best hyperparameters from {best_param_path}: ", best_hyperparams)
     print("peft_config: ", peft_config)
-
-    # Attempt moving checkpoints to a more spacious disk
-    # TODO: Debug
-    # target_disk = "/data"
-    # path = os.path.abspath(training_args.output_dir + "/**/pytorch_model.bin")
-    # for ckpt in glob.glob(path, recursive=True):
-    #     replace_with_symlink(ckpt, target_disk)
 
 
 if __name__ == "__main__":
