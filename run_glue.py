@@ -446,7 +446,7 @@ def main(config: dict = None):
 
     # Get the metric function
     if data_args.task_name is not None:
-        metric = load_metric("glue", data_args.task_name)
+        metric = load_metric("glue", data_args.task_name, trust_remote_code=True)
     else:
         metric = load_metric("accuracy")
         
@@ -659,6 +659,7 @@ def main(config: dict = None):
             checkpoint = training_args.resume_from_checkpoint
         elif last_checkpoint is not None:
             checkpoint = last_checkpoint
+        breakpoint()
         train_result = trainer.train(resume_from_checkpoint=checkpoint)
         metrics = train_result.metrics
         max_train_samples = (
