@@ -23,6 +23,7 @@ import numpy as np
 import pandas as pd
 import torch
 import transformers
+import wandb
 from accelerate import load_checkpoint_and_dispatch
 from datasets import Dataset, load_dataset
 from huggingface_hub import login
@@ -40,7 +41,6 @@ from transformers import (
     set_seed,
 )
 
-import wandb
 from train_utils import *
 
 if torch.cuda.is_available():
@@ -243,9 +243,9 @@ def model_init(hyperparams: dict = best_hyperparams):
 
     # Monarch adaptation
     if args.all_linear:
-        peft_config["layers_to_adapt"] = find_all_linear_names(model)
+        peft_config["target_modules"] = find_all_linear_names(model)
         print("Adapting all linear layers")
-    init_monarch_layers(model, peft_config)
+    init_monarch(model, peft_config)
     # SVD doesn't support bf16
     if peft_config["svd_init"]:
         model = model.to(compute_dtype)

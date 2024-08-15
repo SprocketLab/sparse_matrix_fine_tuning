@@ -181,11 +181,11 @@ def main(config: dict = None):
 
     # Adapter settings
     if peft_config.get("q_v"):
-        peft_config["layers_to_adapt"] = (
+        peft_config["target_modules"] = (
             ["query_proj", "value_proj"] if "deberta" in model_args.model_name_or_path else ["query", "value"]
         )
     if peft_config.get("mlp"):
-        peft_config["layers_to_adapt"] += ["dense"]
+        peft_config["target_modules"] += ["dense"]
 
     training_args.disable_tqdm = args.disable_tqdm
     # Do NOT use loss as saving metric, maximize eval metric instead
@@ -406,7 +406,7 @@ def main(config: dict = None):
                     raise NotImplementedError
                 # model_internal.init_monarch_layers = partial(init_monarch_layers, model_internal)
                 # model_internal.peft_config = peft_config
-                init_monarch_layers(model_internal, peft_config)
+                init_monarch(model_internal, peft_config)
 
             elif args.use_lora:
                 init_lora(model, peft_config)
@@ -556,7 +556,6 @@ def main(config: dict = None):
     else:
         data_collator = None
 
-    """ @Wenxuan """
     # NOTE: 60K steps for QNLI， 80K for SST-2, 50K for MNLI
     if data_args.task_name == "qqp":
         training_args.eval_steps = 1250  # 110K total steps for QQP
@@ -731,7 +730,7 @@ def main(config: dict = None):
             checkpoint = last_checkpoint
         if args.profile:
             ctx = profiler.profile(
-                schedule=profiler.schedule(wait=1, warmup=3, active=2, repeat=1),
+                schedule=profiler.schedule(wait=1, warmup=3, active=1, repeat=1),
                 on_trace_ready=profiler.tensorboard_trace_handler(
                     "./roberta_profile" + "_" + time.strftime("%Y%m%d-%H%M%S")
                 ),

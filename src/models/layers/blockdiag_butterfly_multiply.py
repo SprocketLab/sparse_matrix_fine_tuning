@@ -85,7 +85,7 @@ class BlockdiagButterflyMultiply(torch.autograd.Function):
 
         x_reshaped = x.reshape(batch_dim, k, p).transpose(0, 1)
         # NOTE: allocate mem only once
-        if out1 is None or out1.shape != (k, batch_dim, q) or out1.dtype != x.dtype:
+        if out1 is None or out1.shape != (k, batch_dim, q):
             if out1 is None:
                 out1 = torch.empty(k, batch_dim, q, device=x.device, dtype=x.dtype)
             else:
@@ -99,7 +99,7 @@ class BlockdiagButterflyMultiply(torch.autograd.Function):
         out1 = (
             out1.transpose(0, 1).reshape(batch_dim, r, l).transpose(-1, -2).transpose(0, 1).contiguous()
         )  # -> (batch_dim, k, q) -> (batch_dim, r, l) -> (batch_dim, l, r) -> (l, batch_dim, r)
-        if out2 is None or out2.shape != (l, batch_dim, s) or out1.dtype != x.dtype:
+        if out2 is None or out2.shape != (l, batch_dim, s):
             if out2 is None:
                 out2 = torch.empty(l, batch_dim, s, device=x.device, dtype=x.dtype)
             else:

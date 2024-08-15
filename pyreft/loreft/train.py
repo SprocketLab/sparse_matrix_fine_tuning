@@ -16,6 +16,7 @@ from copy import deepcopy
 import evaluate
 import numpy as np
 import torch
+import wandb
 from compute_metrics import compute_metrics
 from dataset import LoReftGLUEDataset, LoReftSupervisedDataset
 from ray import tune
@@ -34,7 +35,6 @@ from transformers import (
 )
 from transformers.trainer_utils import EvalPrediction
 
-import wandb
 from peft import PeftModel
 from pyreft import (
     LoreftIntervention,
@@ -188,9 +188,12 @@ def model_init(hyperparams: dict = best_hyperparams):
         if args.mode == "monarch":
             print("###### INIT MONARCH ######")
             peft_config["dtype"] = dtype
-            init_monarch_layers(reft_model, peft_config)
+            init_monarch(reft_model, peft_config)
         elif args.mode == "lora":
-            pass
+            peft_config = {"target_modules": peft_config["target_modules"]}
+            peft_config["r"] = 32
+            peft_config["lora_alpha"] = 64
+            init_lora(reft_model, peft_config)
         elif args.mode == "boft":
             print("###### INIT BOFT ######")
             peft_config["dtype"] = dtype
@@ -341,7 +344,7 @@ def finetune(
     eval_datasets = all_eval_datasets
     # Initialize model
     if args.all_linear:
-        peft_config["layers_to_adapt"] += ["o_proj", "up_proj", "down_proj", "gate_proj"]
+        peft_config["target_modules"] += ["o_proj", "up_proj", "down_proj", "gate_proj"]
 
     reft_model = model_init()
     n_params = reft_model.count_parameters(include_model=False)
@@ -585,8 +588,8 @@ def finetune(
         # TODO:enable resume
         if args.profile:
             ctx = profiler.profile(
-                schedule=profiler.schedule(wait=1, warmup=1, active=1, repeat=1),
-                on_trace_ready=profiler.tensorboard_trace_handler("./llama_reasoning_log"),
+                schedule=profiler.schedule(wait=1, warmup=1, active=2, repeat=1),
+                on_trace_ready=profiler.tensorboard_trace_handler(f"./llama_reasoning_{args.mode}_log"),
                 record_shapes=True,
                 profile_memory=True,
                 with_stack=True,

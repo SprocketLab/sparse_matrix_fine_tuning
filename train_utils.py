@@ -23,9 +23,9 @@ from typing import Dict, List, Union
 
 import bitsandbytes as bnb
 import torch.nn as nn
+import wandb
 from ray import tune
 
-import wandb
 from peft import BOFTConfig, LoraConfig, get_peft_model
 from src.models.layers.monarch_linear import MonarchLinear, Scaler
 
@@ -385,7 +385,7 @@ def init_boft(
         boft_block_size=peft_config["boft_block_size"],  # These are mutually exclusive
         boft_block_num=peft_config["boft_block_num"],
         boft_n_butterfly_factor=peft_config["boft_n_butterfly_factor"],
-        target_modules=peft_config["layers_to_adapt"],
+        target_modules=peft_config["target_modules"],
         boft_dropout=peft_config["boft_dropout"],
         bias=peft_config["bias"],
     )
@@ -428,7 +428,7 @@ class peft_module:
             return sizes
 
         for module in self.modules():
-            for name in self.peft_config["layers_to_adapt"]:
+            for name in self.peft_config["target_modules"]:
                 layer = getattr(module, name, None)
                 if layer is None or isinstance(layer, MonarchLinear):
                     continue
@@ -474,11 +474,11 @@ class peft_module:
             self.nblocks = peft_config["nblocks"]
 
 
-def init_monarch_layers(model: nn.Module, peft_config: Dict, target_classes: Union[List[str], List[nn.Module]] = []):
+def init_monarch(model: nn.Module, peft_config: Dict, target_classes: Union[List[str], List[nn.Module]] = []):
     """
-    Hack the model by replacing modules with Monarch adapters
+    Hack the model by replacing modules with Monarch adapters for PEFT training
     Args:
-        target_classes: List of classes look recursively into for peft_config["layers_to_adapt"].
+        target_classes: List of classes look recursively into for peft_config["target_modules"].
             If not givenss, will traverse all layers.
     """
     # TODO: return trainable params for optimizer
@@ -491,7 +491,7 @@ def init_monarch_layers(model: nn.Module, peft_config: Dict, target_classes: Uni
 
     for name, module in model.named_modules():
         # Replace linear with monarch if is target layer
-        if any(hasattr(module, _name) for _name in peft_config["layers_to_adapt"]):
+        if any(hasattr(module, _name) for _name in peft_config["target_modules"]):
             # hack the module to "inherit" peft_adapter
             setattr(module, "set_monarch_recursive", partial(peft_module.set_monarch_recursive, module))
             setattr(module, "set_peft_config", partial(peft_module.set_peft_config, module))

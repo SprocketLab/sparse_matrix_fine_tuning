@@ -4,7 +4,7 @@
     "boft_n_butterfly_factor": 4,
     "boft_dropout": 0.1,
     "bias": "boft_only",
-    "layers_to_adapt": [
+    "target_modules": [
         "query",
         "value",
         "key"

@@ -7,7 +7,7 @@
     "blk_r": 4,
     "blk_sz": null,
 
-    "layers_to_adapt": [
+    "target_modules": [
         "query_proj",
         "value_proj",
         "key_proj"

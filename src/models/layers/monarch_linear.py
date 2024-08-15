@@ -236,10 +236,18 @@ class MonarchLinear(StructuredLinear):
         batch_shape = x.shape[:-1]
         batch_dim = np.prod(batch_shape)
 
-        if self.out1_buffer is None or self.out1_buffer.shape != (self.nblocks, batch_dim, self.blk_r):
+        if (
+            self.out1_buffer is None
+            or self.out1_buffer.shape != (self.nblocks, batch_dim, self.blk_r)
+            or self.out1_buffer.dtype != x.dtype
+        ):
             self.out1_buffer = torch.empty(self.nblocks, batch_dim, self.blk_r, device=x.device, dtype=x.dtype)
 
-        if self.out2_buffer is None or self.out2_buffer.shape != (self.nblocks, batch_dim, self.out_blksz):
+        if (
+            self.out2_buffer is None
+            or self.out2_buffer.shape != (self.nblocks, batch_dim, self.out_blksz)
+            or self.out2_buffer.dtype != x.dtype
+        ):
             self.out2_buffer = torch.empty(self.nblocks, batch_dim, self.out_blksz, device=x.device, dtype=x.dtype)
 
     def monarch_forward(self, x):

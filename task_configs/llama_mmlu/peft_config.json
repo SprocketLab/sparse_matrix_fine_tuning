@@ -11,7 +11,7 @@
     "boft_n_butterfly_factor": 2,
     "boft_dropout": 0.1,
     "bias": "none",
-    "layers_to_adapt": [
+    "target_modules": [
         "q_proj",
         "v_proj",
         "k_proj"

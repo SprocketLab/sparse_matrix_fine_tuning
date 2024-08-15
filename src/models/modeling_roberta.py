@@ -25,6 +25,7 @@ from typing import List, Optional, Tuple, Union
 import ray
 import torch
 import torch.utils.checkpoint
+import wandb
 from packaging import version
 from torch import nn
 from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss
@@ -53,8 +54,6 @@ from transformers.utils import (
     logging,
     replace_return_docstrings,
 )
-
-import wandb
 
 sys.path.insert(0, "/fly")  # docker working dir
 import loralib as lora
@@ -95,7 +94,7 @@ class peft_module:
             sizes = (sizes[0], sizes[1])
             return sizes
 
-        for name in self.peft_config["layers_to_adapt"]:
+        for name in self.peft_config["target_modules"]:
             if not hasattr(self, name):
                 continue
 
@@ -835,17 +834,17 @@ class RobertaModel(RobertaPreTrainedModel):
         # Initialize weights and apply final processing
         self.post_init()
 
-    # def init_monarch_layers(self, layers_to_adapt = [RobertaSelfAttention, RobertaIntermediate]):
+    # def init_monarch_layers(self, target_modules = [RobertaSelfAttention, RobertaIntermediate]):
     #     if self.monarch_param_set:
     #         return
 
-    #     self.layers_to_adapt = layers_to_adapt
+    #     self.target_modules = target_modules
     #     if self.peft_config["from_lora"]:
     #         lora_dict = torch.load(self.peft_config["from_lora"])
 
     #     for name, module in self.named_modules():
     #         # Replace linear with monarch if is target layer
-    #         if any([isinstance(module, layer) for layer in self.layers_to_adapt]):
+    #         if any([isinstance(module, layer) for layer in self.target_modules]):
     #             module.init_monarch_layers()
     #         else:
     #             module.requires_grad_(False)
@@ -915,7 +914,7 @@ class RobertaModel(RobertaPreTrainedModel):
     #     self.monarch_param_set = False
 
     #     for name, module in self.named_modules():
-    #         if any([isinstance(module, layer) for layer in self.layers_to_adapt]):
+    #         if any([isinstance(module, layer) for layer in self.target_modules]):
     #             module.set_peft_config(peft_config)
 
     def get_input_embeddings(self):

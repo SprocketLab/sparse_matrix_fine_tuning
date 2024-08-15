@@ -58,8 +58,6 @@ class ReftTrainer(Trainer):
 
         self.model.load_intervention(f"{self.state.best_model_checkpoint}/intervenable_model", include_model=True)
 
-    """@Wenxuan"""
-
     def _load_from_checkpoint(self, resume_from_checkpoint, model=None):
         if resume_from_checkpoint is not None:
             resume_from_checkpoint = os.path.join(resume_from_checkpoint, "intervenable_model")
