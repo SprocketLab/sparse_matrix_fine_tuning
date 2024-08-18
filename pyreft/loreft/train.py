@@ -19,6 +19,7 @@ import torch
 import wandb
 from compute_metrics import compute_metrics
 from dataset import LoReftGLUEDataset, LoReftSupervisedDataset
+from peft import PeftModel
 from ray import tune
 from ray.tune.schedulers import ASHAScheduler
 from task_config import task_config
@@ -35,7 +36,6 @@ from transformers import (
 )
 from transformers.trainer_utils import EvalPrediction
 
-from peft import PeftModel
 from pyreft import (
     LoreftIntervention,
     MoReIntervention,
@@ -597,6 +597,7 @@ def finetune(
             trainer.add_callback(ProfCallback(ctx))
         else:
             ctx = nullcontext()
+
         with ctx:
             if args.resume:
                 trainer.train(resume_from_checkpoint=last_ckpt)
@@ -733,7 +734,8 @@ def main():
     parser.add_argument("--max_steps", type=int, default=-1)
     global args
     args = parser.parse_args()
-
+    if args.profile:
+        args.gradient_accumulation_steps = 1
     finetune(**vars(args))
 
 

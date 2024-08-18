@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     image: fly:latest
     volumes:
-      - /home/openebs/liuhongxin/home/tanwenxuan/sparse_matrix_fine_tuning:/fly
+      - .:/fly
       - /data:/data
       - ~/.cache/huggingface:/home/user/.cache/huggingface
     working_dir: /fly
