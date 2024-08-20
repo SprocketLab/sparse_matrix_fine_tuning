@@ -467,7 +467,6 @@ def main(config: dict = None):
         config.label2id = {l: i for i, l in enumerate(label_list)}
         config.id2label = {id: label for label, id in config.label2id.items()}
 
-    breakpoint()
     if data_args.max_seq_length > tokenizer.model_max_length:
         logger.warning(
             f"The max_seq_length passed ({data_args.max_seq_length}) is larger than the maximum length for the"

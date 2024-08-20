@@ -24,9 +24,9 @@ from typing import Dict, List, Union
 import bitsandbytes as bnb
 import torch.nn as nn
 import wandb
+from peft import BOFTConfig, LoraConfig, get_peft_model
 from ray import tune
 
-from peft import BOFTConfig, LoraConfig, get_peft_model
 from src.models.layers.monarch_linear import MonarchLinear, Scaler
 
 PEFT_ROBERTA_PATH = "/fly/task_configs/monarch_roberta_glue/peft_config.json"
@@ -561,21 +561,6 @@ class ProfCallback(TrainerCallback):
         self.prof.step()
         # peak memory
         # print(f"Peak memory: {torch.cuda.max_memory_allocated() / 1024 ** 2:.2f} MB")
-
-
-# Example:
-# with torch.profiler.profile(activities=[torch.profiler.ProfilerActivity.CPU,
-#                                         torch.profiler.ProfilerActivity.CUDA],
-#                             schedule=torch.profiler.schedule(skip_first=3, wait=1, warmup=1, active=2, repeat=2),
-#                             on_trace_ready=torch.profiler.tensorboard_trace_handler('hf-training-trainer'),
-#                             profile_memory=True,
-#                             with_stack=True,
-#                             record_shapes=True) as prof:
-
-#     trainer.add_callback(ProfCallback(prof=prof))
-#     trainer.train()
-
-# print(f'training time, {(time.perf_counter() - start):.1f} s')
 
 
 def set_merged(model):
