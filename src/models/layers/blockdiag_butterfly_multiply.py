@@ -5,6 +5,10 @@ import torch
 from einops import rearrange
 from torch.nn import functional as F
 
+from src.ops.triton import triton_bmm
+
+bmm_impl = triton_bmm  # torch.bmm
+
 
 class BlockdiagMultiply(torch.autograd.Function):
     """This is a faster implementation, with careful memory copies for the fastest
@@ -92,7 +96,7 @@ class BlockdiagButterflyMultiply(torch.autograd.Function):
                 out1.data = torch.empty(k, batch_dim, q, device=x.device, dtype=x.dtype)
 
         # out1 = torch.empty(batch_dim, k, q, device=x.device, dtype=x.dtype).transpose(0, 1)
-        out1 = torch.bmm(
+        out1 = bmm_impl(
             x_reshaped, w1_bfly.transpose(-1, -2), out=out1
         )  # (k, batch_dim, p) @ (k, p, q) -> (k, batch_dim, q)
         # out1 = out1.transpose(0, 1).reshape(batch_dim, r, l).transpose(-1, -2).contiguous().transpose(0, 1)
@@ -106,9 +110,7 @@ class BlockdiagButterflyMultiply(torch.autograd.Function):
                 out2.data = torch.empty(l, batch_dim, s, device=x.device, dtype=x.dtype)
 
         # out2 = torch.empty(batch_dim, l, s, device=x.device, dtype=x.dtype).transpose(0, 1)
-        out2 = torch.bmm(
-            out1, w2_bfly.transpose(-1, -2), out=out2
-        )  # (l, batch_dim, r) @ (l, r, s) -> (l, batch_dim, s)
+        out2 = bmm_impl(out1, w2_bfly.transpose(-1, -2), out=out2)  # (l, batch_dim, r) @ (l, r, s) -> (l, batch_dim, s)
         out2 = out2.permute(1, 2, 0).reshape(
             *batch_shape, s * l
         )  # (batch_dim, l, s) -> (batch_dim, s, l) -> (batch_dim, m = s * l)

@@ -23,7 +23,6 @@ import numpy as np
 import pandas as pd
 import torch
 import transformers
-import wandb
 from accelerate import load_checkpoint_and_dispatch
 from datasets import Dataset, load_dataset
 from huggingface_hub import login
@@ -41,6 +40,7 @@ from transformers import (
     set_seed,
 )
 
+import wandb
 from train_utils import *
 
 if torch.cuda.is_available():
@@ -51,7 +51,7 @@ tokenizer = None
 best_hyperparams = None
 args = None
 model = None
-peft_config = json.load(open("/fly/task_configs/llama_mmlu/peft_config.json", "r"))
+peft_config = json.load(open("/fly/task_configs/llama/peft_config.json", "r"))
 IGNORE_INDEX = -100
 DEFAULT_PAD_TOKEN = "[PAD]"
 
@@ -782,7 +782,7 @@ def train():
         if args.profile:
             ctx = profiler.profile(
                 schedule=profiler.schedule(wait=1, warmup=1, active=1, repeat=1),
-                on_trace_ready=profiler.tensorboard_trace_handler("./llama_mmlu_log"),
+                on_trace_ready=profiler.tensorboard_trace_handler("./llama_log"),
                 record_shapes=True,
                 profile_memory=True,
                 with_stack=True,

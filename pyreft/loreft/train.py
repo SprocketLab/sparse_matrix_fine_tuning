@@ -16,7 +16,6 @@ from copy import deepcopy
 import evaluate
 import numpy as np
 import torch
-import wandb
 from compute_metrics import compute_metrics
 from dataset import LoReftGLUEDataset, LoReftSupervisedDataset
 from peft import PeftModel
@@ -36,6 +35,7 @@ from transformers import (
 )
 from transformers.trainer_utils import EvalPrediction
 
+import wandb
 from pyreft import (
     LoreftIntervention,
     MoReIntervention,
@@ -65,7 +65,7 @@ dtype_mapping = {
     "bfloat16": torch.bfloat16,
     "float8": "float8",
 }
-peft_config = json.load(open("/fly/task_configs/llama_mmlu/peft_config.json", "r"))
+peft_config = json.load(open("/fly/task_configs/llama/peft_config.json", "r"))
 
 
 def model_init(hyperparams: dict = best_hyperparams):

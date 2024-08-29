@@ -23,17 +23,17 @@ from typing import Dict, List, Union
 
 import bitsandbytes as bnb
 import torch.nn as nn
-import wandb
 from peft import BOFTConfig, LoraConfig, get_peft_model
 from ray import tune
 
+import wandb
 from src.models.layers.monarch_linear import MonarchLinear, Scaler
 
 PEFT_ROBERTA_PATH = "/fly/task_configs/monarch_roberta_glue/peft_config.json"
-PEFT_DEBERTA_PATH = "/fly/task_configs/glue_deberta/peft_monarch_deberta.json"
+PEFT_DEBERTA_PATH = "/fly/task_configs/deberta_glue/peft_monarch_deberta.json"
 PEFT_ROBERTA_LORA_PATH = "/fly/task_configs/lora_roberta_glue/peft_config.json"
-# PEFT_DEBERTA_PATH = "/workspace/private/sparse_matrix_fine_tuning/task_configs/glue_deberta/peft_monarch_deberta.json"
-PEFT_DEBERTA_BOFT_PATH = "./task_configs/glue_deberta/peft_boft_deberta.json"
+# PEFT_DEBERTA_PATH = "/workspace/private/sparse_matrix_fine_tuning/task_configs/deberta_glue/peft_monarch_deberta.json"
+PEFT_DEBERTA_BOFT_PATH = "./task_configs/deberta_glue/peft_boft_deberta.json"
 PEFT_ROBERTA_BOFT_PATH = "./task_configs/monarch_roberta_glue/peft_boft_roberta.json"
 
 

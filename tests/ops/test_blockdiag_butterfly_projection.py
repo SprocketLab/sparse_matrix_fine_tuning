@@ -13,7 +13,7 @@ from src.models.layers.monarch_linear import MonarchLinear
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
 @pytest.mark.parametrize("nblocks", [2, 3, 4])
 @pytest.mark.parametrize("rank", [1, 2])
-@pytest.mark.parametrize("sdict_path", ["results/llama_mmlu/checkpoint-1683/pytorch_model-00001-of-00002.bin"])
+@pytest.mark.parametrize("sdict_path", ["results/llama/checkpoint-1683/pytorch_model-00001-of-00002.bin"])
 def test_trained_weight_approx(device, rank, nblocks, sdict_path):
     torch.random.manual_seed(0)
 
