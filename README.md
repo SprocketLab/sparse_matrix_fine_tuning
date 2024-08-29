@@ -1,34 +1,28 @@
-Before running anything, set up env by running (the docker-compose.yml uses my WANDB_API_KEY by default)
+# MoRe Fine-Tuning with 10x Fewer Parameters
+Official repository for ICML 2024 paper "MoRe Fine-Tuning with 10x Fewer Parameters". Using hardware efficient block-diagonal matrices, we surpass LoRA's performance with 10x fewer parameters on average, very little rank tuning and no alpha scaler. Our approach is also more memory and runtime efficient on standard reasoning tasks, with **our Llama 7B beating LoRA-trained Llama 13B on Commonsense reasoning**.
+
+Paper: https://openreview.net/pdf?id=AzTz27n6O2
+
+## News
+- [2024/06] Our paper is accepted by two ICML workshops: ES-FOMO and FM-wild!
+
+## MoRe Implementation
+* `src/models/layers/monarch_linear.py` contains the code for MoRe adapter.
+* `src/models/layers/blockdiag_butterfly_multiply.py` contains the code for block-diagonal monarch matmul.
+## Setup
+We highly recommend using docker for stable environment building, but any decent PyTorch + Huggingface environment should work.
 ```
 docker compose build; docker compose up -d
 hostname > hostname.txt # to not confuse machines in wandb
 docker attach peft
 ```
-Full training configs and logs will be stored in wandb. (You can use your key or flag --wandb=False)
 
-## Repo guide
-Check src/models/layers/blockdiag_butterfly_multiply.py to *** understand Monarch matmul.***\
-Check src/models/layers/monarch_linear.py for a basic setup of Monarch.\
-Check src/ops/blockdiag_butterfly_einsum.py to understand D2S projection.\
-See src/models/modeling_roberta.py for my modified Roberta supporting LoRA and Monarch.
+## Usage
+### To reproduce results
+* GLUE tasks: `python run_glue.py /fly/task_configs/monarch_roberta_glue/cola.json`.\
+* For reasoning tasks, first load datasets using `bash pyreft/loreft/load_datasets.sh`.
+* Math reasoning: `CUDA_VISIBLE_DEVICES=0 bash  pyreft/loreft/math_monarch.sh`.
+* Commonsense reasoning: `CUDA_VISIBLE_DEVICES=0 bash pyreft/loreft/common_sense_monarch.sh`.
 
-Full finetuning:
-```
-python finetune_roberta.py
-```
-LoRA PEFT (modify peft_config for ranks, etc.):
-```
-python lora_roberta.py
-```
-Monarch PEFT:
-```
-python monarch_roberta.py  --peft
-```
-For GLUE tasks
-Training hyperparams are in task_configs/[task].json
-Tune block size, rank, etc. in task_configs/peft_config.json.
-Or try run_glue_hf.py with default args below
-```
-export WANDB_API_KEY="YOUR_KEY"
-python run_glue.py task_configs/monarch_roberta_glue/peft_con/cola.json --do_tune=False --wandb=True
-```
+You can manually modify the hyperparameters in `task_configs/llama` for reasoning tasks and
+`task_configs/monarch_roberta_glue` for GLUE tasks.

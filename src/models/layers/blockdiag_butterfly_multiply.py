@@ -5,9 +5,8 @@ import torch
 from einops import rearrange
 from torch.nn import functional as F
 
-from src.ops.triton import triton_bmm
-
-bmm_impl = triton_bmm  # torch.bmm
+# bmm_impl = triton_bmm  # torch.bmm
+bmm_impl = torch.bmm
 
 
 class BlockdiagMultiply(torch.autograd.Function):
@@ -75,6 +74,7 @@ class BlockdiagButterflyMultiply(torch.autograd.Function):
 
     @staticmethod
     @torch.cuda.amp.custom_fwd(cast_inputs=torch.bfloat16)
+    # @torch.compile(dynamic=True)
     def forward(ctx, x, w1_bfly, w2_bfly, out1=None, out2=None):
         batch_shape, n = x.shape[:-1], x.shape[-1]
         batch_dim = np.prod(batch_shape)

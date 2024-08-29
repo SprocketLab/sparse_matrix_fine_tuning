@@ -81,8 +81,7 @@ RUN pip install accelerate -U
 RUN pip install jupyterlab==4.0.3
 RUN pip install datasets==2.16.1
 RUN pip install tensorboardX
-COPY qlora/requirements.txt .
-RUN pip install -r requirements.txt
+RUN pip install bitsandbytes peft einops sentencepiece==0.1.99
 RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" || true
 RUN pip install transformers==4.39.2
 RUN pip install flash_attn==2.5.6
@@ -93,5 +92,5 @@ RUN pip install ray==2.7
 #     /bin/bash /tmp/miniconda.sh -b -p $CONDA_DIR && \
 #     rm -rf /tmp/*
 RUN pip install pre-commit
-Run pip install --upgrade peft
+RUN pip install triton
 RUN chmod -R 777 .
