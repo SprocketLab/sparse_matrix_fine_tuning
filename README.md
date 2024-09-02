@@ -1,7 +1,7 @@
 # MoRe Fine-Tuning with 10x Fewer Parameters
 Official repository for ICML 2024 paper "MoRe Fine-Tuning with 10x Fewer Parameters". Using hardware efficient block-diagonal matrices, we surpass LoRA's performance with 10x fewer parameters on average, very little rank tuning and no alpha scaler. Our approach is also more memory and runtime efficient on standard reasoning tasks, with **our Llama 7B beating LoRA-trained Llama 13B on Commonsense reasoning**.
 
-Paper: https://openreview.net/pdf?id=AzTz27n6O2
+Paper: https://arxiv.org/abs/2408.17383
 
 ## News
 - [2024/06] Our paper is accepted by two ICML workshops: ES-FOMO and FM-wild!
