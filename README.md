@@ -26,3 +26,25 @@ docker attach peft
 
 You can manually modify the hyperparameters in `task_configs/llama` for reasoning tasks and
 `task_configs/monarch_roberta_glue` for GLUE tasks.
+
+## Todo
+We welcome contributions and suggestions to the list!
+- [ ] Fused Triton kernel for Monarch
+- [ ] MMLU results (including reproducing the QLoRA baselines)
+- [ ] More ablations on rank tuning guidelines
+- [ ] Explore MoRe as a general substitute for low-rank modules.
+
+
+## Citation
+If you use our adapter implementation, please cite our paper:
+```bibtex
+@misc{tan2024finetuning10xfewerparameters,
+      title={MoRe Fine-Tuning with 10x Fewer Parameters}, 
+      author={Wenxuan Tan and Nicholas Roberts and Tzu-Heng Huang and Jitian Zhao and John Cooper and Samuel Guo and Chengyu Duan and Frederic Sala},
+      year={2024},
+      eprint={2408.17383},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2408.17383}, 
+}
+```
