@@ -8,7 +8,7 @@ Paper: https://arxiv.org/abs/2408.17383
 
 ## MoRe Implementation
 * `src/models/layers/monarch_linear.py` contains the code for MoRe adapter.
-* `src/models/layers/blockdiag_butterfly_multiply.py` contains the code for block-diagonal monarch matmul.
+* `src/models/layers/blockdiag_butterfly_multiply.py` contains the code for block-diagonal monarch matmul, which is optimized over [Hazy Research's version](https://github.com/HazyResearch/fly) for less transpose and mem copy.
 ## Setup
 We highly recommend using docker for stable environment building, but any decent PyTorch + Huggingface environment should work.
 ```

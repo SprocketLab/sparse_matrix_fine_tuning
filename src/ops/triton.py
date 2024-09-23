@@ -3,8 +3,11 @@ import torch.nn.functional as F
 import triton
 import triton.language as tl
 from torch import autograd
+from .activations import *    
 
-
+# Modified from https://github.com/lucidrains/triton-transformer/blob/main/triton_transformer/bmm.py
+# It won't really make sense to fuse activations here--they usually have different block dims.
+# And for LoRA-style PEFT activation is applied after adding to main output.
 @triton.autotune(
     configs=[
         triton.Config(
@@ -93,16 +96,58 @@ def bmm_kernel(
 
     o_ptrs = o_ptr + stride_om * offs_m[:, None] + stride_on * offs_n[None, :] + stride_ol * pid_batch
     tl.store(o_ptrs, o, mask=mask)
+    
 
+@triton.jit
+def monarch_kernel(
+    x_ptr,
+    y_ptr,
+    o_ptr,
+    M,
+    N,
+    K,
+    stride_al,
+    stride_am,
+    stride_ak,
+    stride_bl,
+    stride_bk,
+    stride_bn,
+    stride_ol,
+    stride_om,
+    stride_on,
+    BLOCK_M: tl.constexpr,
+    BLOCK_N: tl.constexpr,
+    BLOCK_K: tl.constexpr,
+    GROUP_SIZE_M: tl.constexpr,
+    ACTIVATION: tl.constexpr,
+):
+    """ implement the following in a fused triton kernel using the bmm helper above
+    def forward(ctx, x, w1_bfly, w2_bfly, out1, out2):
+        k, q, p = w1_bfly.shape
+        l, s, r = w2_bfly.shape
+        x_reshaped = x.reshape(batch_dim, k, p).transpose(0, 1)
+        out1 = torch.bmm(
+            x_reshaped, w1_bfly.transpose(-1, -2), out=out1
+        )
+        out1 = (
+            out1.transpose(0, 1).reshape(batch_dim, r, l).transpose(-1, -2).transpose(0, 1).contiguous()
+        )  # -> (batch_dim, k, q) -> (batch_dim, r, l) -> (batch_dim, l, r) -> (l, batch_dim, r)
+        out2 = torch.bmm(out1, w2_bfly.transpose(-1, -2), out=out2)  # (l, batch_dim, r) @ (l, r, s) -> (l, batch_dim, s)
+        out2 = out2.permute(1, 2, 0).reshape(
+            *batch_shape, s * l
+        )  # (batch_dim, l, s) -> (batch_dim, s, l) -> (batch_dim, m = s * l)
+        return out2 
+    """
+    x_reshaped  = tl.reshape(x_ptr, (M, K))
+    
+    
 
-def triton_bmm(x, y, activation=None, out=None):
+def monarch_forward(x, y, activation=None, out=None):
     B, SEQ_LEN, K = x.shape
-    B * K
     if y.ndim == 2:
         y = y.unsqueeze(0).expand(B, -1, -1)
 
     _, K, N = y.shape
-    B * N
     # assert (K % 32 == 0), f"K must be divisible by 32"
     if out is None or out.shape != (B, SEQ_LEN, N):
         out = torch.empty((B, SEQ_LEN, N), device=x.device, dtype=x.dtype)
@@ -111,36 +156,34 @@ def triton_bmm(x, y, activation=None, out=None):
         B,
         triton.cdiv(SEQ_LEN, META["BLOCK_M"]) * triton.cdiv(N, META["BLOCK_N"]),
     )
-    bmm_kernel[grid](
-        x,
-        y,
-        out,
-        SEQ_LEN,
-        N,
-        K,
-        x.stride(0),
-        x.stride(1),
-        x.stride(2),
-        y.stride(0),
-        y.stride(1),
-        y.stride(2),
-        out.stride(0),
-        out.stride(1),
-        out.stride(2),
-        ACTIVATION=activation,
-    )
+    with torch.cuda.device(x.device):
+        bmm_kernel[grid](
+            x,
+            y,
+            out,
+            SEQ_LEN,
+            N,
+            K,
+            x.stride(0),
+            x.stride(1),
+            x.stride(2),
+            y.stride(0),
+            y.stride(1),
+            y.stride(2),
+            out.stride(0),
+            out.stride(1),
+            out.stride(2),
+            ACTIVATION=activation,
+        )
     return out
 
 
-@triton.jit
-def relu_squared_activation(x):
-    return tl.where(x > 0, x * x, 0.0)
 
 
 class _relu_squared(autograd.Function):
     @classmethod
     def forward(self, ctx, x, w):
-        o = triton_bmm(x, w, activation=relu_squared_activation)
+        o = monarch_forward(x, w, activation=relu_squared_activation)
         if x.requires_grad:
             ctx.save_for_backward(x, w, o)
         return o
@@ -149,8 +192,8 @@ class _relu_squared(autograd.Function):
     def backward(self, ctx, dy):
         x, w, o = ctx.saved_tensors
         dy = torch.sqrt(o) * 2 * dy
-        dx = triton_bmm(dy, w.t())
-        dw = triton_bmm(x.transpose(-1, -2), dy)
+        dx = monarch_forward(dy, w.t())
+        dw = monarch_forward(x.transpose(-1, -2), dy)
         return dx, dw
 
 

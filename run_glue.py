@@ -1,7 +1,7 @@
 """
 Finetuning the library models for sequence classification on GLUE.
 Ex. training usage:
-    python run_glue.py /fly/task_configs/monarch_roberta_glue/cola.json
+    python run_glue.py /fly/task_configs/monarch_roberta_glue/cola.json --wandb=False
 Ex. Hyperparameter tuning usage:
     python run_glue.py /fly/task_configs/monarch_roberta_glue/cola.json --do_tune=True
 
