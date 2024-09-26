@@ -34,7 +34,7 @@ PEFT_DEBERTA_PATH = "/fly/task_configs/deberta_glue/peft_monarch_deberta.json"
 PEFT_ROBERTA_LORA_PATH = "/fly/task_configs/lora_roberta_glue/peft_config.json"
 # PEFT_DEBERTA_PATH = "/workspace/private/sparse_matrix_fine_tuning/task_configs/deberta_glue/peft_monarch_deberta.json"
 PEFT_DEBERTA_BOFT_PATH = "./task_configs/deberta_glue/peft_boft_deberta.json"
-PEFT_ROBERTA_BOFT_PATH = "./task_configs/monarch_roberta_glue/peft_boft_roberta.json"
+PEFT_ROBERTA_BOFT_PATH = "./task_configs/boft_roberta_glue/peft_boft_roberta.json"
 
 
 def parse_args():
@@ -49,11 +49,9 @@ def parse_args():
     )
 
     # Add optional arguments
-    parser.add_argument(
-        "--use_monarch", default=True, type=eval, help="Use monarch. Mostly you want this (default: True)"
-    )
-    parser.add_argument("--use_boft", default=False, type=bool, help="Use BOFT")
-    parser.add_argument("--use_lora", default=False, type=eval)
+    parser.add_argument("--monarch", default=True, type=eval, help="Use monarch. Mostly you want this (default: True)")
+    parser.add_argument("--boft", default=False, type=bool, help="Use BOFT")
+    parser.add_argument("--lora", default=False, type=eval)
     parser.add_argument(
         "--do_tune", default=False, type=eval, help="Whether to do Hyperparameter optimization (HPO) using ray tune."
     )

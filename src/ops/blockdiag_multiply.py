@@ -46,11 +46,11 @@ class BlockdiagMultiply(torch.autograd.Function):
     def forward(ctx, x, weight):
         ctx.save_for_backward(x, weight)
         batch_shape, n = x.shape[:-1], x.shape[-1]
-        batch_dim = np.prod(batch_shape)
+        seq_len = np.prod(batch_shape)
         nblocks, q, p = weight.shape
         assert nblocks * p == n
-        x_reshaped = x.reshape(batch_dim, nblocks, p).transpose(0, 1)
-        out = torch.empty(batch_dim, nblocks, q, device=x.device, dtype=x.dtype).transpose(0, 1)
+        x_reshaped = x.reshape(seq_len, nblocks, p).transpose(0, 1)
+        out = torch.empty(seq_len, nblocks, q, device=x.device, dtype=x.dtype).transpose(0, 1)
         out = torch.bmm(x_reshaped, weight.transpose(-1, -2), out=out).transpose(0, 1)
         return out.reshape(*batch_shape, nblocks * q)
 
@@ -59,18 +59,18 @@ class BlockdiagMultiply(torch.autograd.Function):
     def backward(ctx, dout):
         x, weight = ctx.saved_tensors
         batch_shape, n = x.shape[:-1], x.shape[-1]
-        batch_dim = np.prod(batch_shape)
+        seq_len = np.prod(batch_shape)
         nblocks, q, p = weight.shape
         assert nblocks * p == n
         dx, dweight = None, None
-        dout_reshaped = dout.reshape(batch_dim, nblocks, q).transpose(0, 1)
+        dout_reshaped = dout.reshape(seq_len, nblocks, q).transpose(0, 1)
         if ctx.needs_input_grad[0]:
-            dx = torch.empty(batch_dim, nblocks, p, device=x.device, dtype=x.dtype)
+            dx = torch.empty(seq_len, nblocks, p, device=x.device, dtype=x.dtype)
             dx = (
                 torch.bmm(dout_reshaped, weight.conj(), out=dx.transpose(0, 1)).transpose(0, 1).reshape(*batch_shape, n)
             )
         if ctx.needs_input_grad[1]:
-            x_reshaped = x.reshape(batch_dim, nblocks, p).transpose(0, 1)
+            x_reshaped = x.reshape(seq_len, nblocks, p).transpose(0, 1)
             dweight = torch.bmm(dout_reshaped.transpose(-1, -2), x_reshaped.conj())
         return dx, dweight
 

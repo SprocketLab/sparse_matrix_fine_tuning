@@ -5,9 +5,6 @@ import torch
 from einops import rearrange
 from torch.nn import functional as F
 
-# bmm_impl = triton_bmm  # torch.bmm
-bmm_impl = torch.bmm
-
 
 class BlockdiagMultiply(torch.autograd.Function):
     """This is a faster implementation, with careful memory copies for the fastest
@@ -25,15 +22,15 @@ class BlockdiagMultiply(torch.autograd.Function):
     def forward(ctx, x, weight):
         ctx.save_for_backward(x, weight)
         batch_shape, n = x.shape[:-1], x.shape[-1]
-        batch_dim = np.prod(batch_shape)
+        seq_dim = np.prod(batch_shape)
         nblocks, q, p = weight.shape
         assert nblocks * p == n
-        x_reshaped = x.reshape(batch_dim, nblocks, p).transpose(0, 1)  # (nblocks, batch_dim, p)
-        # TODO: only call this once
-        out = torch.empty(nblocks, batch_dim, q, device=x.device, dtype=x.dtype)
+        x_reshaped = x.reshape(seq_dim, nblocks, p).transpose(0, 1)  # (nblocks, seq_dim, p)
+
+        out = torch.empty(nblocks, seq_dim, q, device=x.device, dtype=x.dtype)
         out = torch.bmm(x_reshaped, weight.transpose(-1, -2), out=out).transpose(
             0, 1
-        )  # (nblocks, batch_dim, blk_sz) @ (nblocks, blk_sz, blk_r) -> (nblocks, batch_dim, q)
+        )  # (nblocks, seq_dim, blk_sz) @ (nblocks, blk_sz, blk_r) -> (nblocks, seq_dim, q)
         return out.reshape(*batch_shape, nblocks * q)
 
     @staticmethod
@@ -41,18 +38,18 @@ class BlockdiagMultiply(torch.autograd.Function):
     def backward(ctx, dout):
         x, weight = ctx.saved_tensors
         batch_shape, n = x.shape[:-1], x.shape[-1]
-        batch_dim = np.prod(batch_shape)
+        seq_dim = np.prod(batch_shape)
         nblocks, q, p = weight.shape
         assert nblocks * p == n
         dx, dweight = None, None
-        dout_reshaped = dout.reshape(batch_dim, nblocks, q).transpose(0, 1)
+        dout_reshaped = dout.reshape(seq_dim, nblocks, q).transpose(0, 1)
         if ctx.needs_input_grad[0]:
-            dx = torch.empty(batch_dim, nblocks, p, device=x.device, dtype=x.dtype)
+            dx = torch.empty(seq_dim, nblocks, p, device=x.device, dtype=x.dtype)
             dx = (
                 torch.bmm(dout_reshaped, weight.conj(), out=dx.transpose(0, 1)).transpose(0, 1).reshape(*batch_shape, n)
             )
         if ctx.needs_input_grad[1]:
-            x_reshaped = x.reshape(batch_dim, nblocks, p).transpose(0, 1)
+            x_reshaped = x.reshape(seq_dim, nblocks, p).transpose(0, 1)
             dweight = torch.bmm(dout_reshaped.transpose(-1, -2), x_reshaped.conj())
         return dx, dweight
 
@@ -74,10 +71,9 @@ class BlockdiagButterflyMultiply(torch.autograd.Function):
 
     @staticmethod
     @torch.cuda.amp.custom_fwd(cast_inputs=torch.bfloat16)
-    # @torch.compile(dynamic=True)
     def forward(ctx, x, w1_bfly, w2_bfly, out1=None, out2=None):
         batch_shape, n = x.shape[:-1], x.shape[-1]
-        batch_dim = np.prod(batch_shape)
+        seq_dim = np.prod(batch_shape)
 
         w1_bfly = w1_bfly.to(x.dtype)
         w2_bfly = w2_bfly.to(x.dtype)
@@ -86,34 +82,25 @@ class BlockdiagButterflyMultiply(torch.autograd.Function):
         l, s, r = w2_bfly.shape
         assert k * p == n
         assert l * r == k * q
-
-        x_reshaped = x.reshape(batch_dim, k, p).transpose(0, 1)
-        # NOTE: allocate mem only once
-        if out1 is None or out1.shape != (k, batch_dim, q):
-            if out1 is None:
-                out1 = torch.empty(k, batch_dim, q, device=x.device, dtype=x.dtype)
-            else:
-                out1.data = torch.empty(k, batch_dim, q, device=x.device, dtype=x.dtype)
-
-        # out1 = torch.empty(batch_dim, k, q, device=x.device, dtype=x.dtype).transpose(0, 1)
-        out1 = bmm_impl(
+        # For Llama 7B on Math this is like (4, 666, 1024)
+        x_reshaped = x.reshape(seq_dim, k, p).transpose(0, 1)
+        out1 = torch.empty(k, seq_dim, q, device=x.device, dtype=x.dtype)
+        out1 = torch.bmm(
             x_reshaped, w1_bfly.transpose(-1, -2), out=out1
-        )  # (k, batch_dim, p) @ (k, p, q) -> (k, batch_dim, q)
-        # out1 = out1.transpose(0, 1).reshape(batch_dim, r, l).transpose(-1, -2).contiguous().transpose(0, 1)
-        out1 = (
-            out1.transpose(0, 1).reshape(batch_dim, r, l).transpose(-1, -2).transpose(0, 1).contiguous()
-        )  # -> (batch_dim, k, q) -> (batch_dim, r, l) -> (batch_dim, l, r) -> (l, batch_dim, r)
-        if out2 is None or out2.shape != (l, batch_dim, s):
-            if out2 is None:
-                out2 = torch.empty(l, batch_dim, s, device=x.device, dtype=x.dtype)
-            else:
-                out2.data = torch.empty(l, batch_dim, s, device=x.device, dtype=x.dtype)
+        )  # (k, seq_dim, p) @ (k, p, q) -> (k, seq_dim, q)
+        del x_reshaped
 
-        # out2 = torch.empty(batch_dim, l, s, device=x.device, dtype=x.dtype).transpose(0, 1)
-        out2 = bmm_impl(out1, w2_bfly.transpose(-1, -2), out=out2)  # (l, batch_dim, r) @ (l, r, s) -> (l, batch_dim, s)
+        # out1 = out1.transpose(0, 1).reshape(seq_dim, r, l).transpose(-1, -2).contiguous().transpose(0, 1)
+        out1 = (
+            out1.transpose(0, 1).reshape(seq_dim, r, l).transpose(-1, -2).transpose(0, 1)
+        )  # -> (seq_dim, k, q) -> (seq_dim, r, l) -> (seq_dim, l, r) -> (l, seq_dim, r)
+
+        out2 = torch.empty(l, seq_dim, s, device=x.device, dtype=x.dtype)
+        out2 = torch.bmm(out1, w2_bfly.transpose(-1, -2), out=out2)  # (l, seq_dim, r) @ (l, r, s) -> (l, seq_dim, s)
+
         out2 = out2.permute(1, 2, 0).reshape(
             *batch_shape, s * l
-        )  # (batch_dim, l, s) -> (batch_dim, s, l) -> (batch_dim, m = s * l)
+        )  # (seq_dim, l, s) -> (seq_dim, s, l) -> (seq_dim, m = s * l)
         ctx.save_for_backward(x, w1_bfly, w2_bfly, out1, None, None)
         return out2
 
@@ -122,30 +109,30 @@ class BlockdiagButterflyMultiply(torch.autograd.Function):
     def backward(ctx, dout):
         x, w1_bfly, w2_bfly, out1, *_ = ctx.saved_tensors
         batch_shape, n = x.shape[:-1], x.shape[-1]
-        batch_dim = np.prod(batch_shape)
+        seq_dim = np.prod(batch_shape)
         k, q, p = w1_bfly.shape
         l, s, r = w2_bfly.shape
 
         dx, dw1_bfly, dw2_bfly = None, None, None
-        # dout_reshaped = dout.reshape(batch_dim, sqrtn, sqrtn).permute(2, 1, 0).contiguous()
-        dout_reshaped = dout.reshape(batch_dim, s, l).transpose(-1, -2).contiguous()
+        # dout_reshaped = dout.reshape(seq_dim, sqrtn, sqrtn).permute(2, 1, 0).contiguous()
+        dout_reshaped = dout.reshape(seq_dim, s, l).transpose(-1, -2).contiguous()
         dout_reshaped = dout_reshaped.transpose(0, 1)
         if ctx.needs_input_grad[2]:
             # dw2_bfly = torch.empty(l, s, r, device=w2_bfly.device, dtype=w2_bfly.dtype)
             # dw2_bfly = torch.bmm(dout_reshaped.transpose(-1, -2), out1, out=dw2_bfly)
             dw2_bfly = torch.bmm(
                 dout_reshaped.transpose(-1, -2), out1.conj()
-            )  # (l, s, batch_dim) @ (l, batch_dim, r) -> (l, s, r)
+            )  # (l, s, seq_dim) @ (l, seq_dim, r) -> (l, s, r)
         if ctx.needs_input_grad[1] or ctx.needs_input_grad[0]:
-            dout1 = torch.empty(batch_dim, l, r, device=x.device, dtype=x.dtype).transpose(0, 1)
+            dout1 = torch.empty(seq_dim, l, r, device=x.device, dtype=x.dtype).transpose(0, 1)
             dout1 = torch.bmm(dout_reshaped, w2_bfly.conj(), out=dout1)
-            dout1 = dout1.transpose(0, 1).transpose(-1, -2).contiguous().reshape(batch_dim, k, q).transpose(0, 1)
+            dout1 = dout1.transpose(0, 1).transpose(-1, -2).contiguous().reshape(seq_dim, k, q).transpose(0, 1)
             # dout1 = dout1.permute(1, 2, 0).contiguous().transpose(0, 1)
             if ctx.needs_input_grad[0]:
-                dx = torch.empty(batch_dim, k, p, device=x.device, dtype=x.dtype)
+                dx = torch.empty(seq_dim, k, p, device=x.device, dtype=x.dtype)
                 dx = torch.bmm(dout1, w1_bfly.conj(), out=dx.transpose(0, 1)).transpose(0, 1).reshape(*batch_shape, n)
             if ctx.needs_input_grad[1]:
-                x_reshaped = x.reshape(batch_dim, k, p).transpose(0, 1)
+                x_reshaped = x.reshape(seq_dim, k, p).transpose(0, 1)
                 dw1_bfly = torch.bmm(dout1.transpose(-1, -2), x_reshaped.conj())
         return dx, dw1_bfly, dw2_bfly, None, None
 

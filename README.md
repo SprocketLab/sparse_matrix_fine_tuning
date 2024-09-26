@@ -9,6 +9,7 @@ Paper: https://arxiv.org/abs/2408.17383
 ## MoRe Implementation
 * `src/models/layers/monarch_linear.py` contains the code for MoRe adapter.
 * `src/models/layers/blockdiag_butterfly_multiply.py` contains the code for block-diagonal monarch matmul, which is optimized over [Hazy Research's version](https://github.com/HazyResearch/fly) for less transpose and mem copy.
+* a basic usage of MoRe adapter can be found in `demo_notebooks/monarch_demo.ipynb`.
 ## Setup
 We highly recommend using docker for stable environment building, but any decent PyTorch + Huggingface environment should work.
 ```
@@ -21,8 +22,8 @@ docker attach peft
 ### To reproduce results
 * GLUE tasks: `python run_glue.py /fly/task_configs/monarch_roberta_glue/cola.json`.\
 * For reasoning tasks, first load datasets using `bash pyreft/loreft/load_datasets.sh`.
-* Math reasoning: `CUDA_VISIBLE_DEVICES=0 bash  pyreft/loreft/math_monarch.sh`.
-* Commonsense reasoning: `CUDA_VISIBLE_DEVICES=0 bash pyreft/loreft/common_sense_monarch.sh`.
+* Math reasoning: `cd pyreft/loreft; bash math_monarch.sh --blk_r=8`.
+* Commonsense reasoning: `cd pyreft/loreft; bash common_sense_monarch.sh --blk_r=8`.
 
 You can manually modify the hyperparameters in `task_configs/llama` for reasoning tasks and
 `task_configs/monarch_roberta_glue` for GLUE tasks.
@@ -39,12 +40,12 @@ We welcome contributions and suggestions to the list!
 If you use our adapter implementation, please cite our paper:
 ```bibtex
 @misc{tan2024finetuning10xfewerparameters,
-      title={MoRe Fine-Tuning with 10x Fewer Parameters}, 
+      title={MoRe Fine-Tuning with 10x Fewer Parameters},
       author={Wenxuan Tan and Nicholas Roberts and Tzu-Heng Huang and Jitian Zhao and John Cooper and Samuel Guo and Chengyu Duan and Frederic Sala},
       year={2024},
       eprint={2408.17383},
       archivePrefix={arXiv},
       primaryClass={cs.LG},
-      url={https://arxiv.org/abs/2408.17383}, 
+      url={https://arxiv.org/abs/2408.17383},
 }
 ```

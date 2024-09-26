@@ -150,11 +150,11 @@ class BlockSparseLinear(nn.Module):
             matmul_dds_op = self.get_ops()
             batch_shape = x.shape[:-1]
             x = x.reshape(-1, x.shape[-1])
-            batch_dim = x.shape[0]
+            seq_len = x.shape[0]
             x = pad_to_multiple(x, multiple=self.block_size, dims=0)
             output = rearrange(matmul_dds_op(rearrange(x, "b d -> 1 1 b d"), self.weight), "1 1 b d -> b d")
-            if output.shape[0] > batch_dim:
-                output = output[:batch_dim, :]
+            if output.shape[0] > seq_len:
+                output = output[:seq_len, :]
             output = output.reshape(batch_shape + (output.shape[-1],))
         elif self.backend == "dense":
             weight = rearrange(densify_tensor(self.weight, rearrange(self.layout, "p r -> 1 p r")), "1 m n -> m n")

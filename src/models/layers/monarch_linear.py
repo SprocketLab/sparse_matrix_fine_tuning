@@ -1,6 +1,5 @@
 import math
 
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -217,7 +216,6 @@ class MonarchLinear(StructuredLinear):
         else:
             for blkdiag in monarch_factors:
                 # init.kaiming_uniform_(blkdiag, a=math.sqrt(5)) # sqrt(5) should cancel "gain" out and give uniform(-1 / std, 1 / std)
-
                 ## Mimic init.kaiming_uniform but only on each block: p of (k, q, p) instead of q * p
                 ## https://github.com/pytorch/pytorch/blob/main/torch/nn/modules/linear.py
                 fan_in = blkdiag.shape[-1]
@@ -229,32 +227,10 @@ class MonarchLinear(StructuredLinear):
                     blkdiag.uniform_(-bound, bound)
         self.reset_parameters_bias()
 
-    def allocate_buffers(self, x):
-        """
-        Allocate buffers for forward pass
-        """
-        batch_shape = x.shape[:-1]
-        batch_dim = np.prod(batch_shape)
-
-        if (
-            self.out1_buffer is None
-            or self.out1_buffer.shape != (self.nblocks, batch_dim, self.blk_r)
-            or self.out1_buffer.dtype != x.dtype
-        ):
-            self.out1_buffer = torch.empty(self.nblocks, batch_dim, self.blk_r, device=x.device, dtype=x.dtype)
-
-        if (
-            self.out2_buffer is None
-            or self.out2_buffer.shape != (self.nblocks, batch_dim, self.out_blksz)
-            or self.out2_buffer.dtype != x.dtype
-        ):
-            self.out2_buffer = torch.empty(self.nblocks, batch_dim, self.out_blksz, device=x.device, dtype=x.dtype)
-
     def monarch_forward(self, x):
         """
         Forward using monarch factors only
         """
-        self.allocate_buffers(x)
         output = blockdiag_butterfly_multiply(
             self.preprocess(x), self.blkdiag1, self.blkdiag2, self.out1_buffer, self.out2_buffer
         )

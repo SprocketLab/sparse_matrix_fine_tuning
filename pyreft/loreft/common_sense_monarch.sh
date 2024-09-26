@@ -18,6 +18,7 @@ else
     echo "Using no additional flags."
 fi
 
+source ../../set_least_n_gpu.sh 1
 python train.py -task commonsense \
 -data_dir dataset \
 -model yahma/llama-7b-hf \

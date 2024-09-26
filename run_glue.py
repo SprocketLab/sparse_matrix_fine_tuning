@@ -148,28 +148,26 @@ def main(config: dict = None):
     )
     # EDIT
     assert (
-        not (args.use_monarch and args.use_boft)
-        and not (args.use_lora and args.use_monarch)
-        and not (args.use_lora and args.use_boft)
-    ), "Can't use both monarch and boft"
+        not (args.monarch and args.boft) and not (args.lora and args.monarch) and not (args.lora and args.boft)
+    ), "Can only use one adapter at a time"
     print(f"base model: {model_args.model_name_or_path}")
 
     if "deberta" in model_args.model_name_or_path:
-        if args.use_monarch:  # NOTE use_monarch will take precendence over
+        if args.monarch:  # NOTE monarch will take precendence over
             peft_config = json.load(open(PEFT_DEBERTA_PATH, "r"))  # load monarch config
-        elif args.use_boft:
+        elif args.boft:
             peft_config = json.load(open(PEFT_DEBERTA_BOFT_PATH, "r"))
     else:  # default roberta
-        if args.use_monarch:
+        if args.monarch:
             peft_config = json.load(open(PEFT_ROBERTA_PATH, "r"))  # load monarch config
-        elif args.use_boft:
+        elif args.boft:
             peft_config = json.load(open(PEFT_ROBERTA_BOFT_PATH, "r"))
-        elif args.use_lora:
+        elif args.lora:
             peft_config = json.load(open(PEFT_ROBERTA_LORA_PATH, "r"))
 
     # NOTE: Extra args can override all training configs (best HP, peft_config, etc.)
     extra_args = override_config([model_args, data_args, training_args, peft_config], sys.argv[2:])
-    args.use_boft = args.use_boft
+    args.boft = args.boft
     do_tune = args.do_tune
     use_wandb = args.wandb
     adapter = args.adapter
@@ -394,7 +392,7 @@ def main(config: dict = None):
                 model = model.to("cuda")
             # For Hyperparameter search
             override_dict(best_hyperparams, peft_config)
-            if args.use_monarch:
+            if args.monarch:
                 # model.roberta.init_monarch_layers = partial(init_monarch_layers, model.roberta)
                 # model.roberta.peft_config = peft_config
                 # EDIT
@@ -408,11 +406,11 @@ def main(config: dict = None):
                 # model_internal.peft_config = peft_config
                 init_monarch(model_internal, peft_config)
 
-            elif args.use_lora:
+            elif args.lora:
                 init_lora(model, peft_config)
                 print("Using LoRA")
 
-            elif args.use_boft:
+            elif args.boft:
                 peft_config["boft_dropout"] = model_args.oft_dropout
                 model = init_boft(model, peft_config)
                 print("Using BOFT")
@@ -595,7 +593,7 @@ def main(config: dict = None):
             use_scaler=peft_config["scaler"],
         )
         # PEFT monarch search space
-        if args.use_monarch:
+        if args.monarch:
             param_space = {
                 # "nblocks": tune.choice(['sqrt(n)', 4]),
                 "seed": training_args.seed,
@@ -615,7 +613,7 @@ def main(config: dict = None):
                 param_space["blk_sz"] = tune.choice([64, 128, 512])
                 param_space["lr_scheduler_type"] = "cosine"
                 n_trials += 10
-        elif args.use_boft:
+        elif args.boft:
             param_space = {
                 # "nblocks": tune.choice(['sqrt(n)', 4]),
                 "seed": training_args.seed,
@@ -670,7 +668,7 @@ def main(config: dict = None):
             # keep_checkpoints_num=None,
             checkpoint_score_attr="max-" + task_to_metric[data_args.task_name],  # rank in decreasing order
             progress_reporter=reporter,
-            resources_per_trial={"cpu": 1, "gpu": args.gpus_per_trial if not args.use_boft else 1},
+            resources_per_trial={"cpu": 1, "gpu": args.gpus_per_trial if not args.boft else 1},
             name=os.environ["WANDB_RUN_GROUP"],
             max_failures=999,  # tolerate OOM
             direction="maximize" if mode == "max" else "minimize",

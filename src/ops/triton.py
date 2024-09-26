@@ -1,9 +1,7 @@
 import torch
-import torch.nn.functional as F
 import triton
 import triton.language as tl
-from torch import autograd
-from .activations import *    
+
 
 # Modified from https://github.com/lucidrains/triton-transformer/blob/main/triton_transformer/bmm.py
 # It won't really make sense to fuse activations here--they usually have different block dims.
@@ -96,13 +94,14 @@ def bmm_kernel(
 
     o_ptrs = o_ptr + stride_om * offs_m[:, None] + stride_on * offs_n[None, :] + stride_ol * pid_batch
     tl.store(o_ptrs, o, mask=mask)
-    
+
 
 @triton.jit
 def monarch_kernel(
     x_ptr,
     y_ptr,
-    o_ptr,
+    o_ptr1,
+    o_ptr2,
     M,
     N,
     K,
@@ -121,87 +120,62 @@ def monarch_kernel(
     GROUP_SIZE_M: tl.constexpr,
     ACTIVATION: tl.constexpr,
 ):
-    """ implement the following in a fused triton kernel using the bmm helper above
+    """implement the following in a fused triton kernel using the bmm helper above
     def forward(ctx, x, w1_bfly, w2_bfly, out1, out2):
         k, q, p = w1_bfly.shape
         l, s, r = w2_bfly.shape
-        x_reshaped = x.reshape(batch_dim, k, p).transpose(0, 1)
+        x_reshaped = x.reshape(seq_dim, k, p).transpose(0, 1)
         out1 = torch.bmm(
             x_reshaped, w1_bfly.transpose(-1, -2), out=out1
         )
         out1 = (
-            out1.transpose(0, 1).reshape(batch_dim, r, l).transpose(-1, -2).transpose(0, 1).contiguous()
-        )  # -> (batch_dim, k, q) -> (batch_dim, r, l) -> (batch_dim, l, r) -> (l, batch_dim, r)
-        out2 = torch.bmm(out1, w2_bfly.transpose(-1, -2), out=out2)  # (l, batch_dim, r) @ (l, r, s) -> (l, batch_dim, s)
+            out1.transpose(0, 1).reshape(seq_dim, r, l).transpose(-1, -2).transpose(0, 1).contiguous()
+        )  # -> (seq_dim, k, q) -> (seq_dim, r, l) -> (seq_dim, l, r) -> (l, seq_dim, r)
+        out2 = torch.bmm(out1, w2_bfly.transpose(-1, -2), out=out2)  # (l, seq_dim, r) @ (l, r, s) -> (l, seq_dim, s)
         out2 = out2.permute(1, 2, 0).reshape(
             *batch_shape, s * l
-        )  # (batch_dim, l, s) -> (batch_dim, s, l) -> (batch_dim, m = s * l)
-        return out2 
+        )  # (seq_dim, l, s) -> (seq_dim, s, l) -> (seq_dim, m = s * l)
+        return out2
     """
-    x_reshaped  = tl.reshape(x_ptr, (M, K))
-    
-    
 
-def monarch_forward(x, y, activation=None, out=None):
-    B, SEQ_LEN, K = x.shape
-    if y.ndim == 2:
-        y = y.unsqueeze(0).expand(B, -1, -1)
 
-    _, K, N = y.shape
-    # assert (K % 32 == 0), f"K must be divisible by 32"
-    if out is None or out.shape != (B, SEQ_LEN, N):
-        out = torch.empty((B, SEQ_LEN, N), device=x.device, dtype=x.dtype)
+class MonarchKernel(torch.autograd.Function):
+    @staticmethod
+    def monarch_forward(x, y, w1_bfly, w2_bfly, activation=None, out=None):
+        # For Llama 7B fine-tuning on Math, this is like (2, 286, 4096)
+        B, SEQ_LEN, K = x.shape
+        k, q, p = w1_bfly.shape
+        l, s, r = w2_bfly.shape
 
-    grid = lambda META: (
-        B,
-        triton.cdiv(SEQ_LEN, META["BLOCK_M"]) * triton.cdiv(N, META["BLOCK_N"]),
-    )
-    with torch.cuda.device(x.device):
-        bmm_kernel[grid](
-            x,
-            y,
-            out,
-            SEQ_LEN,
-            N,
-            K,
-            x.stride(0),
-            x.stride(1),
-            x.stride(2),
-            y.stride(0),
-            y.stride(1),
-            y.stride(2),
-            out.stride(0),
-            out.stride(1),
-            out.stride(2),
-            ACTIVATION=activation,
+        if y.ndim == 2:
+            y = y.unsqueeze(0).expand(B, -1, -1)
+
+        _, K, N = y.shape
+        # assert (K % 32 == 0), f"K must be divisible by 32"
+        if out is None or out.shape != (B, SEQ_LEN, N):
+            out = torch.empty((B, SEQ_LEN, N), device=x.device, dtype=x.dtype)
+
+        grid = lambda META: (
+            B,
+            triton.cdiv(SEQ_LEN, META["BLOCK_M"]) * triton.cdiv(N, META["BLOCK_N"]),
         )
-    return out
-
-
-
-
-class _relu_squared(autograd.Function):
-    @classmethod
-    def forward(self, ctx, x, w):
-        o = monarch_forward(x, w, activation=relu_squared_activation)
-        if x.requires_grad:
-            ctx.save_for_backward(x, w, o)
-        return o
-
-    @classmethod
-    def backward(self, ctx, dy):
-        x, w, o = ctx.saved_tensors
-        dy = torch.sqrt(o) * 2 * dy
-        dx = monarch_forward(dy, w.t())
-        dw = monarch_forward(x.transpose(-1, -2), dy)
-        return dx, dw
-
-
-triton_relu_squared = _relu_squared.apply
-
-
-def fused_relu_squared(x, w, use_triton=False):
-    if use_triton:
-        return triton_relu_squared(x, w)
-
-    return F.relu(x @ w) ** 2
+        with torch.cuda.device(x.device):
+            bmm_kernel[grid](
+                x,
+                y,
+                out,
+                SEQ_LEN,
+                N,
+                K,
+                x.stride(0),
+                x.stride(1),
+                x.stride(2),
+                y.stride(0),
+                y.stride(1),
+                y.stride(2),
+                out.stride(0),
+                out.stride(1),
+                out.stride(2),
+                ACTIVATION=activation,
+            )
+        return out

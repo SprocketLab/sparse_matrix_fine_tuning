@@ -18,6 +18,8 @@ else
     echo "Using no additional flags."
 fi
 
+# pyreft only supports single gpu
+source ../../set_least_n_gpu.sh 1
 python train.py -task math \
 -data_dir dataset \
 -model yahma/llama-7b-hf \
