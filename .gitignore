@@ -1,18 +1,29 @@
 # Ignore everything in results
 results/**
 
-# Unignore the specific path directories so that contents can be checked
-!pyreft/
-!pyreft/loreft/
-!pyreft/loreft/official_results/
-!pyreft/loreft/official_results/**/
+# Ignore everything in official_results
+pyreft/loreft/official_results/*
 
-# Re-ignore everything else inside the result directories
-pyreft/loreft/official_results/**
-!*result*/**/best_hyperparams.json
+# Unignore directories first (recursive include)
+!pyreft/loreft/official_results/math/
+!pyreft/loreft/official_results/commonsense/
+
+# Unignore subdirectories within math and commonsense
+!pyreft/loreft/official_results/math/**/
+!pyreft/loreft/official_results/commonsense/**/
+
+# Ignore all files in those directories (everything else)
+pyreft/loreft/official_results/math/*
+pyreft/loreft/official_results/commonsense/*
+
+# Specifically unignore the JSON files
+!pyreft/loreft/official_results/math/best_hyperparams.json
+!pyreft/loreft/official_results/commonsense/best_hyperparams.json
+
 
 # Specific includes/excludes for loreft dataset
 !pyreft/examples/loreft/dataset
+
 # Ignore other directories and file patterns
 **/wandb/**
 __pycache__/**

@@ -3,14 +3,18 @@ Official repository for ICML 2024 paper "MoRe Fine-Tuning with 10x Fewer Paramet
 
 Paper: https://arxiv.org/abs/2408.17383
 
-## News
+## 🚀 Main Results
+![Main results](demos/commonsense_res.png)
+
+## 📰 News
 - [2024/06] Our paper is accepted by two ICML workshops: ES-FOMO and FM-wild!
 
-## MoRe Implementation
+## 🗝️ MoRe Implementation
 * `src/models/layers/monarch_linear.py` contains the code for MoRe adapter.
 * `src/models/layers/blockdiag_butterfly_multiply.py` contains the code for block-diagonal monarch matmul, which is optimized over [Hazy Research's version](https://github.com/HazyResearch/fly) for less transpose and mem copy.
-* a basic usage of MoRe adapter can be found in `demo_notebooks/monarch_demo.ipynb`.
-## Setup
+* a basic usage of MoRe adapter can be found in `demos/monarch_demo.ipynb`.
+
+## 🛠️ Setup
 We highly recommend using docker for stable environment building, but any decent PyTorch + Huggingface environment should work.
 ```
 docker compose build; docker compose up -d
@@ -18,17 +22,17 @@ hostname > hostname.txt # to not confuse machines in wandb
 docker attach peft
 ```
 
-## Usage
+## 🦾 Usage
 ### To reproduce results
 * GLUE tasks: `python run_glue.py /fly/task_configs/monarch_roberta_glue/cola.json`.\
 * For reasoning tasks, first load datasets using `bash pyreft/loreft/load_datasets.sh`.
-* Math reasoning: `cd pyreft/loreft; bash math_monarch.sh --blk_r=8`.
-* Commonsense reasoning: `cd pyreft/loreft; bash common_sense_monarch.sh --blk_r=8`.
+* Math reasoning: `cd pyreft/loreft; bash math_monarch.sh --blk_r=8 --all_linear`.
+* Commonsense reasoning: `cd pyreft/loreft; bash common_sense_monarch.sh --blk_r=8 --all_linear`.
 
 You can manually modify the hyperparameters in `task_configs/llama` for reasoning tasks and
 `task_configs/monarch_roberta_glue` for GLUE tasks.
 
-## Todo
+## 🧐 Todo
 We welcome contributions and suggestions to the list!
 - [ ] Fused Triton kernel for Monarch
 - [ ] MMLU results (including reproducing the QLoRA baselines)
@@ -36,7 +40,7 @@ We welcome contributions and suggestions to the list!
 - [ ] Explore MoRe as a general substitute for low-rank modules.
 
 
-## Citation
+## 📑 Citation
 If you use our adapter implementation, please cite our paper:
 ```bibtex
 @misc{tan2024finetuning10xfewerparameters,

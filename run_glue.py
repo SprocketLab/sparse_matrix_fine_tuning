@@ -134,7 +134,7 @@ def override_dict(dict_new, dict_old):
     if dict_new is not None:
         for k in dict_old.keys():
             if k in dict_new.keys() and dict_new[k] != dict_old[k]:
-                print("Overriding {} = {} from best HP".format(k, dict_new[k]))
+                print("Overriding the {} in best HP to {}".format(k, dict_new[k]))
                 dict_old[k] = dict_new[k]
 
 

@@ -206,7 +206,7 @@ def model_init(hyperparams: dict = best_hyperparams):
     if hyperparams is not None:
         for k in peft_config.keys():
             if k in hyperparams.keys() and hyperparams[k] != peft_config[k]:
-                print("Overriding {} = {} from best HP".format(k, hyperparams[k]))
+                print("Overriding the {} in best HP to {}".format(k, hyperparams[k]))
                 peft_config[k] = hyperparams[k]
     if wandb.run is not None:
         wandb.run.config.update(peft_config, allow_val_change=True)

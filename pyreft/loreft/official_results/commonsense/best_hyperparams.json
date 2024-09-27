@@ -1,0 +1,1 @@
+{"seed": 42, "learning_rate": 0.0004, "batch_size": 2, "gradient_accumulation_steps": 8, "weight_decay": 0, "lr_scheduler_type": "cosine", "dropout": 0.1, "blk_r": 4, "nblocks": 4}
