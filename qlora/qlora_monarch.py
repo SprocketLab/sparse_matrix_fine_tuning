@@ -595,7 +595,8 @@ def train():
         path = os.path.join(args.output_dir, "full_group.txt")
         if os.path.exists(path):
             with open(path, "r") as f:
-                os.environ["WANDB_RUN_GROUP"] = f.read()
+                os.environ["WANDB_RUN_GROUP"] = f.readline().strip()
+
     wandb.init(
         project=os.environ["WANDB_PROJECT"], group=os.environ["WANDB_RUN_GROUP"], config=vars(args).update(peft_config)
     )
@@ -715,14 +716,15 @@ def train():
         trainer.args.save_strategy = "no"
 
         # PEFT monarch search space
+        # bs = 1
         param_space = {
             # "nblocks": tune.choice(['sqrt(n)', 4]),
             "seed": training_args.seed,
             # "num_train_epochs": tune.choice([20, 25]),
             "learning_rate": tune.quniform(8e-5, 6e-4, 2e-5),
-            "gradient_accumulation_steps": tune.choice([16, 32]),  # Will OOM if tune batch size
+            "gradient_accumulation_steps": tune.choice([8, 16, 32]),  # Will OOM if tune batch size
             "weight_decay": tune.choice([0]),
-            "lr_scheduler_type": tune.choice(["cosine", "linear"]),  # mostly linear underperforms
+            "lr_scheduler_type": tune.choice(["cosine"]),  # mostly linear underperforms
             "blk_r": peft_config["blk_r"],
             "nblocks": peft_config["nblocks"],
         }
@@ -731,7 +733,7 @@ def train():
         # Set up scheduler and reporter etc.
         direction = "min"
         tune_unit = "iter"
-        max_t = 40 * 60 if "tune_unit" == "time" else 7
+        max_t = 40 * 60 if "tune_unit" == "time" else 4
         metric = f"train_mmlu_eval_accuracy"
         grade_period = 4 * 60 if tune_unit == "time" else 2
         time_attr = "time_total_s" if tune_unit == "time" else "training_iteration"

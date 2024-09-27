@@ -10,7 +10,7 @@ from torch import optim
 from tqdm import tqdm, trange
 from transformers import get_linear_schedule_with_warmup
 from transformers.utils import ModelOutput
-
+import copy
 from .basic_utils import *
 from .configuration_intervenable_model import IntervenableConfig, RepresentationConfig
 from .intervention_utils import *
