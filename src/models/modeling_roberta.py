@@ -878,7 +878,7 @@ class RobertaModel(RobertaPreTrainedModel):
 
         # check if wandb is initialized
         # if ray tune search is on, don't watch
-        if wandb.run is not None and not self.wandb_watch_enabled and not ray.tune.is_session_enabled():
+        if wandb.run is not None and not self.wandb_watch_enabled and not ray.train._internal.session._get_session():
             print("Enabling wandb watch.")
             max_per_key = 3
 

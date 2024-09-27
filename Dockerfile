@@ -85,7 +85,7 @@ RUN pip install bitsandbytes peft einops sentencepiece==0.1.99
 RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" || true
 RUN pip install transformers==4.39.2
 RUN pip install flash_attn==2.5.6
-RUN pip install ray==2.7
+RUN pip install ray==2.37.0
 # ENV PATH $CONDA_DIR/bin:$PATH
 # RUN wget --quiet https://repo.continuum.io/miniconda/Miniconda$CONDA_PYTHON_VERSION-latest-Linux-x86_64.sh -O /tmp/miniconda.sh && \
 #     echo 'export PATH=$CONDA_DIR/bin:$PATH' > /etc/profile.d/conda.sh && \

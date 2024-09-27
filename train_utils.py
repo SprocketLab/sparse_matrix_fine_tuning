@@ -22,9 +22,9 @@ from os.path import exists, isdir, join
 from typing import Dict, List, Union
 
 import bitsandbytes as bnb
+import ray
 import torch.nn as nn
 from peft import BOFTConfig, LoraConfig, get_peft_model
-from ray import tune
 
 import wandb
 from src.models.layers.monarch_linear import MonarchLinear, Scaler
@@ -516,7 +516,7 @@ def get_hpo_metric(target_metric: str, metrics: dict):
 
 def watch_layers(model, max_per_module=2):
     """Monitor how weights are updated"""
-    if wandb.run != None or tune.is_session_enabled():
+    if wandb.run != None or ray.train._internal.session._get_session():
         return
     print("Enabling wandb watch")
     watch_count = defaultdict(int)

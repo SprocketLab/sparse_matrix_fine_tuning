@@ -27,16 +27,14 @@ python qlora_monarch.py \
     --save_steps 187 \
     --save_total_limit 2 \
     --evaluation_strategy steps \
-    --eval_dataset_size 1024 \
     --per_device_eval_batch_size 1 \
     --max_new_tokens 32 \
-    --dataloader_num_workers 1 \
+    --dataloader_num_workers 2 \
     --group_by_length \
     --logging_strategy steps \
     --remove_unused_columns False \
     --do_tune \
     --do_train \
-    --do_eval \
     --bf16 \
     --warmup_ratio 0.03 \
     --lr_scheduler_type cosine \
@@ -58,3 +56,4 @@ python qlora_monarch.py \
     --mmlu_split eval \
     --save_total_limit 1 \
     --load_best_model_at_end \
+    # --do_eval  --eval_dataset_size 1024 \

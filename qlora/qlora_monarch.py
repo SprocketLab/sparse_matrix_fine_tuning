@@ -752,9 +752,9 @@ def train():
             n_trials=n_trials,  # under the hood it calls ray.tune.run(num_samples=n_trials, ...)
             scheduler=scheduler,
             keep_checkpoints_num=None,
-            resources_per_trial={"cpu": 1, "gpu": 1},
+            resources_per_trial={"cpu": 1.5, "gpu": 1},
             name=os.environ["WANDB_RUN_GROUP"],
-            local_dir="/fly/ray_results",
+            storage_path="/fly/ray_results",
             max_failures=9999,  # tolerate OOM
             direction="maximize" if direction == "max" else "minimize",
             compute_objective=partial(get_hpo_metric, metric),
