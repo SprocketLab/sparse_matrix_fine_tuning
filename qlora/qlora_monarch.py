@@ -731,10 +731,10 @@ def train():
         n_trials = args.n_trials
 
         # Set up scheduler and reporter etc.
-        direction = "min"
+        direction = "max"
         tune_unit = "iter"
         max_t = 40 * 60 if "tune_unit" == "time" else 4
-        metric = f"train_mmlu_eval_accuracy"
+        metric = f"eval_mmlu_eval_accuracy"
         grade_period = 4 * 60 if tune_unit == "time" else 2
         time_attr = "time_total_s" if tune_unit == "time" else "training_iteration"
 
@@ -745,6 +745,7 @@ def train():
             mode=direction,
             grace_period=grade_period,
         )
+        
         # Do hyperparam optimization with Ray Tune
         best_run = trainer.hyperparameter_search(
             hp_space=lambda _: param_space,
@@ -752,7 +753,7 @@ def train():
             n_trials=n_trials,  # under the hood it calls ray.tune.run(num_samples=n_trials, ...)
             scheduler=scheduler,
             keep_checkpoints_num=None,
-            resources_per_trial={"cpu": 1.5, "gpu": 1},
+            resources_per_trial={"cpu": 2, "gpu": 1},
             name=os.environ["WANDB_RUN_GROUP"],
             storage_path="/fly/ray_results",
             max_failures=9999,  # tolerate OOM

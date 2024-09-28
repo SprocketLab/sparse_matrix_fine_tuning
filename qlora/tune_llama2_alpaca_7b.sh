@@ -56,4 +56,4 @@ python qlora_monarch.py \
     --mmlu_split eval \
     --save_total_limit 1 \
     --load_best_model_at_end \
-    # --do_eval  --eval_dataset_size 1024 \
+    --do_eval  --eval_dataset_size 1 \

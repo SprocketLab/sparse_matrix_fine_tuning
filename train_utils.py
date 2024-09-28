@@ -511,7 +511,11 @@ def init_monarch(model: nn.Module, peft_config: Dict, target_classes: Union[List
 
 
 def get_hpo_metric(target_metric: str, metrics: dict):
-    return metrics[target_metric]
+    try:
+        return metrics[target_metric]
+    except:
+        print(metrics)
+        breakpoint()
 
 
 def watch_layers(model, max_per_module=2):
