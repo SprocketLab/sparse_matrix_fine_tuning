@@ -146,8 +146,8 @@ class TrainingArguments(transformers.Seq2SeqTrainingArguments):
     )
     do_train: bool = field(default=False, metadata={"help": "To train or not to train, that is the question?"})
     lr_scheduler_type: str = field(
-        default="constant",
-        metadata={"help": "Learning rate schedule. Constant a bit better than cosine, and has advantage for analysis"},
+        default="cosine",
+        # metadata={"help": "Learning rate schedule. Constant a bit better than cosine, and has advantage for analysis"},
     )
     warmup_ratio: float = field(default=0.03, metadata={"help": "Fraction of steps to do a warmup for"})
     logging_steps: int = field(
@@ -655,6 +655,7 @@ def train():
         ]
         accuracy = evaluate.load("accuracy")
 
+        # NOTE: set --eval_dataset_size 1 --do_eval just to jump into this mmlu function
         def compute_metrics(eval_preds: EvalPrediction):
             args = trainer.args
             data_loader = trainer.get_eval_dataloader(mmlu_dataset)
@@ -721,10 +722,10 @@ def train():
             # "nblocks": tune.choice(['sqrt(n)', 4]),
             "seed": training_args.seed,
             # "num_train_epochs": tune.choice([20, 25]),
-            "learning_rate": tune.quniform(8e-5, 6e-4, 2e-5),
-            "gradient_accumulation_steps": tune.choice([8, 16, 32]),  # Will OOM if tune batch size
+            "learning_rate": tune.quniform(1e-4, 8e-4, 5e-5),
+            "gradient_accumulation_steps": tune.choice([8, 16]),  # Will OOM if tune batch size
             "weight_decay": tune.choice([0]),
-            "lr_scheduler_type": tune.choice(["cosine"]),  # mostly linear underperforms
+            "lr_scheduler_type": tune.choice(["constant"]),  # mostly linear underperforms
             "blk_r": peft_config["blk_r"],
             "nblocks": peft_config["nblocks"],
         }
@@ -745,7 +746,7 @@ def train():
             mode=direction,
             grace_period=grade_period,
         )
-        
+
         # Do hyperparam optimization with Ray Tune
         best_run = trainer.hyperparameter_search(
             hp_space=lambda _: param_space,

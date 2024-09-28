@@ -718,7 +718,7 @@ def main():
     parser.add_argument("--do_tune", action="store_true")
     parser.add_argument("--do_train", default=True, type=eval)
     parser.add_argument("--save_steps", default=1000, type=int)
-    parser.add_argument("--all_linear", action="store_true", help="adapt all linear layers")
+    parser.add_argument("--all_linear", default=True, type=eval, help="adapt all linear layers")
     parser.add_argument("--profile", action="store_true", help="profile the model")
     # Ray Tune & wandb
     parser.add_argument("--n_trials", default=35, type=int)

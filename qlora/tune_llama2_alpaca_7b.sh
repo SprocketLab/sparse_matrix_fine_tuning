@@ -44,7 +44,7 @@ python qlora_monarch.py \
     --target_max_len 512 \
     --per_device_train_batch_size 1 \
     --gradient_accumulation_steps 16 \
-    --num_train_epochs 2 \
+    --num_train_epochs 1 \
     --eval_steps 187 \
     --learning_rate 0.0002 \
     --adam_beta2 0.999 \
