@@ -164,7 +164,7 @@ class TrainingArguments(transformers.Seq2SeqTrainingArguments):
     save_total_limit: int = field(
         default=40, metadata={"help": "How many checkpoints to save before the oldest is overwritten"}
     )
-    all_linear: bool = field(default=False, metadata={"help": "Whether to adapt all linear layers"})
+    all_linear: bool = field(default=True, metadata={"help": "Whether to adapt all linear layers"})
 
 
 @dataclass
