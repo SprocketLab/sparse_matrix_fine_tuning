@@ -565,6 +565,7 @@ def train():
         return_remaining_strings=True
     )
     args = argparse.Namespace(**vars(model_args), **vars(data_args), **vars(training_args))
+
     # Group by hpo runs
     task_dir = args.output_dir
     if args.group is not None:
@@ -616,6 +617,12 @@ def train():
     print("loaded model")
 
     data_module = make_data_module(tokenizer=tokenizer, args=args)
+
+    # MMLU eval is time-consuming
+    num_train_steps = len(data_module["train_dataset"]) // (
+        args.per_device_train_batch_size * args.gradient_accumulation_steps
+    )
+    training_args.eval_steps = num_train_steps // 10
     trainer = MySeq2SeqTrainer(
         model_init=model_init,
         tokenizer=tokenizer,
@@ -656,6 +663,7 @@ def train():
         accuracy = evaluate.load("accuracy")
 
         # NOTE: set --eval_dataset_size 1 --do_eval just to jump into this mmlu function
+        @torch.no_grad()
         def compute_metrics(eval_preds: EvalPrediction):
             args = trainer.args
             data_loader = trainer.get_eval_dataloader(mmlu_dataset)
