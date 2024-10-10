@@ -5,7 +5,7 @@ import pytest
 import torch
 
 sys.path.append("/fly")  # docker working dir
-from src.models.layers.block_butterfly_multiply import (
+from src.ops.block_butterfly_multiply import (
     block_butterfly_factor_multiply,
     block_butterfly_multiply,
 )

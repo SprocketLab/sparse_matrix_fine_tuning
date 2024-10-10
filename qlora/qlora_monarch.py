@@ -602,10 +602,12 @@ def train():
         project=os.environ["WANDB_PROJECT"], group=os.environ["WANDB_RUN_GROUP"], config=vars(args).update(peft_config)
     )
     print(f"wandb group name: {os.environ['WANDB_RUN_GROUP']}")
+    with open(os.path.join(training_args.output_dir, "full_group.txt"), "w") as f:
+        f.write(os.environ["WANDB_RUN_GROUP"])
+
     checkpoint_dir, completed_training = get_last_checkpoint(args.output_dir)
     if completed_training:
         print("Detected that training was already completed!")
-
     _ = model_init(vars(args))
     import gc
 
@@ -713,10 +715,6 @@ def train():
     all_metrics = {"run_name": args.run_name}
 
     if args.do_tune:
-        # Save full tune group name for resuming
-        with open(os.path.join(training_args.output_dir, "full_group.txt"), "w") as f:
-            f.write(os.environ["WANDB_RUN_GROUP"])
-
         _args = deepcopy(trainer.args)
 
         # Avoid flooding the disk during HPO

@@ -10,11 +10,10 @@ from pyvene import (
 from pyvene.models.layers import LowRankRotateLayer
 from transformers.activations import ACT2FN
 
-from src.models.layers.blockdiag_butterfly_multiply import single_monarch_mult
-
 # import sys
 # sys.path.append("/fly")
-from src.models.layers.monarch_linear import MonarchFactor
+from src.layers.monarch_linear import MonarchFactor
+from src.ops.blockdiag_butterfly_multiply import single_monarch_mult
 
 
 class LoreftIntervention(SourcelessIntervention, TrainableIntervention, DistributedRepresentationIntervention):

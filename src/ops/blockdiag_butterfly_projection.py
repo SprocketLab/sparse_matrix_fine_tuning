@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 from einops import rearrange
 
-from src.models.layers.blockdiag_butterfly_multiply import blockdiag_butterfly_multiply
+from src.ops.blockdiag_butterfly_multiply import blockdiag_butterfly_multiply
 
 # from src.ops.low_rank import low_rank_project
 

@@ -1,77 +1,33 @@
+import numpy as np
 import torch
 import triton
 import triton.language as tl
 
 
-# Modified from https://github.com/lucidrains/triton-transformer/blob/main/triton_transformer/bmm.py
-# It won't really make sense to fuse activations here--they usually have different block dims.
-# And for LoRA-style PEFT activation is applied after adding to main output.
-# @triton.autotune(
-#     configs=[
-#         triton.Config(
-#             {"BLOCK_M": 128, "BLOCK_N": 256, "BLOCK_SIZE_K": 64, "GROUP_SIZE_M": 8}, num_stages=3, num_warps=8
-#         ),
-#         triton.Config(
-#             {"BLOCK_M": 64, "BLOCK_N": 256, "BLOCK_SIZE_K": 32, "GROUP_SIZE_M": 8}, num_stages=4, num_warps=8
-#         ),
-#         triton.Config(
-#             {"BLOCK_M": 64, "BLOCK_N": 256, "BLOCK_SIZE_K": 32, "GROUP_SIZE_M": 8}, num_stages=4, num_warps=4
-#         ),
-#         triton.Config(
-#             {"BLOCK_M": 128, "BLOCK_N": 128, "BLOCK_SIZE_K": 32, "GROUP_SIZE_M": 8}, num_stages=4, num_warps=4
-#         ),
-#         triton.Config(
-#             {"BLOCK_M": 128, "BLOCK_N": 64, "BLOCK_SIZE_K": 32, "GROUP_SIZE_M": 8}, num_stages=4, num_warps=4
-#         ),
-#         triton.Config(
-#             {"BLOCK_M": 64, "BLOCK_N": 128, "BLOCK_SIZE_K": 32, "GROUP_SIZE_M": 8}, num_stages=4, num_warps=4
-#         ),
-#         triton.Config(
-#             {"BLOCK_M": 128, "BLOCK_N": 32, "BLOCK_SIZE_K": 32, "GROUP_SIZE_M": 8}, num_stages=4, num_warps=4
-#         ),
-#         triton.Config({"BLOCK_M": 64, "BLOCK_N": 32, "BLOCK_SIZE_K": 32, "GROUP_SIZE_M": 8}, num_stages=5, num_warps=2),
-#     ],
-#     key=["M", "N", "K"],
-# )
-@triton.jit
-def bmm(
-    x_ptr,
-    y_ptr,
-    o_ptr,
-    M,
-    N,
-    K,
-    stride_al,
-    stride_am,
-    stride_ak,
-    stride_bl,
-    stride_bk,
-    stride_bn,
-    stride_ol,
-    stride_om,
-    stride_on,
-    BLOCK_M: tl.constexpr,
-    BLOCK_N: tl.constexpr,
-    BLOCK_K: tl.constexpr,
-    GROUP_SIZE_M: tl.constexpr = 8,
-):
-    o = tl.zeros((BLOCK_M, BLOCK_N), dtype=tl.float32)
-    for k in range(0, K, BLOCK_K):
-        x = tl.load(x_ptrs)
-        y = tl.load(y_ptrs)
-        o += tl.dot(x, y)
-
-        BLOCK_K * stride_ak
-        BLOCK_K * stride_bk
-
-    offs_m = pid_m * BLOCK_M + tl.arange(0, BLOCK_M)
-    offs_n = pid_n * BLOCK_N + tl.arange(0, BLOCK_N)
-    mask = (offs_m[:, None] < M) & (offs_n[None, :] < N)
-
-    o_ptrs = o_ptr + stride_om * offs_m[:, None] + stride_on * offs_n[None, :] + stride_ol * pid_batch
-    tl.store(o_ptrs, o, mask=mask)
+def config_gen():
+    configs = []
+    for BSEQ in [32, 64, 128]:
+        for BK in [32, 64, 128]:
+            for BN in [64, 128, 256]:
+                num_stages = 4  # Even flash-attn has up to 5 stages (https://github.com/triton-lang/triton/blob/6af74b2f4535682abfc0b08958bc2c6831036d29/python/tutorials/06-fused-attention.py#L489)
+                num_warps = 4
+                # Filter
+                if BK <= 64:
+                    num_stages = 5
+                configs.append(
+                    triton.Config(
+                        {"BLOCK_SIZE_SEQ": BSEQ, "BLOCK_SIZE_K": BK, "BLOCK_SIZE_N": BN, "GROUP_SIZE_M": 8},
+                        num_stages=num_stages,
+                        num_warps=num_warps,
+                    )
+                )
+    return configs
 
 
+@triton.autotune(
+    config_gen(),
+    key=["N_BLK", "BLK1_IN", "BLK2_OUT"],
+)
 @triton.jit
 def monarch_forward(
     x_ptr,
@@ -79,48 +35,43 @@ def monarch_forward(
     o_ptr2,
     w1_bfly_ptr,
     w2_bfly_ptr,
-    M,
-    N,
-    K,
+    SEQ_DIM,
+    N_BLK,
+    BLK1_IN,
+    BLK1_OUT: tl.constexpr,
+    BLK2_OUT: tl.constexpr,
     stride_xl,
     stride_xm,
     stride_xk,
-    stride_wl,
-    stride_wk,
-    stride_wn,
-    stride_ol,
-    stride_om,
-    stride_on,
-    BLOCK_M: tl.constexpr,
-    BLOCK_N: tl.constexpr,
-    BLOCK_K: tl.constexpr,
+    stride_w1l,
+    stride_w1r,
+    stride_w1k,
+    stride_w2l,
+    stride_w2n,
+    stride_w2r,
+    stride_o1l,
+    stride_o1m,
+    stride_o1k,
+    stride_o2l,
+    stride_o2m,
+    stride_o2n,
+    BLOCK_SIZE_SEQ: tl.constexpr,
+    BLOCK_SIZE_N: tl.constexpr,
+    BLOCK_SIZE_K: tl.constexpr,
     GROUP_SIZE_M: tl.constexpr,
-    ACTIVATION: tl.constexpr,
+    # dtype: tl.dtype,
 ):
-    """implement the following in a fused triton kernel using the bmm helper above
-    def forward(ctx, x, w1_bfly, w2_bfly, out1, out2):
-        k, q, p = w1_bfly.shape
-        l, s, r = w2_bfly.shape
-        x_reshaped = x.reshape(seq_dim, k, p).transpose(0, 1)
-        out1 = torch.bmm(
-            x_reshaped, w1_bfly.transpose(-1, -2), out=out1
-        )
-        out1 = (
-            out1.transpose(0, 1).reshape(seq_dim, r, l).transpose(-1, -2).transpose(0, 1).contiguous()
-        )  # -> (seq_dim, k, q) -> (seq_dim, r, l) -> (seq_dim, l, r) -> (l, seq_dim, r)
-        out2 = torch.bmm(out1, w2_bfly.transpose(-1, -2), out=out2)  # (l, seq_dim, r) @ (l, r, s) -> (l, seq_dim, s)
-        out2 = out2.permute(1, 2, 0).reshape(
-            *batch_shape, s * l
-        )  # (seq_dim, l, s) -> (seq_dim, s, l) -> (seq_dim, m = s * l)
-        return out2
     """
+    Implements fused monarch forward as in `BlockdiagButterflyMultiply`
+    """
+    BLK2_IN: tl.constexpr = BLK1_OUT  # This is the block rank (usually small, e.g. 4)
 
     # Grouped ordering for better l2 reuse
-    tl.program_id(0)
+    pid_batch = tl.program_id(0)
     pid = tl.program_id(1)
 
-    num_pid_m = tl.cdiv(M, BLOCK_M)
-    num_pid_n = tl.cdiv(N, BLOCK_N)
+    num_pid_m = tl.cdiv(SEQ_DIM, BLOCK_SIZE_SEQ)
+    num_pid_n = tl.cdiv(N_BLK * BLK1_IN, BLOCK_SIZE_N)
     num_pid_in_group = GROUP_SIZE_M * num_pid_n
     group_id = pid // num_pid_in_group
     first_pid_m = group_id * GROUP_SIZE_M
@@ -128,100 +79,371 @@ def monarch_forward(
     pid_m = first_pid_m + (pid % group_size_m)
     pid_n = (pid % num_pid_in_group) // group_size_m
 
-    offs_am = pid_m * BLOCK_M + tl.arange(0, BLOCK_M)
-    offs_bn = pid_n * BLOCK_N + tl.arange(0, BLOCK_N)
-    offs_k = tl.arange(0, BLOCK_K)
-    # x_ptrs = x_ptr + (offs_am[:, None] * stride_am + offs_k[None, :] * stride_ak + pid_batch * stride_al)
-    # y_ptrs = y_ptr + (offs_k[:, None] * stride_bk + offs_bn[None, :] * stride_bn + pid_batch * stride_bl)
+    offs_am = pid_m * BLOCK_SIZE_SEQ
+    offs_bn = pid_n * BLOCK_SIZE_N
+    offs_k = 0
+
     x_ptrs = tl.make_block_ptr(
-        x_ptr,
-        shape=(M, K),  # the shape that's split over blocks
+        x_ptr + pid_batch * stride_xl,
+        shape=(SEQ_DIM, BLK1_IN),  # the full shape that's split over blocks
         strides=(stride_xm, stride_xk),
         offsets=(offs_am, offs_k),
-        block_shape=(BLOCK_M, BLOCK_K),
+        block_shape=(BLOCK_SIZE_SEQ, BLOCK_SIZE_K),
+        order=(0, 1),  # transposed
     )
-    w1_ptr = tl.make_block_ptr(
-        w1_bfly_ptr,
-        shape=(K, N),
-        strides=(stride_wk, stride_wn),
-        offsets=(offs_k, offs_bn),
-        block_shape=(BLOCK_K, BLOCK_N),
+    # TODO: load w in transposed order too?
+    # just transpose and swap the strides
+    w1_ptrs = tl.make_block_ptr(
+        w1_bfly_ptr + pid_batch * stride_w1l,
+        shape=(SEQ_DIM, BLK1_IN),
+        strides=(stride_w1r, stride_w1k),
+        offsets=(0, offs_k),
+        block_shape=(BLK1_OUT, BLOCK_SIZE_K),  # Requires List[tl.constexpr]
+        order=(1, 0),
     )
 
+    w2_ptrs = tl.make_block_ptr(
+        w2_bfly_ptr + pid_batch * stride_w2l,
+        shape=(BLK2_OUT, BLK2_IN),
+        strides=(stride_w2n, stride_w2r),
+        offsets=(offs_bn, 0),
+        block_shape=(BLOCK_SIZE_N, BLK2_IN),
+        order=(1, 0),
+    )
 
+    out1_ptrs = tl.make_block_ptr(
+        o_ptr1 + pid_batch * stride_o1l,
+        shape=(SEQ_DIM, BLK1_OUT),
+        strides=(stride_o1m, stride_o1k),
+        offsets=(offs_am, offs_k),
+        block_shape=(BLOCK_SIZE_SEQ, BLOCK_SIZE_K),
+        order=(1, 0),
+    )
+
+    out2_ptrs = tl.make_block_ptr(
+        o_ptr2 + pid_batch * stride_o2l,
+        shape=(SEQ_DIM, BLK2_OUT),
+        strides=(stride_o2m, stride_o2n),
+        offsets=(offs_am, offs_bn),
+        block_shape=(BLOCK_SIZE_SEQ, BLOCK_SIZE_N),
+        order=(1, 0),
+    )
+
+    # Now use block	offsets to advance pointers
+    offs_am = pid_m * BLOCK_SIZE_SEQ + tl.arange(0, BLOCK_SIZE_SEQ)
+    offs_bn = pid_n * BLOCK_SIZE_N + tl.arange(0, BLOCK_SIZE_N)
+    offs_k = tl.arange(0, BLOCK_SIZE_K)
+    # tl.make_block_ptr doesn't use masks
+    # out1_mask = (offs_am[:, None] < SEQ_DIM) & (offs_k[None, :] < BLK1_OUT)
+    # x_mask = (offs_am[:, None] < SEQ_DIM) & (offs_k[None, :] < BLK1_OUT)
+    x = tl.load(x_ptrs, boundary_check=(0, 1))  # Prefetch to get dtype
+    dtype = x.dtype  # For autocast
+    out1 = tl.zeros((BLOCK_SIZE_SEQ, BLOCK_SIZE_K), dtype=dtype)
+    for k in range(BLOCK_SIZE_K, BLK1_IN, BLOCK_SIZE_K):
+        w1_bfly = tl.load(w1_ptrs, boundary_check=(1,)).to(dtype)
+        w1_bfly = tl.trans(w1_bfly)
+        w1_bfly = w1_bfly.to(dtype)
+
+        # TODO: Fix; Triton won't accept output dim (block rank here) <= 16?
+        out1 += tl.dot(
+            x, w1_bfly
+        )  # (seq_dim, blk1_in) @ (blk1_in, blk1_out) -> (seq_dim, blk1_out). e.g. (150, 1024) @ (1024, 4)
+        x_ptrs += BLOCK_SIZE_K * stride_xk
+        w1_ptrs += BLOCK_SIZE_K * stride_w1k
+        # Prefetch
+        # x_mask = (offs_am[:, None] < SEQ_DIM) & (k + offs_k[None, :] < BLK1_OUT)
+        x = tl.load(x_ptrs, boundary_check=(0, 1))
+    tl.store(out1_ptrs, out1, boundary_check=(0, 1))
+
+    # out2_mask = offs_am[:, None] < SEQ_DIM & offs_bn[None, :] < N_BLK * BLK2_OUT
+    out2 = tl.zeros((BLOCK_SIZE_SEQ, BLOCK_SIZE_N), dtype=dtype)
+    w2_bfly = tl.load(w2_ptrs, boundary_check=(0,)).to(dtype)
+    w2_bfly = tl.trans(w2_bfly)
+    out2 = tl.dot(out1, w2_bfly)  # (seq_dim, blk1_out) @ (blk1_out, blk2_out) -> (seq_dim, blk2_out)
+    tl.store(out2_ptrs, out2, boundary_check=(0, 1))
+
+
+@triton.autotune(
+    config_gen(),
+    key=["N_BLK", "BLK1_IN", "BLK2_OUT"],
+)
 @triton.jit
-def monarch_backward():
-    """Implements the following in triton:
-        x, w1_bfly, w2_bfly, out1, *_ = ctx.saved_tensors
-    batch_shape, n = x.shape[:-1], x.shape[-1]
-    seq_dim = np.prod(batch_shape)
-    k, q, p = w1_bfly.shape
-    l, s, r = w2_bfly.shape
+def monarch_backward(
+    dout_ptr,
+    out1_ptr,
+    x_ptr,
+    w1_bfly_ptr,
+    w2_bfly_ptr,
+    dx_ptr,
+    dw1_bfly_ptr,
+    dw2_bfly_ptr,
+    SEQ_DIM,
+    N_BLK,
+    BLK1_IN,
+    BLK1_OUT,
+    BLK2_OUT,
+    stride_dout_l,
+    stride_dout_m,
+    stride_dout_n,
+    stride_out1_r,
+    stride_out1_m,
+    stride_out1_l,
+    stride_xl,
+    stride_xm,
+    stride_xk,
+    stride_w1l,
+    stride_w1r,
+    stride_w1k,
+    stride_w2l,
+    stride_w2n,
+    stride_w2r,
+    BLOCK_SIZE_SEQ: tl.constexpr,
+    BLOCK_SIZE_N: tl.constexpr,
+    BLOCK_SIZE_K: tl.constexpr,
+    GROUP_SIZE_M: tl.constexpr,
+):
+    BLK2_IN = BLK1_OUT
+    pid_batch = tl.program_id(0)
+    pid = tl.program_id(1)
 
-    dx, dw1_bfly, dw2_bfly = None, None, None
-    # dout_reshaped = dout.reshape(seq_dim, sqrtn, sqrtn).permute(2, 1, 0).contiguous()
-    dout_reshaped = dout.reshape(seq_dim, s, l).transpose(-1, -2).contiguous()
-    dout_reshaped = dout_reshaped.transpose(0, 1)
-    if ctx.needs_input_grad[2]:
-        # dw2_bfly = torch.empty(l, s, r, device=w2_bfly.device, dtype=w2_bfly.dtype)
-        # dw2_bfly = torch.bmm(dout_reshaped.transpose(-1, -2), out1, out=dw2_bfly)
-        dw2_bfly = torch.bmm(
-            dout_reshaped.transpose(-1, -2), out1.conj()
-        )  # (l, s, seq_dim) @ (l, seq_dim, r) -> (l, s, r)
-    if ctx.needs_input_grad[1] or ctx.needs_input_grad[0]:
-        dout1 = torch.empty(seq_dim, l, r, device=x.device, dtype=x.dtype).transpose(0, 1)
-        dout1 = torch.bmm(dout_reshaped, w2_bfly.conj(), out=dout1)
-        dout1 = dout1.transpose(0, 1).transpose(-1, -2).contiguous().reshape(seq_dim, k, q).transpose(0, 1)
-        # dout1 = dout1.permute(1, 2, 0).contiguous().transpose(0, 1)
-        if ctx.needs_input_grad[0]:
-            dx = torch.empty(seq_dim, k, p, device=x.device, dtype=x.dtype)
-            dx = torch.bmm(dout1, w1_bfly.conj(), out=dx.transpose(0, 1)).transpose(0, 1).reshape(*batch_shape, n)
-        if ctx.needs_input_grad[1]:
-            x_reshaped = x.reshape(seq_dim, k, p).transpose(0, 1)
-            dw1_bfly = torch.bmm(dout1.transpose(-1, -2), x_reshaped.conj())
-    return dx, dw1_bfly, dw2_bfly, None, None
-    """
+    # Compute grouped row ids
+    num_pid_m = tl.cdiv(SEQ_DIM, BLOCK_SIZE_SEQ)
+    num_pid_n = tl.cdiv(N_BLK * BLK1_IN, BLOCK_SIZE_N)
+    num_pid_in_group = GROUP_SIZE_M * num_pid_n
+    group_id = pid // num_pid_in_group
+    first_pid_m = group_id * GROUP_SIZE_M
+    group_size_m = min(num_pid_m - first_pid_m, GROUP_SIZE_M)
+    pid_m = first_pid_m + (pid % group_size_m)
+    pid_n = (pid % num_pid_in_group) // group_size_m
+
+    offs_m = pid_m * BLOCK_SIZE_SEQ
+    offs_n = pid_n * BLOCK_SIZE_N
+    offs_k = 0
+
+    # Load a whole bunch of pointers
+    x_ptrs = tl.make_block_ptr(
+        x_ptr + pid_batch * stride_xl,
+        shape=(SEQ_DIM, BLK1_IN),
+        strides=(stride_xm, stride_xk),
+        offsets=(offs_m, offs_k),
+        block_shape=(BLOCK_SIZE_SEQ, BLOCK_SIZE_K),
+        order=(1, 0),  # transposed
+    )
+    dx_ptrs = tl.make_block_ptr(
+        dx_ptr + pid_batch * stride_xl,
+        shape=(SEQ_DIM, BLK1_IN),
+        strides=(stride_xm, stride_xk),
+        offsets=(offs_m, offs_k),
+        block_shape=(BLOCK_SIZE_SEQ, BLOCK_SIZE_K),
+        order=load_order(2),
+    )
+    out1_ptrs = tl.make_block_ptr(
+        out1_ptr + pid_batch * stride_out1_l,
+        shape=(SEQ_DIM, BLK1_OUT),
+        strides=(stride_out1_m, stride_out1_r),
+        offsets=(offs_m, 0),
+        block_shape=(BLOCK_SIZE_SEQ, BLOCK_SIZE_K),
+        order=load_order(2),
+    )
+    dout_ptrs = tl.make_block_ptr(
+        dout_ptr + pid_batch * stride_dout_l,
+        shape=(SEQ_DIM, BLK2_OUT),
+        strides=(stride_dout_m, stride_dout_n),
+        offsets=(offs_m, offs_n),
+        block_shape=(BLOCK_SIZE_SEQ, BLOCK_SIZE_N),
+        order=load_order(2),
+    )
+    w1_ptrs = tl.make_block_ptr(
+        w1_bfly_ptr + pid_batch * stride_w1l,
+        shape=(BLK1_OUT, BLK1_IN),
+        strides=(stride_w1r, stride_w1k),
+        offsets=(0, offs_k),
+        block_shape=(BLK1_OUT, BLOCK_SIZE_K),
+        order=load_order(2),
+    )
+    dw1_ptrs = tl.make_block_ptr(
+        dw1_bfly_ptr + pid_batch * stride_w1l,
+        shape=(BLK1_OUT, BLK1_IN),
+        strides=(stride_w1r, stride_w1k),
+        offsets=(0, offs_k),
+        block_shape=(BLK1_OUT, BLOCK_SIZE_K),
+        order=load_order(2),
+    )
+    w2_ptrs = tl.make_block_ptr(
+        w2_bfly_ptr + pid_batch * stride_w2l,
+        shape=(BLK2_OUT, BLK2_IN),
+        strides=(stride_w2n, stride_w2r),
+        offsets=(offs_n, 0),
+        block_shape=(BLOCK_SIZE_N, BLK2_IN),
+        order=load_order(2),
+    )
+    dw2_ptrs = tl.make_block_ptr(
+        dw2_bfly_ptr + pid_batch * stride_w2l,
+        shape=(BLK2_OUT, BLK2_IN),
+        strides=(stride_w2n, stride_w2r),
+        offsets=(offs_n, 0),
+        block_shape=(BLOCK_SIZE_N, BLK2_IN),
+        order=load_order(2),
+    )
+
+    # out_mask = offs_n[:, None] < N_BLK * BLK2_OUT
+    # seq_mask = offs_m[None, :] < SEQ_DIM
+    # seq_out_mask = offs_m[:, None] < SEQ_DIM & offs_n[None, :] < N_BLK * BLK2_OUT
+
+    # Compute dw2
+    w2_bfly = tl.load(w2_ptrs, boundary_check=(0,))
+    dout_ptrs = tl.load(dout_ptrs, boundary_check=(0, 1))
+    out1 = tl.load(out1_ptrs, boundary_check=(1,))
+    # (blk2_out, seq_dim) @ (seq_dim, blk1_out) -> (blk2_out, blk1_out)
+    dw2_bfly = tl.dot(tl.trans(out1), dout_ptrs)
+    tl.store(dw2_ptrs, dw2_bfly, boundary_check=(0,))
+
+    # Compute dx and dw1
+    x = tl.load(x_ptrs, boundary_check=(0, 1))
+    dout1 = tl.dot(dout_ptrs, w2_bfly)  # -> (seq_dim, blk2_in)
+    w1_bfly = tl.load(w1_ptrs, boundary_check=(1,))  # use diff. var names as Triton has L1 eviction
+    dx = tl.dot(dout1, w1_bfly)  # -> (seq_dim, blk1_in)
+    tl.store(dx_ptrs, dx, boundary_check=(0, 1))
+
+    dw1_bfly = tl.dot(tl.trans(dout1), x)  # -> (blk1_out, blk1_in)
+    tl.store(dw1_ptrs, dw1_bfly, boundary_check=(1,))
+
+
+dtype_map = {
+    torch.float32: tl.float32,
+    torch.bfloat16: tl.bfloat16,
+    torch.float16: tl.float16,
+}
 
 
 class MonarchKernel(torch.autograd.Function):
     @staticmethod
-    def forward(ctx, x, w1_bfly, w2_bfly, out=None):
+    def forward(ctx, x, w1_bfly, w2_bfly, debug_out1=False):
         # For Llama 7B fine-tuning on Math, this is like (2, 286, 4096)
-        B, SEQ_LEN, HID_DIM = x.shape
-        seq_dim = B * SEQ_LEN
-        nblocks1, q, p = w1_bfly.shape
-        nblocks2, s, r = w2_bfly.shape
+        BATCH_SHAPE, HID_DIM = x.shape
+        seq_dim = int(np.prod(BATCH_SHAPE))
 
-        out1 = torch.empty(nblocks1, seq_dim, q, device=x.device, dtype=x.dtype)
-        out2 = torch.empty(nblocks2, seq_dim, s, device=x.device, dtype=x.dtype)
+        nblocks1, blk1_out, blk1_in = w1_bfly.shape
+        nblocks2, blk2_out, blk2_in = w2_bfly.shape
+        assert nblocks1 == nblocks2 and blk1_out == blk2_in, "Doesn't support irregular blocks yet"
+        nblocks = nblocks1
+        assert nblocks * blk1_in == HID_DIM
+        assert nblocks * blk2_in == nblocks * blk1_out
 
+        # TODO: eliminate overhead of contiguous by in-kernel transpose?
+        x_reshaped = x.view(seq_dim, HID_DIM).view(seq_dim, nblocks1, blk1_in).transpose(0, 1).contiguous()
+        out1 = torch.empty(nblocks, seq_dim, blk1_out, device=x.device, dtype=x.dtype)
+        out2 = torch.empty(nblocks, seq_dim, blk2_out, device=x.device, dtype=x.dtype)
+
+        # For a monarch input (nblocks1, seq_dim, blk1_in) reshaped from (seq_dim, in_dim),
+        # (like (M, K) @ (K, N) in normal matmul) we wanna parallelize over in_dim and seq_dim.
+        # seq_dim for math and Alpaca tuning is small (666 and ～150 respectively); hidden_dim is 4096 for Llama 7B
+        # We launch a 2d grid of blocks sized (1, BLOCK_SIZE_SEQ * BLOCK_SIZE_N), fusing the batch dim together.
         grid = lambda META: (
-            B,
-            triton.cdiv(seq_dim, META["BLOCK_M"]) * triton.cdiv(N, META["BLOCK_N"]),
+            # Don't just launch `seq_dim` blocks; even the long-seq flash-attn kernel doesn't
+            # (https://github.com/triton-lang/triton/blob/main/python/tutorials/06-fused-attention.py#L460)
+            nblocks,
+            triton.cdiv(seq_dim, META["BLOCK_SIZE_SEQ"]) * triton.cdiv(nblocks * blk2_out, META["BLOCK_SIZE_N"]),
         )
+
         with torch.cuda.device(x.device):
             monarch_forward[grid](
-                x,
+                x_reshaped,
                 out1,
                 out2,
                 w1_bfly,
                 w2_bfly,
                 seq_dim,
-                N,
-                K,
-                x.stride(0),
-                x.stride(1),
-                x.stride(2),
-                y.stride(0),
-                y.stride(1),
-                y.stride(2),
-                out.stride(0),
-                out.stride(1),
-                out.stride(2),
+                nblocks,
+                blk1_in,
+                blk1_out,
+                blk2_out,
+                x_reshaped.stride(0),
+                x_reshaped.stride(1),
+                x_reshaped.stride(2),
+                w1_bfly.stride(0),
+                w1_bfly.stride(1),
+                w1_bfly.stride(2),
+                w2_bfly.stride(0),
+                w2_bfly.stride(1),
+                w2_bfly.stride(2),
+                out1.stride(0),
+                out1.stride(1),
+                out1.stride(2),
+                out2.stride(0),
+                out2.stride(1),
+                out2.stride(2),
+                # dtype=tl.dtype(dtype_map[x.dtype]),
             )
-        ctx.save_for_backward(x, y, w1_bfly, w2_bfly, out1)
-        return out
+
+        ctx.save_for_backward(x, w1_bfly, w2_bfly, out1)
+        if debug_out1:
+            return out2, out1
+        return out2
 
     @staticmethod
     def backward(ctx, dout):
-        x,
+        x, w1_bfly, w2_bfly, out1, *_ = ctx.saved_tensors
+        BATCH_SHAPE, HID_DIM = x.shape
+        seq_dim = int(np.prod(BATCH_SHAPE))
+        x = x.view(seq_dim, HID_DIM).view(seq_dim, nblocks1, blk1_in).transpose(0, 1).contiguous()
+        nblocks1, blk1_out, blk1_in = w1_bfly.shape
+        nblocks2, blk2_out, blk2_in = w2_bfly.shape
+        assert nblocks1 == nblocks2 and blk1_out == blk2_in, "Doesn't support irregular blocks yet"
+        nblocks = nblocks1 = nblocks2
+
+        # Allocate buffers
+        # (nblocks2, seq_dim, blk2_out)
+        dout = dout.view(seq_dim, blk2_out, nblocks2).permute(2, 0, 1).contiguous()
+        dw1_bfly = torch.empty(nblocks1, seq_dim, blk1_out, device=w1_bfly.device, dtype=w1_bfly.dtype)
+        dw2_bfly = torch.empty(nblocks2, seq_dim, blk2_in, device=w2_bfly.device, dtype=w2_bfly.dtype)
+        dx = torch.empty(seq_dim, nblocks1, blk1_in, device=x.device, dtype=x.dtype)
+        # Triton doesn't have conjugate?
+        w1_bfly = w1_bfly.conj()
+        w2_bfly = w2_bfly.conj()
+        out1 = out1.conj()  # (nblocks1, seq_dim, blk1_out)
+        x = x.conj()
+
+        grid = lambda META: (
+            nblocks,
+            triton.cdiv(seq_dim, META["BLOCK_SIZE_SEQ"]) * triton.cdiv(blk2_out, META["BLOCK_SIZE_N"]),
+        )
+        # dw2_bfly = dw2_bfly if ctx.needs_input_grad[2] else None
+        # dx = dx if ctx.needs_input_grad[0] else None
+        # dw1_bfly = dw1_bfly if ctx.needs_input_grad[1] else None
+        with torch.cuda.device(x.device):
+            monarch_backward[grid](
+                dout,
+                out1,
+                x,
+                w1_bfly,
+                w2_bfly,
+                dx,
+                dw1_bfly,
+                dw2_bfly,
+                seq_dim,
+                nblocks,
+                blk1_in,
+                blk1_out,
+                blk2_out,
+                dout.stride(0),
+                dout.stride(1),
+                dout.stride(2),
+                out1.stride(0),
+                out1.stride(1),
+                out1.stride(2),
+                x.stride(0),
+                x.stride(1),
+                x.stride(2),
+                w1_bfly.stride(0),
+                w1_bfly.stride(1),
+                w1_bfly.stride(2),
+                w2_bfly.stride(0),
+                w2_bfly.stride(1),
+                w2_bfly.stride(2),
+            )
+        dx = dx.reshape(BATCH_SHAPE, HID_DIM)
+        return dx, dw1_bfly, dw2_bfly
+
+
+monarch_kernel = MonarchKernel.apply

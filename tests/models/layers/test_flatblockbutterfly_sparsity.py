@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from src.models.layers.blocksparse_linear import (
+from src.ops.blocksparse_linear import (
     BlockSparseLinear,
     FlatBlockButterflySparsityConfig,
 )
@@ -21,7 +21,7 @@ class TestFlatBlockButterflySparsityConfig:
         batch_size = 3
         x = torch.randn(batch_size, in_features)
         s_cfg = {
-            "_target_": "src.models.layers.blocksparse_linear.FlatBlockButterflySparsityConfig",
+            "_target_": "src.ops.blocksparse_linear.FlatBlockButterflySparsityConfig",
             "butterfly_size": butterfly_size,
             "n_factors": n_factors,
             "block": block_size,
@@ -42,7 +42,7 @@ class TestFlatBlockButterflySparsityConfig:
         batch_size = 3
         x = torch.randn(batch_size, in_features)
         s_cfg = {
-            "_target_": "src.models.layers.blocksparse_linear.FlatBlockButterflySparsityConfig",
+            "_target_": "src.ops.blocksparse_linear.FlatBlockButterflySparsityConfig",
             "butterfly_size": butterfly_size,
             "n_factors": n_factors,
             "block": block_size,

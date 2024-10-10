@@ -5,7 +5,7 @@ import pytest
 import torch
 
 sys.path.append("/fly")
-from src.models.layers.monarch_linear import MonarchLinear
+from src.layers.monarch_linear import MonarchLinear
 
 
 # @Wenxuan: Tests whether trained weights instead of random weights
@@ -32,7 +32,7 @@ def test_trained_weight_approx(device, rank, nblocks, sdict_path):
             m, n = weights.shape
             x = torch.eye(n, device=device)
             layer = MonarchLinear(
-                in_features=n, out_features=m, nblocks=nblocks, blk_r=rank, weights=weights, bias=False, device=device
+                in_dim=n, out_features=m, nblocks=nblocks, blk_r=rank, weights=weights, bias=False, device=device
             )
             monarch_out = [layer(x)]
             dense_out += [x @ weights.T]

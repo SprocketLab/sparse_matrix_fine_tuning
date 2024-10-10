@@ -25,7 +25,6 @@ from typing import List, Optional, Tuple, Union
 import ray
 import torch
 import torch.utils.checkpoint
-import wandb
 from packaging import version
 from torch import nn
 from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss
@@ -55,10 +54,12 @@ from transformers.utils import (
     replace_return_docstrings,
 )
 
+import wandb
+
 sys.path.insert(0, "/fly")  # docker working dir
 import loralib as lora
 
-from src.models.layers.monarch_linear import MonarchLinear, Scaler
+from src.layers.monarch_linear import MonarchLinear, Scaler
 
 logger = logging.get_logger(__name__)
 
@@ -114,7 +115,7 @@ class peft_module:
             bias = layer.bias != None
             # blk_full_dim = self.peft_config["nblocks"] * self.peft_config["blk_sz"]
             new_layer = MonarchLinear(
-                in_features=n,
+                in_dim=n,
                 out_features=m,
                 nblocks=nblocks,
                 # blk_full_dim=blk_full_dim,

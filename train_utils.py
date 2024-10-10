@@ -27,7 +27,7 @@ import torch.nn as nn
 from peft import BOFTConfig, LoraConfig, get_peft_model
 
 import wandb
-from src.models.layers.monarch_linear import MonarchLinear, Scaler
+from src.layers.monarch_linear import MonarchLinear, Scaler
 
 PEFT_ROBERTA_PATH = "/fly/task_configs/monarch_roberta_glue/peft_config.json"
 PEFT_DEBERTA_PATH = "/fly/task_configs/deberta_glue/peft_monarch_deberta.json"
@@ -562,7 +562,8 @@ class ProfCallback(TrainerCallback):
     def on_step_end(self, args, state, control, **kwargs):
         self.prof.step()
         # peak memory
-        # print(f"Peak memory: {torch.cuda.max_memory_allocated() / 1024 ** 2:.2f} MB")
+        if self.prof.step_num <= 2:
+            print(f"Peak memory: {torch.cuda.max_memory_allocated() / 1024 ** 2:.2f} MB")
 
 
 def set_merged(model):

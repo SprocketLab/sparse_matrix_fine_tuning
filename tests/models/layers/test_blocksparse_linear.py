@@ -2,9 +2,9 @@ import pytest
 import torch
 from einops import rearrange, repeat
 
+from src.layers.fastlinear import NinjaTurtleLinear
 from src.models.attention.blocksparse_utils import densify_tensor, sparsify_tensor
-from src.models.layers.blocksparse_linear import BlockSparseLinear
-from src.models.layers.fastlinear import NinjaTurtleLinear
+from src.ops.blocksparse_linear import BlockSparseLinear
 from src.utils.padding import pad_to_multiple
 
 
@@ -16,9 +16,7 @@ def seed_cpu_cuda(seed):
 def setup(batch_size, in_features, out_features, block_size):
     x = torch.randn(batch_size, in_features, requires_grad=True, device="cuda")
     kwargs = dict(window_size=block_size, stripes=1, step=2, gtoken=block_size)
-    sparsity_config = dict(
-        _target_="src.models.layers.fastlinear.NinjaTurtleSparsityConfig", block=block_size, **kwargs
-    )
+    sparsity_config = dict(_target_="src.layers.fastlinear.NinjaTurtleSparsityConfig", block=block_size, **kwargs)
     bs_linear = BlockSparseLinear(in_features, out_features, sparsity_config, bias=True).to("cuda")
     bs_fake_linear = NinjaTurtleLinear(in_features, out_features, bias=True, **kwargs).to("cuda")
     return x, bs_linear, bs_fake_linear
@@ -48,9 +46,7 @@ class TestBlockSparseLinear:
         batch_size = 128
         x = torch.randn(batch_size, in_features, requires_grad=True, device="cuda")
         kwargs = dict(window_size=block_size, stripes=1, step=2, gtoken=block_size)
-        sparsity_config = dict(
-            _target_="src.models.layers.fastlinear.NinjaTurtleSparsityConfig", block=block_size, **kwargs
-        )
+        sparsity_config = dict(_target_="src.layers.fastlinear.NinjaTurtleSparsityConfig", block=block_size, **kwargs)
         bs_linear_triton = BlockSparseLinear(
             in_features, out_features, sparsity_config, bias=True, backend="triton"
         ).to("cuda")

@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 from einops import rearrange
 
-from src.models.layers.structured_linear import StructuredLinear
+from src.layers.structured_linear import StructuredLinear
 from src.ops.blockdiag_multiply import blockdiag_multiply
 
 

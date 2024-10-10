@@ -5,22 +5,23 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn import init
 
-from src.models.layers.blockdiag_butterfly_multiply import (
-    blockdiag_butterfly_multiply,
-    single_monarch_mult,
-)
-from src.models.layers.structured_linear import StructuredLinear
+from src.layers.structured_linear import StructuredLinear
 from src.ops.blockdiag_butterfly_einsum import (
     blockdiag_butterfly_project_einsum_rank,  # for rectangular, custom rank
 )
 from src.ops.blockdiag_butterfly_einsum import (
     blockdiag_butterfly_project_einsum_simple,  # for rectangular, rank 1
 )
+from src.ops.blockdiag_butterfly_multiply import (
+    blockdiag_butterfly_multiply,
+    single_monarch_mult,
+)
 
 # NOTE converting weights to monarch matrices
 from src.ops.blockdiag_butterfly_projection import (
     blockdiag_butterfly_project,  # square weights, rank 1
 )
+from src.ops.triton import monarch_kernel
 
 hooked = False
 hooked_module = None
@@ -97,11 +98,12 @@ class MonarchLinear(StructuredLinear):
         self,
         in_features,
         out_features,
-        peft_config: dict = _DEFAULT_CONFIG,
-        nblocks: int = 4,
+        nblocks: int = None,
         weights: torch.Tensor = None,
+        peft_config: dict = _DEFAULT_CONFIG,
         device="cuda",
         dtype=torch.float32,
+        use_triton=False,
         *args,
         **kwargs,
     ):
@@ -111,10 +113,14 @@ class MonarchLinear(StructuredLinear):
             weights (torch.Tensor, optional): The dense weight matrix for projection. If none will init with Kaiming
             blk_r (int, optional): The per block rank (output dim). Used also in SVD projection and param definition
             blk_sz (int, optional): Size of each block. If None, will be calculated from in_features
+            use_triton (bool, optional): Use the fused Triton kernel
         """
         super().__init__(in_features, out_features, *args, **kwargs)
         self.device = device
-        self.nblocks = nblocks
+        self.use_triton = use_triton
+        self.monarch_impl = monarch_kernel if use_triton else blockdiag_butterfly_multiply
+
+        self.nblocks = nblocks if nblocks is not None else peft_config["nblocks"]
         self.blk_r = peft_config["blk_r"] if "blk_r" not in kwargs else kwargs["blk_r"]
         self.blk_sz = peft_config["blk_sz"] if "blk_sz" not in kwargs else kwargs["blk_sz"]
         if self.blk_sz is None:
@@ -156,12 +162,12 @@ class MonarchLinear(StructuredLinear):
         # Init block-diagonal monarch factors
         self.blkdiag1 = nn.Parameter(
             torch.zeros(
-                self.nblocks, self.blk_r, self.in_blksz, device=self.device
+                self.nblocks, self.blk_r, self.in_blksz, device=self.device, dtype=dtype
             )  # (nblocks, r * nblocks , in_features / nblocks)
         )
         self.blkdiag2 = nn.Parameter(
             torch.zeros(
-                self.nblocks, self.out_blksz, self.blk_r, device=self.device
+                self.nblocks, self.out_blksz, self.blk_r, device=self.device, dtype=dtype
             )  # (nblocks, out_features / nblocks, r * nblocks)
         )
 
@@ -170,7 +176,7 @@ class MonarchLinear(StructuredLinear):
         # (nblocks, out_features / nblocks, in_features / nblocks)
         if self.use_mult_factor:
             self.blkdiag_mult = nn.Parameter(
-                torch.eye(self.out_blksz, self.in_blksz, device=self.device).repeat(nblocks, 1, 1)
+                torch.eye(self.out_blksz, self.in_blksz, device=self.device, dtype=dtype).repeat(nblocks, 1, 1)
             )
 
         # initialize frozen dense weights
@@ -180,7 +186,7 @@ class MonarchLinear(StructuredLinear):
                 self.dense = nn.Parameter(weights, requires_grad=False)
             else:
                 self.set_weights_from_dense_init(weights, 1)
-        self.to(device)
+        self.to(device, dtype=dtype, non_blocking=True)
 
         # Initialize scaling (vector or a scaler)
         if self.use_scaler:
@@ -204,7 +210,7 @@ class MonarchLinear(StructuredLinear):
         Initialize block-diagonal weights and biases
         """
         monarch_factors = [self.blkdiag1]
-        if self.use_scaler:
+        if self.use_scaler or not self.as_adapter:
             monarch_factors.append(self.blkdiag2)  # zero init the scaler only
 
         if self.lora_style_init:
@@ -227,13 +233,12 @@ class MonarchLinear(StructuredLinear):
                     blkdiag.uniform_(-bound, bound)
         self.reset_parameters_bias()
 
-    def monarch_forward(self, x):
+    def monarch_forward(self, x, use_triton=False):
         """
-        Forward using monarch factors only
+        Forward using two monarch factors
         """
-        output = blockdiag_butterfly_multiply(
-            self.preprocess(x), self.blkdiag1, self.blkdiag2, self.out1_buffer, self.out2_buffer
-        )
+        monarch_impl = monarch_kernel if use_triton else self.monarch_impl
+        output = monarch_impl(self.preprocess(x), self.blkdiag1, self.blkdiag2)
         return self.scaler(self.dropout(self.postprocess(output)))
 
     def set_weights_from_dense_init(self, w: torch.Tensor, rank=1):
@@ -279,23 +284,23 @@ class MonarchLinear(StructuredLinear):
                 self.dense.data += merged_weights
                 self.merged = True
 
-    def forward(self, x):
+    def forward(self, x, use_triton=False):
         if self.as_adapter:
             assert (
                 getattr(self, "dense", None) is not None
-            ), "You should either set dense weights or set as_adapter=False"
+            ), "You should either set dense (main, frozen) weights or set as_adapter=False"
             out = F.linear(x, self.dense)
             if self.use_mult_factor:
                 out = single_monarch_mult(out, self.blkdiag_mult)
 
             if not self.merged:
                 # training with adapter
-                x = out + self.monarch_forward(x)
+                x = out + self.monarch_forward(x, use_triton)
             else:
                 x = out
         else:
             # Dense already projected to monarch
-            x = self.monarch_forward(x)
+            x = self.monarch_forward(x, use_triton)
 
         return x + self.bias if getattr(self, "bias", None) is not None else x
 
@@ -316,10 +321,6 @@ class MonarchLinear(StructuredLinear):
     @property
     def saving(self):
         return (self.blkdiag1.numel() + self.blkdiag2.numel()) / (self.in_features * self.out_features)
-
-
-class Block(nn.Module):
-    """Helper for orthogonal parameterization"""
 
 
 class MonarchFactor(nn.Module):
