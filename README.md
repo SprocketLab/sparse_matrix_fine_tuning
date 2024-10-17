@@ -8,6 +8,7 @@ Paper: https://arxiv.org/abs/2408.17383
 
 ## 📰 News
 - [2024/06] Our paper is accepted by two ICML workshops: ES-FOMO and FM-wild!
+- [2024/10] Release an optimized Triton Kernel and further optimizations for the PyTorch version!
 
 ## 🗝️ MoRe Implementation
 * `src/models/layers/monarch_linear.py` contains the code for MoRe adapter.
@@ -34,7 +35,7 @@ You can manually modify the hyperparameters in `task_configs/llama` for reasonin
 
 ## 🧐 Todo
 We welcome contributions and suggestions to the list!
-- [ ] Fused Triton kernel for Monarch
+- [x] Fused Triton kernel for Monarch
 - [ ] MMLU results (including reproducing the QLoRA baselines)
 - [ ] More ablations on rank tuning guidelines
 - [ ] Explore MoRe as a general substitute for low-rank modules.

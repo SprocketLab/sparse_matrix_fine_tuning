@@ -96,8 +96,8 @@ class BlockdiagButterflyMultiply(torch.autograd.Function):
 
         # out1 = out1.transpose(0, 1).reshape(seq_dim, blk2_in, nblocks2).transpose(-1, -2).contiguous().transpose(0, 1)
         out1 = (
-            out1.transpose(0, 1).reshape(seq_dim, blk2_in, nblocks2).transpose(-1, -2).transpose(0, 1)
-        )  # -> (seq_dim, nblocks1, blk1_out) -> (seq_dim, blk2_in, nblocks2) -> (seq_dim, nblocks2, blk1_out) -> (nblocks2, seq_dim, blk1_out)
+            out1.transpose(0, 1).reshape(seq_dim, blk2_in, nblocks2).permute(2, 0, 1)
+        )  # (seq_dim, nblocks1, blk1_out) -> (nblocks2, seq_dim, blk1_out)
 
         out2 = torch.empty(nblocks2, seq_dim, blk2_out, device=x.device, dtype=x.dtype)
         out2 = torch.bmm(
@@ -106,7 +106,7 @@ class BlockdiagButterflyMultiply(torch.autograd.Function):
 
         out2 = out2.permute(1, 2, 0).reshape(
             *batch_shape, blk2_out * nblocks2
-        )  # (seq_dim, nblocks2, blk2_out) -> (seq_dim, blk2_out, nblocks2) -> (seq_dim, blk2_out * nblocks2)
+        )  # (nblocks2, seq_dim, blk2_out) -> (seq_dim, nblocks2 * blk2_out )
 
         ctx.save_for_backward(x, w1_bfly, w2_bfly, out1, None, None)
         if debug_out1:

@@ -120,7 +120,7 @@ class MonarchLinear(StructuredLinear):
         self.use_triton = use_triton
         self.monarch_impl = monarch_kernel if use_triton else blockdiag_butterfly_multiply
 
-        self.nblocks = nblocks if nblocks is not None else peft_config["nblocks"]
+        self.nblocks = peft_config["nblocks"] if "nblocks" not in kwargs else kwargs["nblocks"]
         self.blk_r = peft_config["blk_r"] if "blk_r" not in kwargs else kwargs["blk_r"]
         self.blk_sz = peft_config["blk_sz"] if "blk_sz" not in kwargs else kwargs["blk_sz"]
         if self.blk_sz is None:
