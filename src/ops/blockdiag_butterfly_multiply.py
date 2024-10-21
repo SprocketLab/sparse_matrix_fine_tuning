@@ -94,7 +94,6 @@ class BlockdiagButterflyMultiply(torch.autograd.Function):
         )  # (nblocks1, seq_dim, blk1_in) @ (nblocks1, blk1_in, blk1_out) -> (nblocks1, seq_dim, blk1_out)
         del x_reshaped
 
-        # out1 = out1.transpose(0, 1).reshape(seq_dim, blk2_in, nblocks2).transpose(-1, -2).contiguous().transpose(0, 1)
         out1 = (
             out1.transpose(0, 1).reshape(seq_dim, blk2_in, nblocks2).permute(2, 0, 1)
         )  # (seq_dim, nblocks1, blk1_out) -> (nblocks2, seq_dim, blk1_out)
@@ -102,7 +101,7 @@ class BlockdiagButterflyMultiply(torch.autograd.Function):
         out2 = torch.empty(nblocks2, seq_dim, blk2_out, device=x.device, dtype=x.dtype)
         out2 = torch.bmm(
             out1, w2_bfly.transpose(-1, -2), out=out2
-        )  # (nblocks2, seq_dim, r) @ (nblocks2, blk2_in, blk2_out) -> (nblocks2, seq_dim, blk2_out)
+        )  # (nblocks2, seq_dim, blk2_in) @ (nblocks2, blk2_in, blk2_out) -> (nblocks2, seq_dim, blk2_out)
 
         out2 = out2.permute(1, 2, 0).reshape(
             *batch_shape, blk2_out * nblocks2
