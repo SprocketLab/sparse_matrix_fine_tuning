@@ -22,7 +22,7 @@ fi
 python /fly/qlora/qlora_monarch.py \
     --model_name_or_path meta-llama/Llama-2-7b-hf \
     --eval_accumulation_steps 2 \
-    --output_dir  /fly/results/llama \
+    --output_dir  /fly/results/llama_mmlu \
     --do_eval \
     --dataset alpaca \
     --source_max_len 16 \

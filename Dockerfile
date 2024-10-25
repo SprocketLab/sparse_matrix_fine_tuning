@@ -74,7 +74,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
    # openmpi-bin \
 
 # m2 dependencies
-RUN pip install einops omegaconf opt_einsum triton
+RUN pip install einops omegaconf opt_einsum triton==3.0.0
 # Some how this fixes the pydantic__version__ bug...
 RUN python -m pip install -U pydantic spacy==3.4.4
 RUN pip install accelerate -U
@@ -83,7 +83,7 @@ RUN pip install datasets==2.16.1
 RUN pip install tensorboardX
 RUN pip install bitsandbytes peft einops sentencepiece==0.1.99
 RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" || true
-RUN pip install transformers==4.39.2
+RUN pip install transformers
 RUN pip install flash_attn==2.5.6
 RUN pip install ray==2.37.0
 # ENV PATH $CONDA_DIR/bin:$PATH

@@ -22,7 +22,7 @@ fi
 python qlora_monarch.py \
     --model_name_or_path meta-llama/Llama-2-7b-hf \
     --eval_accumulation_steps 4 \
-    --output_dir  /fly/results/llama \
+    --output_dir  /fly/results/llama_mmlu \
     --logging_steps 40 \
     --save_strategy steps \
     --save_steps 187 \
@@ -51,9 +51,9 @@ python qlora_monarch.py \
     --max_grad_norm 0.3 \
     --weight_decay 0.0 \
     --seed 1 \
-    --hf_token=$HF_TOKEN "${FLAGS[@]}" \
+    --hf_token=$HF_TOKEN \
     --do_mmlu_eval \
     --mmlu_split test \
     --load_best_model_at_end \
-    --num_train_epochs 1
+    --num_train_epochs 1 "${FLAGS[@]}" \
     # --max_steps 1875 \

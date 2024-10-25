@@ -49,10 +49,10 @@ def add_kernel(
     mask = offsets < n_elements
     # Load x and y from DRAM, masking out any extra elements in case the input is not a
     # multiple of the block size.
-    x = tl.load(x_ptr + offsets, mask=mask)
-    y = tl.load(y_ptr + offsets, mask=mask)
+    x = tl.load(x_ptr + offsets, mask=mask).to(tl.bfloat16)
+    y = tl.load(y_ptr + offsets, mask=mask).to(tl.bfloat16)
     output = x + y
-    # breakpoint()
+    breakpoint()
 
     # Write x + y back to DRAM.
     tl.store(output_ptr + offsets, output, mask=mask)
@@ -87,8 +87,8 @@ def add(x: torch.Tensor, y: torch.Tensor):
 
 torch.manual_seed(0)
 size = 98432
-x = torch.ones(size, device="cuda", dtype=torch.float16)
-y = torch.ones(size, device="cuda", dtype=torch.float16)
+x = torch.ones(size, device="cuda", dtype=torch.bfloat16)
+y = torch.ones(size, device="cuda", dtype=torch.bfloat16)
 output_torch = x + y
 output_triton = add(x, y)
 print(output_torch)

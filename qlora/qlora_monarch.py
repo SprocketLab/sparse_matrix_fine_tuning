@@ -602,6 +602,7 @@ def train():
         project=os.environ["WANDB_PROJECT"], group=os.environ["WANDB_RUN_GROUP"], config=vars(args).update(peft_config)
     )
     print(f"wandb group name: {os.environ['WANDB_RUN_GROUP']}")
+    os.makedirs(args.output_dir, exist_ok=True)
     with open(os.path.join(training_args.output_dir, "full_group.txt"), "w") as f:
         f.write(os.environ["WANDB_RUN_GROUP"])
 
@@ -656,6 +657,8 @@ def train():
         mmlu_dataset = mmlu_dataset[args.mmlu_split]
         if args.max_mmlu_samples is not None:
             mmlu_dataset = mmlu_dataset.select(range(args.max_mmlu_samples))
+        if args.group_by_length:
+            mmlu_dataset = mmlu_dataset.map(lambda x: {"length": len(x["input"]) + len(x["output"])})
         abcd_idx = [
             tokenizer("A", add_special_tokens=False).input_ids[0],
             tokenizer("B", add_special_tokens=False).input_ids[0],
@@ -664,7 +667,7 @@ def train():
         ]
         accuracy = evaluate.load("accuracy")
 
-        # NOTE: set --eval_dataset_size 1 --do_eval just to jump into this mmlu function
+        # NOTE: set `--eval_dataset_size 1 --do_eval` to jump into this mmlu function
         @torch.no_grad()
         def compute_metrics(eval_preds: EvalPrediction):
             args = trainer.args

@@ -25,10 +25,10 @@ def config_gen():
 
 
 # fmt: off
-@triton.autotune(
-    config_gen(),
-    key=["N_BLK", "BLK1_IN", "BLK2_OUT"],
-)
+# @triton.autotune(
+#     config_gen(),
+#     key=["N_BLK", "BLK1_IN", "BLK2_OUT"],
+# )
 @triton.jit
 def monarch_forward(
     x_ptr, o_ptr1, o_ptr2, w1_bfly_ptr, w2_bfly_ptr,
@@ -129,13 +129,13 @@ def monarch_forward(
 
         # TODO: Fix: Triton won't accept blk1_out (block rank) <= 16?
         out1 += tl.dot(
-            x, w1_bfly
+            x, w1_bfly, out_dtype=tl.float16 if dtype == tl.float16 else tl.float32
         )  # (seq_dim, blk1_in) @ (blk1_in, blk1_out) -> (seq_dim, blk1_out).
-        if k + BLOCK_SIZE_K < BLK1_IN:
-            x_ptrs = tl.advance(x_ptrs, (0, BLOCK_SIZE_K))
-            w1_ptrs = tl.advance(w1_ptrs, (0, BLOCK_SIZE_K))
-            # Prefetch
-            x = tl.load(x_ptrs, boundary_check=(0, 1), eviction_policy="evict_first", padding_option="zero")
+        breakpoint()
+        x_ptrs = tl.advance(x_ptrs, (0, BLOCK_SIZE_K))
+        w1_ptrs = tl.advance(w1_ptrs, (0, BLOCK_SIZE_K))
+        # Prefetch
+        x = tl.load(x_ptrs, boundary_check=(0, 1), eviction_policy="evict_first", padding_option="zero")
 
     out1 = out1.to(dtype)
     tl.store(out1_ptrs, out1, boundary_check=(0,))

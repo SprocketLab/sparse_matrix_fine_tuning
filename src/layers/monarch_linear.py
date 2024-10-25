@@ -199,9 +199,6 @@ class MonarchLinear(StructuredLinear):
             self.scaler = nn.Identity()
         self.scaler.to(self.device)
 
-        self.out1_buffer: torch.Tensor = None
-        self.out2_buffer: torch.Tensor = None
-
     def merge_weights(self):
         """Merge Monarch adapters into dense weights"""
 

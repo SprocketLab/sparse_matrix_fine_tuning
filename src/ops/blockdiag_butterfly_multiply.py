@@ -71,7 +71,7 @@ class BlockdiagButterflyMultiply(torch.autograd.Function):
 
     @staticmethod
     @torch.cuda.amp.custom_fwd(cast_inputs=torch.bfloat16)
-    def forward(ctx, x, w1_bfly, w2_bfly, out1=None, out2=None, debug_out1=False):
+    def forward(ctx, x, w1_bfly, w2_bfly, debug_out1=False):
         batch_shape, n = x.shape[:-1], x.shape[-1]
         seq_dim = np.prod(batch_shape)
 
@@ -93,10 +93,10 @@ class BlockdiagButterflyMultiply(torch.autograd.Function):
             x_reshaped, w1_bfly.transpose(-1, -2), out=out1
         )  # (nblocks1, seq_dim, blk1_in) @ (nblocks1, blk1_in, blk1_out) -> (nblocks1, seq_dim, blk1_out)
         del x_reshaped
-
+        # breakpoint()
         out1 = (
             out1.transpose(0, 1).reshape(seq_dim, blk2_in, nblocks2).permute(2, 0, 1)
-        )  # (seq_dim, nblocks1, blk1_out) -> (nblocks2, seq_dim, blk1_out)
+        )  # (nblocks1, seq_dim, blk1_out) -> (nblocks2, seq_dim, blk2_in)
 
         out2 = torch.empty(nblocks2, seq_dim, blk2_out, device=x.device, dtype=x.dtype)
         out2 = torch.bmm(
@@ -138,7 +138,7 @@ class BlockdiagButterflyMultiply(torch.autograd.Function):
             # dout1 = dout1.transpose(0, 1).transpose(-1, -2).contiguous().reshape(seq_dim, nblocks1, blk1_out).transpose(0, 1)
             # NOTE: We do NOT need contiguous in between? This should save memory & time
             dout1 = (
-                dout1.permute(1, 2, 0).view(seq_dim, nblocks1, blk1_out).transpose(0, 1)
+                dout1.permute(1, 2, 0).reshape(seq_dim, nblocks1, blk1_out).transpose(0, 1)
             )  # -> (nblocks1, seq_dim, blk2_in)
             if ctx.needs_input_grad[0]:
                 dx = torch.empty(seq_dim, nblocks1, blk1_in, device=x.device, dtype=x.dtype)
@@ -185,14 +185,14 @@ def blockdiag_butterfly_multiply_reference(x, w1_bfly, w2_bfly, version=2):
         return torch.einsum("bkp,kqp,qlk->blq", x_reshaped, w1_bfly, w2_bfly).reshape(batch, n)
     elif version == 2:  # Implementation 2
         out1 = torch.einsum("kqp,bkp->bkq", w1_bfly, x_reshaped)
-        out1 = rearrange(rearrange(out1, "b k q -> b (k blk1_out)"), "b (r nblocks2) -> b l r", l=nblocks2)
-        return torch.einsum("lsblk2_in,blr->bsl", w2_bfly, out1).reshape(batch, s * nblocks2)
+        out1 = rearrange(rearrange(out1, "b k q -> b (k q)"), "b (r l) -> b l r", l=nblocks2)
+        return torch.einsum("lsr,blr->bsl", w2_bfly, out1).reshape(batch, s * nblocks2)
     # Implementation 3: most likely to be correct, but it's the slowest
     elif version == 3:
         w1_dense = torch.block_diag(*torch.unbind(w1_bfly, dim=0))
         out1 = F.linear(x, w1_dense)
-        out1 = rearrange(out1, "b (r nblocks2) -> b (l r)", l=nblocks2)
+        out1 = rearrange(out1, "b (r l) -> b (l r)", l=nblocks2)
         w2_dense = torch.block_diag(*torch.unbind(w2_bfly, dim=0))
         out2 = F.linear(out1, w2_dense)
-        out2 = rearrange(out2, "b (l blk2_out) -> b (s nblocks2)", l=nblocks2)
+        out2 = rearrange(out2, "b (l s) -> b (s l)", l=nblocks2)
         return out2
