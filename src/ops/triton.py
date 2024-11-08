@@ -6,7 +6,7 @@ import triton.language as tl
 
 def config_gen():
     configs = []
-    for BSEQ in [32, 64, 128]:
+    for BSEQ in [64, 128]:
         for BK in [32, 64, 128]:
             for BN in [64, 128, 256]:
                 num_stages = 4  # Even flash-attn has up to 5 stages (https://github.com/triton-lang/triton/blob/6af74b2f4535682abfc0b08958bc2c6831036d29/python/tutorials/06-fused-attention.py#L489)
@@ -25,10 +25,12 @@ def config_gen():
 
 
 # fmt: off
-# @triton.autotune(
-#     config_gen(),
-#     key=["N_BLK", "BLK1_IN", "BLK2_OUT"],
-# )
+@triton.autotune(
+    config_gen(),
+    key=["N_BLK", "BLK1_IN", "BLK2_OUT"],
+    rep=80,
+    warmup=15
+)
 @triton.jit
 def monarch_forward(
     x_ptr, o_ptr1, o_ptr2, w1_bfly_ptr, w2_bfly_ptr,
@@ -131,7 +133,7 @@ def monarch_forward(
         out1 += tl.dot(
             x, w1_bfly, out_dtype=tl.float16 if dtype == tl.float16 else tl.float32
         )  # (seq_dim, blk1_in) @ (blk1_in, blk1_out) -> (seq_dim, blk1_out).
-        breakpoint()
+
         x_ptrs = tl.advance(x_ptrs, (0, BLOCK_SIZE_K))
         w1_ptrs = tl.advance(w1_ptrs, (0, BLOCK_SIZE_K))
         # Prefetch
@@ -306,10 +308,10 @@ class MonarchKernel(torch.autograd.Function):
         out2 = torch.empty(seq_dim, nblocks, blk2_out, device=x.device, dtype=x.dtype)
         # For a monarch input (nblocks1, seq_dim, blk1_in) reshaped from (seq_dim, in_dim),
         # (like (M, K) @ (K, N) in normal matmul) we wanna parallelize over in_dim and seq_dim.
-        # seq_dim for math and Alpaca tuning is small (～666 and 150 respectively); hidden_dim is 4096 for Llama 7B
+        # seq_dim for math and Alpaca tuning is small; hidden_dim is 4096 for Llama 7B. e.g. (4, 666, 1024)
         # We launch a 2d grid of blocks sized (1, BLOCK_SIZE_SEQ * BLOCK_SIZE_N), fusing the batch dim together.
         grid = lambda META: (
-            # Don't just launch `seq_dim` blocks; even the long-seq flash-attn kernel doesn't
+            # Don't just launch `seq_dim` blocks; even the long-seq flash-attn kernel uses BLOCK_M
             # (https://github.com/triton-lang/triton/blob/main/python/tutorials/06-fused-attention.py#L460)
             nblocks,
             triton.cdiv(seq_dim, META["BLOCK_SIZE_SEQ"]) * triton.cdiv(nblocks * blk2_out, META["BLOCK_SIZE_N"]),

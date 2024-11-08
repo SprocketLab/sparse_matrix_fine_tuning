@@ -85,18 +85,18 @@ class BlockdiagButterflyMultiply(torch.autograd.Function):
         assert nblocks1 * blk1_in == n
         assert nblocks2 * blk2_in == nblocks1 * blk1_out
 
-        # For Llama 7B on Math x_reshaped is like (4, 666, 1024)
-        # For instruction tuning: (4, 150, 1024)
+        # Typical shape for Llama 7B on Math reasoning: (4, 666, 1024)
         x_reshaped = x.reshape(seq_dim, nblocks1, blk1_in).transpose(0, 1)
         out1 = torch.empty(nblocks1, seq_dim, blk1_out, device=x.device, dtype=x.dtype)
-        out1 = torch.bmm(
-            x_reshaped, w1_bfly.transpose(-1, -2), out=out1
-        )  # (nblocks1, seq_dim, blk1_in) @ (nblocks1, blk1_in, blk1_out) -> (nblocks1, seq_dim, blk1_out)
+
+        # (nblocks1, seq_dim, blk1_in) @ (nblocks1, blk1_in, blk1_out)
+        out1 = torch.bmm(x_reshaped, w1_bfly.transpose(-1, -2), out=out1)  # -> (nblocks1, seq_dim, blk1_out)
         del x_reshaped
-        # breakpoint()
+
+        # Feature shuffling
         out1 = (
             out1.transpose(0, 1).reshape(seq_dim, blk2_in, nblocks2).permute(2, 0, 1)
-        )  # (nblocks1, seq_dim, blk1_out) -> (nblocks2, seq_dim, blk2_in)
+        )  # (seq_dim, nblocks2, blk1_out) -> (.., blk2_in, nblocks2) -> (nblocks2, seq_dim, blk2_in)
 
         out2 = torch.empty(nblocks2, seq_dim, blk2_out, device=x.device, dtype=x.dtype)
         out2 = torch.bmm(

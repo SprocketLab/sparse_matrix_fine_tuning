@@ -732,7 +732,7 @@ def train():
             "seed": training_args.seed,
             # "num_train_epochs": tune.choice([20, 25]),
             "learning_rate": tune.quniform(1e-4, 8e-4, 5e-5),
-            "gradient_accumulation_steps": tune.choice([8, 16]),  # Will OOM if tune batch size
+            "gradient_accumulation_steps": tune.choice([8, 16, 32]),  # Will OOM if tune batch size
             "weight_decay": tune.choice([0]),
             "lr_scheduler_type": tune.choice(["constant"]),  # mostly linear underperforms
             "blk_r": peft_config["blk_r"],

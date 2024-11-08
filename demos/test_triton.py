@@ -2,7 +2,7 @@ import os
 import sys
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-# os.environ["TRITON_INTERPRET"] = "1"
+os.environ["TRITON_INTERPRET"] = "1"
 
 import torch
 from torch.testing import assert_close

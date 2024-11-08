@@ -1,6 +1,6 @@
 # Ignore everything in results
 results/**
-profile_resuts/**
+profile_results/**
 # Ignore everything in official_results
 pyreft/loreft/official_results/*
 

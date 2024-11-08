@@ -217,7 +217,7 @@ def main(config: dict = None):
     # Wandb config
     if use_wandb:
         training_args.run_name = "glue_" + data_args.task_name  # wandb run name
-        os.environ["WANDB_PROJECT"] = "monarch_hf_peft"
+        os.environ["WANDB_PROJECT"] = "monarch_glue"
         os.environ["WANDB_PROJECT"] = project if project else os.environ["WANDB_PROJECT"]  # Override if provided
 
         # group runs within the same hour
