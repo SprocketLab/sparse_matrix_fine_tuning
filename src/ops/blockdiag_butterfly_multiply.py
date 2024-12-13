@@ -5,6 +5,7 @@ import torch
 from einops import rearrange
 from torch.nn import functional as F
 
+device_type = "cuda" if torch.cuda.is_available() else "cpu"
 
 class BlockdiagMultiply(torch.autograd.Function):
     """This is a faster implementation, with careful memory copies for the fastest
@@ -12,7 +13,7 @@ class BlockdiagMultiply(torch.autograd.Function):
     The backward pass is also written manually with careful memory copies.
     Arguments:
         x: (..., n)
-        weight: (nblocks, q, n / nblockblk2_out)
+        weight: (nblocks, q, n / blk2_out)
     Outputs:
         out: (..., nblocks * blk1_out)
     """
@@ -70,7 +71,7 @@ class BlockdiagButterflyMultiply(torch.autograd.Function):
     """
 
     @staticmethod
-    @torch.cuda.amp.custom_fwd(cast_inputs=torch.bfloat16)
+    @torch.amp.custom_fwd(cast_inputs=torch.bfloat16, device_type=device_type)
     def forward(ctx, x, w1_bfly, w2_bfly, debug_out1=False):
         batch_shape, n = x.shape[:-1], x.shape[-1]
         seq_dim = np.prod(batch_shape)
@@ -113,7 +114,7 @@ class BlockdiagButterflyMultiply(torch.autograd.Function):
         return out2
 
     @staticmethod
-    @torch.cuda.amp.custom_bwd
+    @torch.amp.custom_bwd(device_type=device_type)
     def backward(ctx, dout):
         x, w1_bfly, w2_bfly, out1, *_ = ctx.saved_tensors
         batch_shape, n = x.shape[:-1], x.shape[-1]

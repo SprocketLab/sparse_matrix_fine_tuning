@@ -8,7 +8,7 @@ def config_gen():
     configs = []
     for BSEQ in [64, 128]:
         for BK in [32, 64, 128]:
-            for BN in [64, 128, 256]:
+            for BN in [64, 128]:
                 num_stages = 4  # Even flash-attn has up to 5 stages (https://github.com/triton-lang/triton/blob/6af74b2f4535682abfc0b08958bc2c6831036d29/python/tutorials/06-fused-attention.py#L489)
                 num_warps = 4
                 # Filter
@@ -22,132 +22,6 @@ def config_gen():
                     )
                 )
     return configs
-
-
-# fmt: off
-@triton.autotune(
-    config_gen(),
-    key=["N_BLK", "BLK1_IN", "BLK2_OUT"],
-    rep=80,
-    warmup=15
-)
-@triton.jit
-def monarch_forward(
-    x_ptr, o_ptr1, o_ptr2, w1_bfly_ptr, w2_bfly_ptr,
-    SEQ_DIM, N_BLK, BLK1_IN, BLK1_OUT: tl.constexpr, BLK2_OUT: tl.constexpr,
-    stride_xl, stride_xm, stride_xk,
-    stride_w1l, stride_w1r, stride_w1k,
-    stride_w2l, stride_w2n, stride_w2r,
-    stride_o1l, stride_o1m, stride_o1k,
-    stride_o2l, stride_o2m, stride_o2n,
-    BLOCK_SIZE_SEQ: tl.constexpr = 64,
-    BLOCK_SIZE_N: tl.constexpr = 64,
-    BLOCK_SIZE_K: tl.constexpr = 32,
-    GROUP_SIZE_M: tl.constexpr = 8,
-):
-    # fmt: on
-    """
-    Implements fused monarch forward as in `BlockdiagButterflyMultiply`.
-    """
-    BLK2_IN: tl.constexpr = BLK1_OUT  # This is the block rank (usually small, e.g. 4 for PEFT)
-    # Grouped ordering for better l2 reuse
-    pid_batch = tl.program_id(0) # batch dim in BMM
-    pid = tl.program_id(1)
-
-    num_pid_m = tl.cdiv(SEQ_DIM, BLOCK_SIZE_SEQ)
-    num_pid_n = tl.cdiv(N_BLK * BLK1_IN, BLOCK_SIZE_N)
-    num_pid_in_group = GROUP_SIZE_M * num_pid_n
-    group_id = pid // num_pid_in_group
-    first_pid_m = group_id * GROUP_SIZE_M
-    group_size_m = min(num_pid_m - first_pid_m, GROUP_SIZE_M)
-    pid_m = first_pid_m + (pid % group_size_m)
-    pid_n = (pid % num_pid_in_group) // group_size_m
-
-    offs_am = pid_m * BLOCK_SIZE_SEQ
-    offs_bn = pid_n * BLOCK_SIZE_N
-    offs_k = 0
-
-    x_ptrs = tl.make_block_ptr(
-        x_ptr + pid_batch * stride_xl,
-        shape=(SEQ_DIM, BLK1_IN),  # the full shape that's split over blocks
-        strides=(stride_xm, stride_xk),
-        offsets=(offs_am, offs_k),
-        block_shape=(BLOCK_SIZE_SEQ, BLOCK_SIZE_K),
-        order=(1, 0)
-    )
-
-    # TODO: load w in transposed order too?
-    # just transpose and swap the strides
-    w1_ptrs = tl.make_block_ptr(
-        w1_bfly_ptr + pid_batch * stride_w1l,
-        shape=(BLK1_OUT, BLK1_IN),
-        strides=(stride_w1r, stride_w1k),
-        offsets=(0, offs_k),
-        block_shape=(BLK1_OUT, BLOCK_SIZE_K),  # Requires List[tl.constexpr]
-        order=(1, 0),
-    )
-
-    w2_ptrs = tl.make_block_ptr(
-        w2_bfly_ptr + pid_batch * stride_w2l,
-        shape=(BLK2_OUT, BLK2_IN),
-        strides=(stride_w2n, stride_w2r),
-        offsets=(offs_bn, 0),
-        block_shape=(BLOCK_SIZE_N, BLK2_IN),
-        order=(1, 0),
-    )
-
-    out1_ptrs = tl.make_block_ptr(
-        o_ptr1 + pid_batch * stride_o1l,
-        shape=(SEQ_DIM, BLK1_OUT),
-        strides=(stride_o1m, stride_o1k),
-        offsets=(offs_am, offs_k),
-        block_shape=(BLOCK_SIZE_SEQ, BLK1_OUT),
-        order=(1, 0),
-    )
-
-    out2_ptrs = tl.make_block_ptr(
-        o_ptr2,
-        shape=(SEQ_DIM, N_BLK, BLK2_OUT),
-        strides=(stride_o2l, stride_o2m, stride_o2n),
-        offsets=(offs_am, pid_batch, offs_bn),
-        block_shape=(BLOCK_SIZE_SEQ, 1, BLOCK_SIZE_N),
-        order=(2, 1, 0),
-    )
-
-    # Now use block	offsets to advance pointers
-    offs_am = pid_m * BLOCK_SIZE_SEQ + tl.arange(0, BLOCK_SIZE_SEQ)
-    offs_bn = pid_n * BLOCK_SIZE_N + tl.arange(0, BLOCK_SIZE_N)
-    offs_k = tl.arange(0, BLOCK_SIZE_K)
-
-    # out1_mask = (offs_am[:, None] < SEQ_DIM) & (offs_k[None, :] < BLK1_OUT)
-    # x_mask = (offs_am[:, None] < SEQ_DIM) & (offs_k[None, :] < BLK1_OUT)
-    x = tl.load(x_ptrs, boundary_check=(0, 1), eviction_policy="evict_first", padding_option="zero")  # Prefetch
-    dtype = x.dtype  # For autocast
-    out1 = tl.zeros((BLOCK_SIZE_SEQ, BLK1_OUT), dtype=tl.float16 if dtype == tl.float16 else tl.float32) # Tensor core doesn't support bf16 accumulation
-
-    for k in range(0, BLK1_IN, BLOCK_SIZE_K):
-        w1_bfly = tl.load(w1_ptrs, boundary_check=(0, 1), eviction_policy="evict_first", padding_option="zero").to(dtype)
-        w1_bfly = tl.trans(w1_bfly)
-
-        # TODO: Fix: Triton won't accept blk1_out (block rank) <= 16?
-        out1 += tl.dot(
-            x, w1_bfly, out_dtype=tl.float16 if dtype == tl.float16 else tl.float32
-        )  # (seq_dim, blk1_in) @ (blk1_in, blk1_out) -> (seq_dim, blk1_out).
-
-        x_ptrs = tl.advance(x_ptrs, (0, BLOCK_SIZE_K))
-        w1_ptrs = tl.advance(w1_ptrs, (0, BLOCK_SIZE_K))
-        # Prefetch
-        x = tl.load(x_ptrs, boundary_check=(0, 1), eviction_policy="evict_first", padding_option="zero")
-
-    out1 = out1.to(dtype)
-    tl.store(out1_ptrs, out1, boundary_check=(0,))
-
-    # out2_mask = offs_am[:, None] < SEQ_DIM & offs_bn[None, :] < N_BLK * BLK2_OUT
-    # out2 = tl.zeros((BLOCK_SIZE_SEQ, BLOCK_SIZE_N), dtype=tl.float16 if dtype == tl.float16 else tl.float32)
-    w2_bfly = tl.load(w2_ptrs, boundary_check=(0,), padding_option="zero").to(dtype)
-    w2_bfly = tl.trans(w2_bfly)
-    out2 = tl.dot(out1, w2_bfly).to(dtype)  # (seq_dim, blk1_out) @ (blk1_out, blk2_out) -> (seq_dim, nblocks * blk2_out)
-    tl.store(out2_ptrs, out2[:, None, :], boundary_check=(0, 2))
 
 
 @triton.autotune(
@@ -281,6 +155,129 @@ def monarch_backward(
     tl.store(dw1_ptrs, dw1_bfly, boundary_check=(1,))
 
 
+# fmt: off
+# @triton.autotune(
+#     config_gen(),
+#     key=["N_BLK", "BLK1_IN", "BLK2_OUT"],
+#     rep=80,
+#     warmup=15
+# )
+@triton.jit
+def monarch_forward(
+    x_ptr, o_ptr1, o_ptr2, w1_bfly_ptr, w2_bfly_ptr,
+    SEQ_DIM, N_BLK:tl.constexpr, BLK1_IN, BLK1_OUT: tl.constexpr, BLK2_OUT: tl.constexpr,
+    stride_xl, stride_xm, stride_xk,
+    stride_w1l, stride_w1r, stride_w1k,
+    stride_w2l, stride_w2n, stride_w2r,
+    stride_o1l, stride_o1m, stride_o1k,
+    stride_o2l, stride_o2m, stride_o2n,
+    BLOCK_SIZE_SEQ: tl.constexpr = 64,
+    BLOCK_SIZE_N: tl.constexpr = 64,
+    BLOCK_SIZE_K: tl.constexpr = 32,
+    GROUP_SIZE_M: tl.constexpr = 8,
+):
+    # fmt: on
+    """
+    Implements fused monarch forward as in `BlockdiagButterflyMultiply`. 
+    Each kernel comsumes (BLOCK_SEQ, N_BLK, BLK1_IN) elements in x, as we need to shuffle (transpose) 
+    the features in out1.
+    """
+    BLK2_IN: tl.constexpr = BLK1_OUT  # This is the block rank (usually small, e.g. 4 for PEFT)
+    
+    pid = tl.program_id(0)
+    # Grouped ordering for better l2 cache reuse
+    num_pid_m = tl.cdiv(SEQ_DIM, BLOCK_SIZE_SEQ)
+    num_pid_n = tl.cdiv(N_BLK * BLK1_IN, BLOCK_SIZE_N)
+    num_pid_in_group = GROUP_SIZE_M * num_pid_n
+    group_id = pid // num_pid_in_group
+    first_pid_m = group_id * GROUP_SIZE_M
+    group_size_m = min(num_pid_m - first_pid_m, GROUP_SIZE_M)
+    pid_m = first_pid_m + (pid % group_size_m)
+    pid_n = (pid % num_pid_in_group) // group_size_m
+
+    offs_am = pid_m * BLOCK_SIZE_SEQ
+    offs_bn = pid_n * BLOCK_SIZE_N
+    offs_k = 0
+
+    x_ptrs = tl.make_block_ptr(
+        x_ptr,
+        shape=(N_BLK, SEQ_DIM, BLK1_IN),  # the full shape that's split over blocks
+        strides=(stride_xl, stride_xm, stride_xk),
+        offsets=(0, offs_am, offs_k),
+        block_shape=(N_BLK, BLOCK_SIZE_SEQ, BLOCK_SIZE_K), # block_shape requires List[tl.constexpr]
+        order=(2, 1, 0)
+    )
+
+    # TODO: load w in transposed order too?
+    # just transpose and swap the strides
+    w1_ptrs = tl.make_block_ptr(
+        w1_bfly_ptr,
+        shape=(N_BLK, BLK1_OUT, BLK1_IN),
+        strides=(stride_w1l, stride_w1r, stride_w1k),
+        offsets=(0, 0, offs_k),
+        block_shape=(N_BLK, BLK1_OUT, BLOCK_SIZE_K),  
+        order=(2, 1, 0),
+    )
+
+    w2_ptrs = tl.make_block_ptr(
+        w2_bfly_ptr,
+        shape=(N_BLK, BLK2_OUT, BLK2_IN),
+        strides=(stride_w2l, stride_w2n, stride_w2r),
+        offsets=(0, offs_bn, 0),
+        block_shape=(N_BLK, BLOCK_SIZE_N, BLK2_IN),
+        order=(2, 1, 0),
+    )
+
+    out1_ptrs = tl.make_block_ptr(
+        o_ptr1,
+        shape=(N_BLK, SEQ_DIM, BLK1_OUT),
+        strides=(stride_o1l, stride_o1m, stride_o1k),
+        offsets=(0, offs_am, 0),
+        block_shape=(N_BLK, BLOCK_SIZE_SEQ, BLK1_OUT),
+        order=(2, 1, 0),
+    )
+
+    out2_ptrs = tl.make_block_ptr(
+        o_ptr2,
+        shape=(SEQ_DIM, N_BLK, BLK2_OUT),
+        strides=(stride_o2l, stride_o2m, stride_o2n),
+        offsets=(offs_am, 0, offs_bn),
+        block_shape=(BLOCK_SIZE_SEQ, N_BLK, BLOCK_SIZE_N),
+        order=(2, 1, 0),
+    )
+
+    # Now use block offsets to advance pointers
+    offs_am = pid_m * BLOCK_SIZE_SEQ + tl.arange(0, BLOCK_SIZE_SEQ)
+    offs_bn = pid_n * BLOCK_SIZE_N + tl.arange(0, BLOCK_SIZE_N)
+    offs_k = tl.arange(0, BLOCK_SIZE_K)
+
+    x = tl.load(x_ptrs, boundary_check=(1, 2), eviction_policy="evict_first", padding_option="zero")  # Prefetch
+    dtype = x.dtype  # For autocast
+    out1 = tl.zeros((N_BLK, BLOCK_SIZE_SEQ, BLK1_OUT), dtype=tl.float16 if dtype == tl.float16 else tl.float32) # Tensor core doesn't support bf16 accumulation
+
+    for k in range(0, BLK1_IN, BLOCK_SIZE_K):
+        w1_bfly = tl.load(w1_ptrs, boundary_check=(2, ), eviction_policy="evict_first", padding_option="zero").to(dtype)
+        w1_bfly = tl.trans(w1_bfly, 0, 2, 1)  # -> (blk1_in, blk1_out)
+        # TODO: Fix: Triton won't accept blk1_out (block rank) <= 16?
+        out1 += tl.dot(
+            x, w1_bfly, out_dtype=tl.float16 if dtype == tl.float16 else tl.float32
+        )  # (seq_dim, blk1_in) @ (blk1_in, blk1_out) -> (seq_dim, blk1_out).
+        # breakpoint()
+        x_ptrs = tl.advance(x_ptrs, (0, 0, BLOCK_SIZE_K))
+        w1_ptrs = tl.advance(w1_ptrs, (0, 0, BLOCK_SIZE_K))
+        # Prefetch
+        x = tl.load(x_ptrs, boundary_check=(1, 2), eviction_policy="evict_first", padding_option="zero")
+        
+    out1 = out1.to(dtype)
+
+    tl.store(out1_ptrs, out1, boundary_check=(1, ))
+
+    w2_bfly = tl.load(w2_ptrs, boundary_check=(1,), padding_option="zero").to(dtype)
+    w2_bfly = tl.trans(w2_bfly, 0, 2, 1)  # -> (blk2_in, blk2_out)
+    out2 = tl.dot(out1, w2_bfly).to(dtype)  # (n_blk, seq_dim, blk1_out) @ (n_blk, blk2_in, blk2_out) -> (n_blk, seq_dim, blk2_out)
+    out2 = tl.trans(out2, 1, 0, 2)  # -> (seq_dim, n_blk, blk2_out)
+    tl.store(out2_ptrs, out2, boundary_check=(0, 2))
+
 dtype_map = {
     torch.float32: tl.float32,
     torch.bfloat16: tl.bfloat16,
@@ -313,8 +310,8 @@ class MonarchKernel(torch.autograd.Function):
         grid = lambda META: (
             # Don't just launch `seq_dim` blocks; even the long-seq flash-attn kernel uses BLOCK_M
             # (https://github.com/triton-lang/triton/blob/main/python/tutorials/06-fused-attention.py#L460)
-            nblocks,
-            triton.cdiv(seq_dim, META["BLOCK_SIZE_SEQ"]) * triton.cdiv(nblocks * blk2_out, META["BLOCK_SIZE_N"]),
+            # triton.cdiv(seq_dim, META["BLOCK_SIZE_SEQ"]) * triton.cdiv(blk2_out, META["BLOCK_SIZE_N"]),
+            seq_dim,
         )
         # fmt: off
         monarch_forward[grid](
@@ -324,8 +321,9 @@ class MonarchKernel(torch.autograd.Function):
             w1_bfly.stride(0), w1_bfly.stride(1), w1_bfly.stride(2),
             w2_bfly.stride(0), w2_bfly.stride(1), w2_bfly.stride(2),
             out1.stride(0), out1.stride(1), out1.stride(2),
-            out2.stride(0), out2.stride(1), out2.stride(2)
+            out2.stride(0), out2.stride(1), out2.stride(2),
         )
+
         # fmt: on
         out2 = out2.view(BATCH_SHAPE, nblocks * blk2_out)
 

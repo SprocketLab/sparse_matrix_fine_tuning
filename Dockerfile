@@ -1,7 +1,7 @@
 # Inspired by https://github.com/anibali/docker-pytorch/blob/master/dockerfiles/1.10.0-cuda11.3-ubuntu20.04/Dockerfile
 # ARG COMPAT=0
 ARG PERSONAL=0
-FROM nvcr.io/nvidia/pytorch:24.07-py3 as base
+FROM nvcr.io/nvidia/pytorch:24.10-py3 as base
 
 ENV HOST docker
 ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
@@ -74,7 +74,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
    # openmpi-bin \
 
 # m2 dependencies
-RUN pip install einops omegaconf opt_einsum triton==3.0.0
+RUN pip install einops omegaconf opt_einsum 
 # Some how this fixes the pydantic__version__ bug...
 RUN python -m pip install -U pydantic spacy==3.4.4
 RUN pip install accelerate -U
@@ -92,5 +92,7 @@ RUN pip install ray==2.37.0
 #     /bin/bash /tmp/miniconda.sh -b -p $CONDA_DIR && \
 #     rm -rf /tmp/*
 RUN pip install pre-commit
-RUN pip install triton
 RUN chmod -R 777 .
+# build from the newest main branch with more potential fixes
+RUN git clone https://github.com/triton-lang/triton.git 
+RUN cd triton && pip install ninja cmake wheel pybind11 && pip install -e python
