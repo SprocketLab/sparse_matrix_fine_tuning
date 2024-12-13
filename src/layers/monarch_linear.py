@@ -137,10 +137,8 @@ class MonarchLinear(StructuredLinear):
         elif self.nblocks * self.in_blksz < self.in_features:
             self.nblocks = (self.in_features + self.in_blksz - 1) // self.in_blksz
 
-        align_factor = int(
-            math.ceil(self.out_features / self.in_features)
-        )  # Useful for the blocks in the two monarch factors to exactly match
-        self.out_blksz = self.in_blksz * align_factor
+        align_factor = self.out_features / self.in_features
+        self.out_blksz = math.ceil(self.in_blksz * align_factor)
 
         # Custom peft configs
 

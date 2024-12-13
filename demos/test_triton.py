@@ -24,6 +24,7 @@ def main(args):
     # NOTE: It looks like Triton has some bugs with 3D matmul for now, so this 
     # implementation might not work as expected.
     # See issues
+    # https://github.com/triton-lang/triton/issues/5424
     # https://github.com/triton-lang/triton/issues/5211
     # https://github.com/triton-lang/triton/pull/5285
     monarch = MonarchLinear(
@@ -31,7 +32,7 @@ def main(args):
     ).cuda()
     if args.test:
 
-
+        breakpoint()
         out2_torch, out1_torch = blockdiag_butterfly_multiply(x, monarch.blkdiag1, monarch.blkdiag2, True)
         print(out1_torch)
         out2_triton, out1_triton = monarch_kernel(x, monarch.blkdiag1, monarch.blkdiag2, True)
