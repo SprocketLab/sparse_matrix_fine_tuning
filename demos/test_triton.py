@@ -32,7 +32,6 @@ def main(args):
     ).cuda()
     if args.test:
 
-        breakpoint()
         out2_torch, out1_torch = blockdiag_butterfly_multiply(x, monarch.blkdiag1, monarch.blkdiag2, True)
         print(out1_torch)
         out2_triton, out1_triton = monarch_kernel(x, monarch.blkdiag1, monarch.blkdiag2, True)
