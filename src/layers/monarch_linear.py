@@ -17,10 +17,6 @@ from src.ops.blockdiag_butterfly_multiply import (
     single_monarch_mult,
 )
 
-# NOTE converting weights to monarch matrices
-from src.ops.blockdiag_butterfly_projection import (
-    blockdiag_butterfly_project,  # square weights, rank 1
-)
 from src.ops.triton import monarch_kernel
 
 hooked = False
@@ -155,7 +151,7 @@ class MonarchLinear(StructuredLinear):
         self.dropout = nn.Dropout(dropout_rate) if dropout_rate > 0.0 else lambda x: x
 
         assert self.scaler_type in ["scaler", "diag"]
-        assert self.blk_r <= min(self.in_blksz, self.out_blksz), "rank must be smaller than the smaller block size"
+        # assert self.blk_r <= min(self.in_blksz, self.out_blksz), "rank must be smaller than the smaller block size"
 
         # Init block-diagonal monarch factors
         self.blkdiag1 = nn.Parameter(

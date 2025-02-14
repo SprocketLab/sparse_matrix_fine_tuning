@@ -24,10 +24,10 @@ def config_gen():
     return configs
 
 
-@triton.autotune(
-    config_gen(),
-    key=["N_BLK", "BLK1_IN", "BLK2_OUT"],
-)
+# @triton.autotune(
+#     config_gen(),
+#     key=["N_BLK", "BLK1_IN", "BLK2_OUT"],
+# )
 @triton.jit
 def monarch_backward(
     dout_ptr, out1_ptr, x_ptr, w1_bfly_ptr, w2_bfly_ptr,
@@ -239,10 +239,10 @@ def monarch_forward(
 
     out2_ptrs = tl.make_block_ptr(
         o_ptr2,
-        shape=(SEQ_DIM, N_BLK, BLK2_OUT),
+        shape=(SEQ_DIM, BLK2_OUT, N_BLK),
         strides=(stride_o2l, stride_o2m, stride_o2n),
-        offsets=(offs_am, 0, offs_bn),
-        block_shape=(BLOCK_SIZE_SEQ, N_BLK, BLOCK_SIZE_N),
+        offsets=(offs_am, offs_bn, 0),
+        block_shape=(BLOCK_SIZE_SEQ, BLOCK_SIZE_N, N_BLK),
         order=(2, 1, 0),
     )
 
@@ -253,30 +253,33 @@ def monarch_forward(
 
     x = tl.load(x_ptrs, boundary_check=(1, 2), eviction_policy="evict_first", padding_option="zero")  # Prefetch
     dtype = x.dtype  # For autocast
-    out1 = tl.zeros((N_BLK, BLOCK_SIZE_SEQ, BLK1_OUT), dtype=tl.float16 if dtype == tl.float16 else tl.float32) # Tensor core doesn't support bf16 accumulation
+    out1 = tl.zeros((N_BLK, BLOCK_SIZE_SEQ, BLK1_OUT), dtype=tl.float32) # Tensor core doesn't support bf16 accumulation
 
     for k in range(0, BLK1_IN, BLOCK_SIZE_K):
         w1_bfly = tl.load(w1_ptrs, boundary_check=(2, ), eviction_policy="evict_first", padding_option="zero").to(dtype)
-        w1_bfly = tl.trans(w1_bfly, 0, 2, 1)  # -> (blk1_in, blk1_out)
-        # TODO: Fix: Triton won't accept blk1_out (block rank) <= 16?
+        # in-kernel transpose is more efficient?
+        w1_bfly = tl.trans(w1_bfly, 0, 2, 1)  # -> (n_blk, blk1_in, blk1_out)
         out1 += tl.dot(
-            x, w1_bfly, out_dtype=tl.float16 if dtype == tl.float16 else tl.float32
-        )  # (seq_dim, blk1_in) @ (blk1_in, blk1_out) -> (seq_dim, blk1_out).
-        # breakpoint()
+            x, w1_bfly
+        )  # (n_blk, seq_dim, blk1_in) @ (n_blk, blk1_in, blk1_out) -> (n_blk, seq_dim, blk1_out).
+
         x_ptrs = tl.advance(x_ptrs, (0, 0, BLOCK_SIZE_K))
         w1_ptrs = tl.advance(w1_ptrs, (0, 0, BLOCK_SIZE_K))
         # Prefetch
         x = tl.load(x_ptrs, boundary_check=(1, 2), eviction_policy="evict_first", padding_option="zero")
-        
-    out1 = out1.to(dtype)
-
+    
+    # shuffle features 
+    out1 = tl.trans(out1, (1, 0, 2)) # -> (seq_dim, n_blk, blk1_out)
+    out1 = tl.reshape(out1, (BLOCK_SIZE_SEQ, BLK2_IN, N_BLK))
+    out1 = tl.trans(out1, (2, 0, 1)).to(dtype) # -> (n_blk, seq_dim, blk2_in)
+    
     tl.store(out1_ptrs, out1, boundary_check=(1, ))
 
     w2_bfly = tl.load(w2_ptrs, boundary_check=(1,), padding_option="zero").to(dtype)
     w2_bfly = tl.trans(w2_bfly, 0, 2, 1)  # -> (blk2_in, blk2_out)
     out2 = tl.dot(out1, w2_bfly).to(dtype)  # (n_blk, seq_dim, blk1_out) @ (n_blk, blk2_in, blk2_out) -> (n_blk, seq_dim, blk2_out)
-    out2 = tl.trans(out2, 1, 0, 2)  # -> (seq_dim, n_blk, blk2_out)
-    tl.store(out2_ptrs, out2, boundary_check=(0, 2))
+    out2 = tl.trans(out2, 1, 2, 0)  # -> (seq_dim, blk2_out, n_blk)
+    tl.store(out2_ptrs, out2, boundary_check=(0, 1))
 
 dtype_map = {
     torch.float32: tl.float32,
@@ -311,7 +314,8 @@ class MonarchKernel(torch.autograd.Function):
             # Don't just launch `seq_dim` blocks; even the long-seq flash-attn kernel uses BLOCK_M
             # (https://github.com/triton-lang/triton/blob/main/python/tutorials/06-fused-attention.py#L460)
             # triton.cdiv(seq_dim, META["BLOCK_SIZE_SEQ"]) * triton.cdiv(blk2_out, META["BLOCK_SIZE_N"]),
-            seq_dim,
+            # seq_dim,
+            triton.cdiv(seq_dim, META["BLOCK_SIZE_SEQ"]),
         )
         # fmt: off
         monarch_forward[grid](
@@ -323,6 +327,27 @@ class MonarchKernel(torch.autograd.Function):
             out1.stride(0), out1.stride(1), out1.stride(2),
             out2.stride(0), out2.stride(1), out2.stride(2),
         )
+        # def grid(META):
+        #     BLOCK_SIZE_SEQ = META['BLOCK_SIZE_SEQ']
+        #     BLOCK_SIZE_N = META['BLOCK_SIZE_N']
+        #     num_pid_m = triton.cdiv(seq_dim, BLOCK_SIZE_SEQ)
+        #     num_pid_n = triton.cdiv(nblocks * blk1_in, BLOCK_SIZE_N)
+        #     return (num_pid_m * num_pid_n,)
+
+        # # Launch kernel with corrected grid
+        # monarch_forward[grid](
+        #     x_reshaped, out1, out2, w1_bfly, w2_bfly,
+        #     seq_dim, nblocks, blk1_in, blk1_out, blk2_out,
+        #     x_reshaped.stride(0), x_reshaped.stride(1), x_reshaped.stride(2),
+        #     w1_bfly.stride(0), w1_bfly.stride(1), w1_bfly.stride(2),
+        #     w2_bfly.stride(0), w2_bfly.stride(1), w2_bfly.stride(2),
+        #     out1.stride(0), out1.stride(1), out1.stride(2),
+        #     out2.stride(0), out2.stride(1), out2.stride(2),
+        #     BLOCK_SIZE_SEQ=64,  # Match autotune config
+        #     BLOCK_SIZE_N=64,
+        #     GROUP_SIZE_M=8
+        # )
+
 
         # fmt: on
         out2 = out2.view(BATCH_SHAPE, nblocks * blk2_out)
