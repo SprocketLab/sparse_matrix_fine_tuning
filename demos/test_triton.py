@@ -16,7 +16,7 @@ from src.layers.monarch_linear import MonarchLinear
 from src.ops.blockdiag_butterfly_multiply import blockdiag_butterfly_multiply
 from src.ops.triton import monarch_kernel
 
-seq_len = 1024
+seq_len = 2048
 nblocks = 4
 in_dim = 16  # Setting this to very large value (e.g. 1024) can cause precision error. Still investigating
 out_dim = 16  # setting to 64 cause seg fault using TRITON_INTERPRET=1 and precision error without the flag
@@ -47,6 +47,28 @@ def main(args):
         assert_close(out1_torch, out1_triton, rtol=1e-3, atol=1e-3)
         assert_close(out2_torch, out2_triton, rtol=1e-3, atol=1e-3)
         print("Precision tests passed!")
+        print()
+
+        del out1_torch, out1_triton, out2_torch, out2_triton
+        # test memory usage
+        torch.cuda.empty_cache()
+        torch.cuda.reset_peak_memory_stats()
+
+        mem_before = torch.cuda.max_memory_allocated() / 1024**2
+        out2_torch, out1_torch = blockdiag_butterfly_multiply(x, monarch.blkdiag1, monarch.blkdiag2, True)
+        mem = torch.cuda.max_memory_allocated() / 1024**2 - mem_before
+        print(f"PyTorch peak (activation) memory usage: {mem} MB")
+        del out1_torch, out2_torch
+
+        torch.cuda.empty_cache()
+        torch.cuda.reset_peak_memory_stats()
+
+        mem_before = torch.cuda.max_memory_allocated() / 1024**2
+        out2_triton, out1_triton = monarch_kernel(x, monarch.blkdiag1, monarch.blkdiag2, True)
+        mem = torch.cuda.max_memory_allocated() / 1024**2 - mem_before
+        print(f"Triton peak (activation) memory usage: {mem} MB")
+        del out1_triton, out2_triton
+        torch.cuda.empty_cache()
 
     if args.benchmark:
         start_event = torch.cuda.Event(enable_timing=True)
