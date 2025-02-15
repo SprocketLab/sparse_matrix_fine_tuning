@@ -8,7 +8,7 @@ Paper: https://arxiv.org/abs/2408.17383
 
 ## 📰 News
 - [2024/06] Our paper is accepted by two ICML workshops: ES-FOMO and FM-wild!
-- [2024/10] Release an optimized Triton Kernel and further optimizations for the PyTorch version!
+- [2024/10] Release an optimized Triton Kernel(~%20 speed-up compared to PyTorch) and further optimizations for the PyTorch version!
 
 ## 🗝️ MoRe Implementation
 * `src/models/layers/monarch_linear.py` contains the code for MoRe adapter.
