@@ -91,7 +91,7 @@ class BlockdiagButterflyMultiply(torch.autograd.Function):
         out1 = torch.empty(nblocks1, seq_dim, blk1_out, device=x.device, dtype=x.dtype)
         # (nblocks1, seq_dim, blk1_in) @ (nblocks1, blk1_in, blk1_out)
         out1 = torch.bmm(x_reshaped, w1_bfly.transpose(-1, -2), out=out1)  # -> (nblocks1, seq_dim, blk1_out)
-        # del x_reshaped
+        del x_reshaped
 
         # Feature shuffling
         out1 = (

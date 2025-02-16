@@ -251,12 +251,14 @@ def monarch_forward(
     offs_bn = pid_n * BLOCK_SIZE_N + tl.arange(0, BLOCK_SIZE_N)
     offs_k = tl.arange(0, BLOCK_SIZE_K)
 
-    x = tl.load(x_ptrs, boundary_check=(1, 2), eviction_policy="evict_first", padding_option="zero")  # Prefetch
-    dtype = x.dtype  # For autocast
+    # x = tl.load(x_ptrs, boundary_check=(1, 2), eviction_policy="evict_first", padding_option="zero")  # Prefetch
+    
     out1 = tl.zeros((N_BLK, BLOCK_SIZE_SEQ, BLK1_OUT), dtype=tl.float32) # Tensor core doesn't support bf16 accumulation
-
+    dtype = None
     for k in range(0, BLK1_IN, BLOCK_SIZE_K):
-        w1_bfly = tl.load(w1_ptrs, boundary_check=(2, ), eviction_policy="evict_first", padding_option="zero").to(dtype)
+        x = tl.load(x_ptrs, boundary_check=(1, 2), eviction_policy="evict_first", padding_option="zero")
+        dtype = x.dtype  # For autocast
+        w1_bfly = tl.load(w1_ptrs, boundary_check=(2, ), eviction_policy="evict_first", padding_option="zero").to(x.dtype)
         # in-kernel transpose is more efficient?
         w1_bfly = tl.trans(w1_bfly, 0, 2, 1)  # -> (n_blk, blk1_in, blk1_out)
         out1 += tl.dot(
@@ -265,14 +267,13 @@ def monarch_forward(
 
         x_ptrs = tl.advance(x_ptrs, (0, 0, BLOCK_SIZE_K))
         w1_ptrs = tl.advance(w1_ptrs, (0, 0, BLOCK_SIZE_K))
-        # Prefetch
-        x = tl.load(x_ptrs, boundary_check=(1, 2), eviction_policy="evict_first", padding_option="zero")
+    # dtype = x.dtype  # For autocast
+        
     
     # shuffle features 
     out1 = tl.trans(out1, (1, 0, 2)) # -> (seq_dim, n_blk, blk1_out)
     out1 = tl.reshape(out1, (BLOCK_SIZE_SEQ, BLK2_IN, N_BLK))
     out1 = tl.trans(out1, (2, 0, 1)).to(dtype) # -> (n_blk, seq_dim, blk2_in)
-    
     tl.store(out1_ptrs, out1, boundary_check=(1, ))
 
     w2_bfly = tl.load(w2_ptrs, boundary_check=(1,), padding_option="zero").to(dtype)
@@ -327,27 +328,6 @@ class MonarchKernel(torch.autograd.Function):
             out1.stride(0), out1.stride(1), out1.stride(2),
             out2.stride(0), out2.stride(1), out2.stride(2),
         )
-        # def grid(META):
-        #     BLOCK_SIZE_SEQ = META['BLOCK_SIZE_SEQ']
-        #     BLOCK_SIZE_N = META['BLOCK_SIZE_N']
-        #     num_pid_m = triton.cdiv(seq_dim, BLOCK_SIZE_SEQ)
-        #     num_pid_n = triton.cdiv(nblocks * blk1_in, BLOCK_SIZE_N)
-        #     return (num_pid_m * num_pid_n,)
-
-        # # Launch kernel with corrected grid
-        # monarch_forward[grid](
-        #     x_reshaped, out1, out2, w1_bfly, w2_bfly,
-        #     seq_dim, nblocks, blk1_in, blk1_out, blk2_out,
-        #     x_reshaped.stride(0), x_reshaped.stride(1), x_reshaped.stride(2),
-        #     w1_bfly.stride(0), w1_bfly.stride(1), w1_bfly.stride(2),
-        #     w2_bfly.stride(0), w2_bfly.stride(1), w2_bfly.stride(2),
-        #     out1.stride(0), out1.stride(1), out1.stride(2),
-        #     out2.stride(0), out2.stride(1), out2.stride(2),
-        #     BLOCK_SIZE_SEQ=64,  # Match autotune config
-        #     BLOCK_SIZE_N=64,
-        #     GROUP_SIZE_M=8
-        # )
-
 
         # fmt: on
         out2 = out2.view(BATCH_SHAPE, nblocks * blk2_out)
