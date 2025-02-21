@@ -251,14 +251,12 @@ def monarch_forward(
     offs_bn = pid_n * BLOCK_SIZE_N + tl.arange(0, BLOCK_SIZE_N)
     offs_k = tl.arange(0, BLOCK_SIZE_K)
 
-    # x = tl.load(x_ptrs, boundary_check=(1, 2), eviction_policy="evict_first", padding_option="zero")  # Prefetch
-    
+    x = tl.load(x_ptrs, boundary_check=(1, 2), eviction_policy="evict_first", padding_option="zero")  # Prefetch
+    dtype = x.dtype  # For autocast
     out1 = tl.zeros((N_BLK, BLOCK_SIZE_SEQ, BLK1_OUT), dtype=tl.float32) # Tensor core doesn't support bf16 accumulation
-    dtype = None
+
     for k in range(0, BLK1_IN, BLOCK_SIZE_K):
-        x = tl.load(x_ptrs, boundary_check=(1, 2), eviction_policy="evict_first", padding_option="zero")
-        dtype = x.dtype  # For autocast
-        w1_bfly = tl.load(w1_ptrs, boundary_check=(2, ), eviction_policy="evict_first", padding_option="zero").to(x.dtype)
+        w1_bfly = tl.load(w1_ptrs, boundary_check=(2, ), eviction_policy="evict_first", padding_option="zero").to(dtype)
         # in-kernel transpose is more efficient?
         w1_bfly = tl.trans(w1_bfly, 0, 2, 1)  # -> (n_blk, blk1_in, blk1_out)
         out1 += tl.dot(
@@ -267,7 +265,8 @@ def monarch_forward(
 
         x_ptrs = tl.advance(x_ptrs, (0, 0, BLOCK_SIZE_K))
         w1_ptrs = tl.advance(w1_ptrs, (0, 0, BLOCK_SIZE_K))
-    # dtype = x.dtype  # For autocast
+        # Prefetch
+        x = tl.load(x_ptrs, boundary_check=(1, 2), eviction_policy="evict_first", padding_option="zero")
         
     
     # shuffle features 
