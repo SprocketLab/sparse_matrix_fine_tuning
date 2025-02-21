@@ -113,7 +113,7 @@ class BlockdiagButterflyMultiply(torch.autograd.Function):
 
     @staticmethod
     @torch.amp.custom_bwd(device_type=device_type)
-    def backward(ctx, dout):
+    def backward(ctx, dout, *args):
         x, w1_bfly, w2_bfly, out1, *_ = ctx.saved_tensors
         batch_shape, n = x.shape[:-1], x.shape[-1]
         seq_dim = np.prod(batch_shape)
@@ -134,8 +134,6 @@ class BlockdiagButterflyMultiply(torch.autograd.Function):
             dout1 = torch.empty(nblocks2, seq_dim, blk2_in, device=x.device, dtype=x.dtype)
             dout1 = torch.bmm(dout_reshaped, w2_bfly.conj(), out=dout1)  # -> (nblocks2, seq_dim, blk2_in)
             del dout_reshaped
-            # dout1 = dout1.transpose(0, 1).transpose(-1, -2).contiguous().reshape(seq_dim, nblocks1, blk1_out).transpose(0, 1)
-            # NOTE: We do NOT need contiguous in between? This should save memory & time
             dout1 = (
                 dout1.permute(1, 2, 0).reshape(seq_dim, nblocks1, blk1_out).transpose(0, 1)
             )  # -> (nblocks1, seq_dim, blk2_in)

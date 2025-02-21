@@ -32,9 +32,12 @@ def config_gen():
 def monarch_backward(
     dout_ptr, out1_ptr, x_ptr, w1_bfly_ptr, w2_bfly_ptr,
     dx_ptr, dw1_bfly_ptr, dw2_bfly_ptr,
-    SEQ_DIM, N_BLK, BLK1_IN, BLK1_OUT, BLK2_OUT,
+    SEQ_DIM: tl.constexpr, N_BLK: tl.constexpr,
+    BLK1_IN: tl.constexpr,
+    BLK1_OUT: tl.constexpr,
+    BLK2_OUT: tl.constexpr,
     stride_dout_l, stride_dout_m, stride_dout_n,
-    stride_out1_r, stride_out1_m, stride_out1_l,
+    stride_out1_l, stride_out1_m, stride_out1_r,
     stride_xl, stride_xm, stride_xk,
     stride_w1l, stride_w1r, stride_w1k,
     stride_w2l, stride_w2n, stride_w2r,
@@ -43,7 +46,7 @@ def monarch_backward(
     BLOCK_SIZE_K: tl.constexpr = 32,
     GROUP_SIZE_M: tl.constexpr = 8,
 ):
-    BLK2_IN = BLK1_OUT
+    BLK2_IN: tl.constexpr = BLK1_OUT
     pid_batch = tl.program_id(0)
     pid = tl.program_id(1)
 
@@ -61,99 +64,95 @@ def monarch_backward(
     offs_n = pid_n * BLOCK_SIZE_N
     offs_k = 0
 
-    # Load a whole bunch of pointers
+    # Load pointers with 3D shapes
     x_ptrs = tl.make_block_ptr(
         x_ptr + pid_batch * stride_xl,
-        shape=(SEQ_DIM, BLK1_IN),
-        strides=(stride_xm, stride_xk),
-        offsets=(offs_m, offs_k),
-        block_shape=(BLOCK_SIZE_SEQ, BLOCK_SIZE_K),
-        order=(0, 1),  # transposed
+        shape=(N_BLK, SEQ_DIM, BLK1_IN),
+        strides=(stride_xl, stride_xm, stride_xk),
+        offsets=(0, offs_m, offs_k),
+        block_shape=(N_BLK, BLOCK_SIZE_SEQ, BLOCK_SIZE_K),
+        order=(2, 1, 0),
     )
     dx_ptrs = tl.make_block_ptr(
         dx_ptr + pid_batch * stride_xl,
-        shape=(SEQ_DIM, BLK1_IN),
-        strides=(stride_xm, stride_xk),
-        offsets=(offs_m, offs_k),
-        block_shape=(BLOCK_SIZE_SEQ, BLOCK_SIZE_K),
-        order=(1, 0),
+        shape=(N_BLK, SEQ_DIM, BLK1_IN),
+        strides=(stride_xl, stride_xm, stride_xk),
+        offsets=(0, offs_m, offs_k),
+        block_shape=(N_BLK, BLOCK_SIZE_SEQ, BLOCK_SIZE_K),
+        order=(2, 1, 0),
     )
     out1_ptrs = tl.make_block_ptr(
         out1_ptr + pid_batch * stride_out1_l,
-        shape=(SEQ_DIM, BLK1_OUT),
-        strides=(stride_out1_m, stride_out1_r),
-        offsets=(offs_m, 0),
-        block_shape=(BLOCK_SIZE_SEQ, BLK1_OUT),
-        order=(1, 0),
+        shape=(N_BLK, SEQ_DIM, BLK1_OUT),
+        strides=(stride_out1_l, stride_out1_m, stride_out1_r),
+        offsets=(0, offs_m, 0),
+        block_shape=(N_BLK, BLOCK_SIZE_SEQ, BLK1_OUT),
+        order=(2, 1, 0),
     )
     dout_ptrs = tl.make_block_ptr(
         dout_ptr + pid_batch * stride_dout_l,
-        shape=(SEQ_DIM, BLK2_OUT),
-        strides=(stride_dout_m, stride_dout_n),
-        offsets=(offs_m, offs_n),
-        block_shape=(BLOCK_SIZE_SEQ, BLOCK_SIZE_N),
-        order=(1, 0),
+        shape=(N_BLK, SEQ_DIM, BLK2_OUT),
+        strides=(stride_dout_m, stride_dout_n, stride_dout_l),
+        offsets=(0, offs_m, offs_n),
+        block_shape=(N_BLK, BLOCK_SIZE_SEQ, BLOCK_SIZE_N),
+        order=(2, 1, 0),
     )
     w1_ptrs = tl.make_block_ptr(
         w1_bfly_ptr + pid_batch * stride_w1l,
-        shape=(BLK1_OUT, BLK1_IN),
-        strides=(stride_w1r, stride_w1k),
-        offsets=(0, offs_k),
-        block_shape=(BLK1_OUT, BLOCK_SIZE_K),
-        order=(1, 0),
+        shape=(N_BLK, BLK1_OUT, BLK1_IN),
+        strides=(stride_w1l, stride_w1r, stride_w1k),
+        offsets=(0, 0, offs_k),
+        block_shape=(N_BLK, BLK1_OUT, BLOCK_SIZE_K),
+        order=(2, 1, 0),
     )
     dw1_ptrs = tl.make_block_ptr(
         dw1_bfly_ptr + pid_batch * stride_w1l,
-        shape=(BLK1_OUT, BLK1_IN),
-        strides=(stride_w1r, stride_w1k),
-        offsets=(0, offs_k),
-        block_shape=(BLK1_OUT, BLOCK_SIZE_K),
-        order=(1, 0),
+        shape=(N_BLK, BLK1_OUT, BLK1_IN),
+        strides=(stride_w1l, stride_w1r, stride_w1k),
+        offsets=(0, 0, offs_k),
+        block_shape=(N_BLK, BLK1_OUT, BLOCK_SIZE_K),
+        order=(2, 1, 0),
     )
     w2_ptrs = tl.make_block_ptr(
         w2_bfly_ptr + pid_batch * stride_w2l,
-        shape=(BLK2_OUT, BLK2_IN),
-        strides=(stride_w2n, stride_w2r),
-        offsets=(offs_n, 0),
-        block_shape=(BLOCK_SIZE_N, BLK2_IN),
-        order=(1, 0),
+        shape=(N_BLK, BLK2_OUT, BLK2_IN),
+        strides=(stride_w2l, stride_w2n, stride_w2r),
+        offsets=(0, offs_n, 0),
+        block_shape=(N_BLK, BLOCK_SIZE_N, BLK2_IN),
+        order=(2, 1, 0),
     )
     dw2_ptrs = tl.make_block_ptr(
         dw2_bfly_ptr + pid_batch * stride_w2l,
-        shape=(BLK2_OUT, BLK2_IN),
-        strides=(stride_w2n, stride_w2r),
-        offsets=(offs_n, 0),
-        block_shape=(BLOCK_SIZE_N, BLK2_IN),
-        order=(1, 0),
+        shape=(N_BLK, BLK2_OUT, BLK2_IN),
+        strides=(stride_w2l, stride_w2n, stride_w2r),
+        offsets=(0, offs_n, 0),
+        block_shape=(N_BLK, BLOCK_SIZE_N, BLK2_IN),
+        order=(2, 1, 0),
     )
 
-    # out_mask = offs_n[:, None] < N_BLK * BLK2_OUT
-    # seq_mask = offs_m[None, :] < SEQ_DIM
-    # seq_out_mask = offs_m[:, None] < SEQ_DIM & offs_n[None, :] < N_BLK * BLK2_OUT
-
     # Compute dw2
-    dout = tl.load(dout_ptrs, boundary_check=(0, 1), eviction_policy="evict_first")
-    out1 = tl.load(out1_ptrs, boundary_check=(1,), eviction_policy="evict_first")
-    w2_bfly = tl.load(w2_ptrs, boundary_check=(0,))
-    # (blk2_out, seq_dim) @ (seq_dim, blk1_out) -> (blk2_out, blk1_out)
-    dw2_bfly = tl.dot(tl.trans(out1), dout)
-    tl.store(dw2_ptrs, dw2_bfly, boundary_check=(0,))
+    dout = tl.load(dout_ptrs, boundary_check=(1, 2), eviction_policy="evict_first")
+    out1 = tl.load(out1_ptrs, boundary_check=(1, 2), eviction_policy="evict_first")
+    w2_bfly = tl.load(w2_ptrs, boundary_check=(1,))
+    dw2_bfly = tl.dot(tl.trans(dout, 0, 2, 1), out1, out_dtype=out1.dtype)  # (BLOCK_SIZE_N, BLK1_OUT)
+    tl.store(dw2_ptrs, dw2_bfly, boundary_check=(1,))
 
-    # Compute dw1
-    x = tl.load(x_ptrs, boundary_check=(0, 1))
-    dout1 = tl.dot(dout, w2_bfly)  # -> (seq_dim, blk1_out)
-    dx = tl.zeros((BLOCK_SIZE_SEQ, BLOCK_SIZE_K), dtype=tl.float32)
+    # Compute dout1 and dx
+    x = tl.load(x_ptrs, boundary_check=(1, 2))
+    dout1 = tl.dot(dout, w2_bfly, out_dtype=dout.dtype)  # (BLOCK_SIZE_SEQ, BLK1_OUT)
+    dx = tl.zeros((N_BLK, BLOCK_SIZE_SEQ, BLOCK_SIZE_K), dtype=tl.float32)
 
-    # Compute dx by scanning over input dimension
-    for k in range(BLOCK_SIZE_K, BLK1_IN, BLOCK_SIZE_K):
-        w1_bfly = tl.load(w1_ptrs, boundary_check=(1, ))
-        dx += tl.dot(dout1, w1_bfly)  # (BLOCK_SIZE_SEQ, BLK1_OUT) @ (BLK1_OUT, BLK1_IN) -> (BLOCK_SIZE_SEQ, BLK1_IN)
-        tl.advance(w1_ptrs, (0, BLOCK_SIZE_K))
-    tl.store(dx_ptrs, dx, boundary_check=(0, 1))
+    # Compute dx 
+    for k in range(0, BLK1_IN, BLOCK_SIZE_K):
+        w1_bfly = tl.load(w1_ptrs, boundary_check=(1, 2,))
+        dx += tl.dot(dout1, w1_bfly) # fp32 accumulation
+        tl.advance(w1_ptrs, (0, 0, BLOCK_SIZE_K))
+    dx = dx.to(dtype=dout1.dtype)
+    tl.store(dx_ptrs, dx, boundary_check=(1, 2))
 
-    dw1_bfly = tl.dot(tl.trans(dout1), x)  # (blk1_out, seq_dim) @ (seq_dim, blk1_in) -> (blk1_out, blk1_in)
-    tl.store(dw1_ptrs, dw1_bfly, boundary_check=(1,))
-
+    # Compute dw1_bfly
+    dw1_bfly = tl.dot(tl.trans(dout1, 0, 2, 1), x, out_dtype=dout1.dtype)  # (BLK1_OUT, BLK1_IN)
+    tl.store(dw1_ptrs, dw1_bfly, boundary_check=(1, 2,))
 
 # fmt: off
 # @triton.autotune(
@@ -277,7 +276,7 @@ def monarch_forward(
 
     w2_bfly = tl.load(w2_ptrs, boundary_check=(1,), padding_option="zero").to(dtype)
     w2_bfly = tl.trans(w2_bfly, 0, 2, 1)  # -> (blk2_in, blk2_out)
-    out2 = tl.dot(out1, w2_bfly).to(dtype)  # (n_blk, seq_dim, blk1_out) @ (n_blk, blk2_in, blk2_out) -> (n_blk, seq_dim, blk2_out)
+    out2 = tl.dot(out1, w2_bfly, out_dtype=dtype)  # (n_blk, seq_dim, blk1_out) @ (n_blk, blk2_in, blk2_out) -> (n_blk, seq_dim, blk2_out)
     out2 = tl.trans(out2, 1, 2, 0)  # -> (seq_dim, blk2_out, n_blk)
     tl.store(out2_ptrs, out2, boundary_check=(0, 1))
 
@@ -337,21 +336,23 @@ class MonarchKernel(torch.autograd.Function):
         return out2
 
     @staticmethod
-    def backward(ctx, dout):
+    def backward(ctx, dout, *args):
         x, w1_bfly, w2_bfly, out1, *_ = ctx.saved_tensors
         BATCH_SHAPE, HID_DIM = x.shape
         seq_dim = int(np.prod(BATCH_SHAPE))
-        x = x.view(seq_dim, HID_DIM).view(seq_dim, nblocks1, blk1_in).transpose(0, 1).contiguous()
         nblocks1, blk1_out, blk1_in = w1_bfly.shape
         nblocks2, blk2_out, blk2_in = w2_bfly.shape
         assert nblocks1 == nblocks2 and blk1_out == blk2_in, "Doesn't support irregular blocks yet"
         nblocks = nblocks1 = nblocks2
 
+        # (nblocks2, seq_dim, blk1_out)
+        x = x.view(seq_dim, HID_DIM).view(seq_dim, nblocks1, blk1_in).transpose(0, 1).contiguous()
+        
         # Allocate buffers
         # (nblocks2, seq_dim, blk2_out)
         dout = dout.view(seq_dim, blk2_out, nblocks2).permute(2, 0, 1).contiguous()
-        dw1_bfly = torch.empty(nblocks1, seq_dim, blk1_out, device=w1_bfly.device, dtype=w1_bfly.dtype)
-        dw2_bfly = torch.empty(nblocks2, seq_dim, blk2_in, device=w2_bfly.device, dtype=w2_bfly.dtype)
+        dw1_bfly = torch.empty(nblocks1, blk2_in, blk1_in, device=w1_bfly.device, dtype=w1_bfly.dtype)
+        dw2_bfly = torch.empty(nblocks2, blk2_out, blk2_in, device=w2_bfly.device, dtype=w2_bfly.dtype)
         dx = torch.empty(seq_dim, nblocks1, blk1_in, device=x.device, dtype=x.dtype)
         # Triton doesn't have conjugate?
         w1_bfly = w1_bfly.conj()
@@ -380,7 +381,7 @@ class MonarchKernel(torch.autograd.Function):
             )
         # fmt: on
         dx = dx.reshape(BATCH_SHAPE, HID_DIM)
-        return dx, dw1_bfly, dw2_bfly
+        return dx, dw1_bfly, dw2_bfly, None
 
 
 monarch_kernel = MonarchKernel.apply
