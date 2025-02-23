@@ -9,19 +9,24 @@ def config_gen():
     for BSEQ in [32, 64, 128]:
         for BK in [32, 64, 128]:
             for BN in [32, 64, 128]:
-                num_stages = 4  # Even flash-attn has up to 5 stages (https://github.com/triton-lang/triton/blob/6af74b2f4535682abfc0b08958bc2c6831036d29/python/tutorials/06-fused-attention.py#L489)
-                num_warps = 4
-                # Filter
-                if BK <= 64:
-                    num_stages = 5
-                    num_warps = 8
-                configs.append(
-                    triton.Config(
-                        {"BLOCK_SIZE_SEQ": BSEQ, "BLOCK_SIZE_K": BK, "BLOCK_SIZE_N": BN, "GROUP_SIZE_M": 8},
-                        num_stages=num_stages,
-                        num_warps=num_warps,
-                    )
-                )
+                for num_warps in [4, 8]:
+                    for num_stages in [4, 5]:
+                        if BSEQ * BK * BN <= 65536:
+                            # This is the max number of elements that can be loaded in a single kernel
+                            # (https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#features-and-technical-specifications)
+                            # num_stages = 4  # Even flash-attn has up to 5 stages (https://github.com/triton-lang/triton/blob/6af74b2f4535682abfc0b08958bc2c6831036d29/python/tutorials/06-fused-attention.py#L489)
+                            # num_warps = 4
+                            # Filter
+                            if BK <= 64:
+                                num_stages = 5
+                                num_warps = 8
+                            configs.append(
+                                triton.Config(
+                                    {"BLOCK_SIZE_SEQ": BSEQ, "BLOCK_SIZE_K": BK, "BLOCK_SIZE_N": BN, "GROUP_SIZE_M": 8},
+                                    num_stages=num_stages,
+                                    num_warps=num_warps,
+                                )
+                            )
     return configs
 
 
@@ -70,7 +75,7 @@ def monarch_backward(
 
     # Compute grouped row ids
     num_pid_m = tl.cdiv(SEQ_DIM, BLOCK_SIZE_SEQ)
-    num_pid_n = tl.cdiv(N_BLK * BLK1_IN, BLOCK_SIZE_N)
+    num_pid_n = tl.cdiv(BLK1_IN, BLOCK_SIZE_N)
     num_pid_in_group = GROUP_SIZE_M * num_pid_n
     group_id = pid // num_pid_in_group
     first_pid_m = group_id * GROUP_SIZE_M
@@ -187,7 +192,7 @@ def monarch_backward(
 
 
 # fmt: off
-# Autotune are slow and useless for variable shapes
+# Autotune can even make the kernel slower...
 # @triton.autotune(
 #     config_gen(),
 #     key=["N_BLK", "BLK1_IN", "BLK2_OUT"],
@@ -219,7 +224,7 @@ def monarch_forward(
     pid = tl.program_id(0)
     # Grouped ordering for better l2 cache reuse
     num_pid_m = tl.cdiv(SEQ_DIM, BLOCK_SIZE_SEQ)
-    num_pid_n = tl.cdiv(N_BLK * BLK2_OUT, BLOCK_SIZE_N)
+    num_pid_n = tl.cdiv(BLK2_OUT, BLOCK_SIZE_N)
     num_pid_in_group = GROUP_SIZE_M * num_pid_n
     group_id = pid // num_pid_in_group
 

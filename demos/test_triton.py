@@ -17,7 +17,7 @@ from src.layers.monarch_linear import MonarchLinear
 from src.ops.blockdiag_butterfly_multiply import blockdiag_butterfly_multiply
 from src.ops.triton import monarch_kernel
 
-seq_len = 512
+seq_len = 1024
 nblocks = 4
 in_dim = 1024
 out_dim = 1024
