@@ -9,6 +9,7 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 import argparse
 import warnings
+
 import torch
 from torch.testing import assert_close
 
@@ -16,14 +17,14 @@ from src.layers.monarch_linear import MonarchLinear
 from src.ops.blockdiag_butterfly_multiply import blockdiag_butterfly_multiply
 from src.ops.triton import monarch_kernel
 
-seq_len = 2048
+seq_len = 512
 nblocks = 4
-in_dim = 16  # Setting this to very large value (e.g. 1024) can cause precision error. Still investigating
-out_dim = 16  # setting to 64 cause seg fault using TRITON_INTERPRET=1 and precision error without the flag
+in_dim = 1024
+out_dim = 1024
 blk_r = 16
 
 warmup_iter = 5
-num_bench_iter = 100
+num_bench_iter = 200
 
 
 def main(args):
@@ -43,14 +44,14 @@ def main(args):
         )
         if x.dtype == torch.bfloat16:
             raise NotImplementedError("TRITON_INTERPRET mode does not support bfloat16")
-        
+
     if args.test:
         out2_torch, out1_torch = blockdiag_butterfly_multiply(x, monarch.blkdiag1, monarch.blkdiag2, True)
         blkdiag1_copy = monarch.blkdiag1.clone().detach().requires_grad_(True)
         blkdiag2_copy = monarch.blkdiag2.clone().detach().requires_grad_(True)
         out2_triton, out1_triton = monarch_kernel(x_copy, blkdiag1_copy, blkdiag2_copy, True)
         # print(out1_triton)
-        
+
         # Forward tests
         assert_close(out1_torch, out1_triton, rtol=1e-3, atol=1e-3)
         assert_close(out2_torch, out2_triton, rtol=1e-3, atol=1e-3)
