@@ -186,7 +186,7 @@ def monarch_forward(
     pid = tl.program_id(0)
     # Grouped ordering for better l2 cache reuse
     num_pid_m = tl.cdiv(SEQ_DIM, BLOCK_SIZE_SEQ)
-    num_pid_n = tl.cdiv(N_BLK * BLK1_IN, BLOCK_SIZE_N)
+    num_pid_n = tl.cdiv(N_BLK * BLK2_OUT, BLOCK_SIZE_N)
     num_pid_in_group = GROUP_SIZE_M * num_pid_n
     group_id = pid // num_pid_in_group
     first_pid_m = group_id * GROUP_SIZE_M
@@ -196,13 +196,12 @@ def monarch_forward(
 
     offs_am = pid_m * BLOCK_SIZE_SEQ
     offs_bn = pid_n * BLOCK_SIZE_N
-    offs_k = 0
 
     x_ptrs = tl.make_block_ptr(
         x_ptr,
         shape=(N_BLK, SEQ_DIM, BLK1_IN),  # the full shape that's split over blocks
         strides=(stride_xl, stride_xm, stride_xk),
-        offsets=(0, offs_am, offs_k),
+        offsets=(0, offs_am, 0),
         block_shape=(N_BLK, BLOCK_SIZE_SEQ, BLOCK_SIZE_K), # block_shape requires List[tl.constexpr]
         order=(2, 1, 0)
     )
@@ -213,7 +212,7 @@ def monarch_forward(
         w1_bfly_ptr,
         shape=(N_BLK, BLK1_OUT, BLK1_IN),
         strides=(stride_w1l, stride_w1r, stride_w1k),
-        offsets=(0, 0, offs_k),
+        offsets=(0, 0, 0),
         block_shape=(N_BLK, BLK1_OUT, BLOCK_SIZE_K),  
         order=(2, 1, 0),
     )
@@ -248,7 +247,7 @@ def monarch_forward(
     # Now use block offsets to advance pointers
     offs_am = pid_m * BLOCK_SIZE_SEQ + tl.arange(0, BLOCK_SIZE_SEQ)
     offs_bn = pid_n * BLOCK_SIZE_N + tl.arange(0, BLOCK_SIZE_N)
-    offs_k = tl.arange(0, BLOCK_SIZE_K)
+    # offs_k = tl.arange(0, BLOCK_SIZE_K)
 
     x = tl.load(x_ptrs, boundary_check=(1, 2), eviction_policy="evict_first", padding_option="zero")  # Prefetch
     dtype = x.dtype  # For autocast
@@ -274,7 +273,7 @@ def monarch_forward(
     out1 = tl.trans(out1, (2, 0, 1)).to(dtype) # -> (n_blk, seq_dim, blk2_in)
     tl.store(out1_ptrs, out1, boundary_check=(1, ))
 
-    w2_bfly = tl.load(w2_ptrs, boundary_check=(1,), padding_option="zero").to(dtype)
+    w2_bfly = tl.load(w2_ptrs, boundary_check=(1, 2), padding_option="zero").to(dtype)
     w2_bfly = tl.trans(w2_bfly, 0, 2, 1)  # -> (blk2_in, blk2_out)
     out2 = tl.dot(out1, w2_bfly, out_dtype=dtype)  # (n_blk, seq_dim, blk1_out) @ (n_blk, blk2_in, blk2_out) -> (n_blk, seq_dim, blk2_out)
     out2 = tl.trans(out2, 1, 2, 0)  # -> (seq_dim, blk2_out, n_blk)
@@ -361,7 +360,6 @@ class MonarchKernel(torch.autograd.Function):
         x = x.conj()
 
         grid = lambda META: (
-            nblocks,
             triton.cdiv(seq_dim, META["BLOCK_SIZE_SEQ"]) * triton.cdiv(blk2_out, META["BLOCK_SIZE_N"]),
         )
         # dw2_bfly = dw2_bfly if ctx.needs_input_grad[2] else None
