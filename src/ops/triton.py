@@ -309,11 +309,6 @@ def monarch_forward(
     out2 = tl.trans(out2, 1, 2, 0)  # -> (seq_dim, blk2_out, n_blk)
     tl.store(out2_ptrs, out2, boundary_check=(0, 1))
 
-dtype_map = {
-    torch.float32: tl.float32,
-    torch.bfloat16: tl.bfloat16,
-    torch.float16: tl.float16,
-}
 
 
 class MonarchKernel(torch.autograd.Function):
@@ -350,7 +345,7 @@ class MonarchKernel(torch.autograd.Function):
             w2_bfly.stride(0), w2_bfly.stride(1), w2_bfly.stride(2),
             out1.stride(0), out1.stride(1), out1.stride(2),
             out2.stride(0), out2.stride(1), out2.stride(2),
-            num_warps=8
+            num_warps=8, 
         )
 
         # fmt: on
