@@ -49,25 +49,16 @@ def monarch_backward(
     BLK1_IN: tl.constexpr,
     BLK1_OUT: tl.constexpr,
     BLK2_OUT: tl.constexpr,
-    stride_dout_l,
-    stride_dout_m,
-    stride_dout_n,
-    stride_out1_l,
-    stride_out1_m,
-    stride_out1_r,
-    stride_xl,
-    stride_xm,
-    stride_xk,
-    stride_w1l,
-    stride_w1r,
-    stride_w1k,
-    stride_w2l,
-    stride_w2n,
-    stride_w2r,
-    BLOCK_SIZE_SEQ: tl.constexpr = 64,
-    BLOCK_SIZE_N: tl.constexpr = 64,
+    stride_dout_l, stride_dout_m, stride_dout_n,
+    stride_out1_l, stride_out1_m, stride_out1_r,
+    stride_xl, stride_xm, stride_xk,
+    stride_w1l, stride_w1r, stride_w1k,
+    stride_w2l, stride_w2n, stride_w2r,
+    BLOCK_SIZE_SEQ: tl.constexpr = 32,
+    BLOCK_SIZE_N: tl.constexpr = 32,
     BLOCK_SIZE_K: tl.constexpr = 32,
     GROUP_SIZE_M: tl.constexpr = 8,
+    MAX_BLOCK_SEQ_LEN: tl.constexpr = 512, # For stream-k, set based on shared mem size (227 KB for H100)
 ):
     BLK2_IN: tl.constexpr = BLK1_OUT
     pid_batch = tl.program_id(0)
@@ -92,8 +83,8 @@ def monarch_backward(
         x_ptr + pid_batch * stride_xl,
         shape=(N_BLK, SEQ_DIM, BLK1_IN),
         strides=(stride_xl, stride_xm, stride_xk),
-        offsets=(0, offs_m, offs_k),
-        block_shape=(N_BLK, BLOCK_SIZE_SEQ, BLOCK_SIZE_K),
+        offsets=(0, offs_m, offs_n),
+        block_shape=(N_BLK, BLOCK_SIZE_SEQ, BLOCK_SIZE_N),
         order=(2, 1, 0),
     )
     dx_ptrs = tl.make_block_ptr(
@@ -124,16 +115,16 @@ def monarch_backward(
         w1_bfly_ptr + pid_batch * stride_w1l,
         shape=(N_BLK, BLK1_OUT, BLK1_IN),
         strides=(stride_w1l, stride_w1r, stride_w1k),
-        offsets=(0, 0, offs_k),
-        block_shape=(N_BLK, BLK1_OUT, BLOCK_SIZE_K),
+        offsets=(0, 0, offs_n),
+        block_shape=(N_BLK, BLK1_OUT, BLOCK_SIZE_N),
         order=(2, 1, 0),
     )
     dw1_ptrs = tl.make_block_ptr(
         dw1_bfly_ptr + pid_batch * stride_w1l,
         shape=(N_BLK, BLK1_OUT, BLK1_IN),
         strides=(stride_w1l, stride_w1r, stride_w1k),
-        offsets=(0, 0, offs_k),
-        block_shape=(N_BLK, BLK1_OUT, BLOCK_SIZE_K),
+        offsets=(0, 0, offs_n),
+        block_shape=(N_BLK, BLK1_OUT, BLOCK_SIZE_N),
         order=(2, 1, 0),
     )
     w2_ptrs = tl.make_block_ptr(
@@ -153,43 +144,45 @@ def monarch_backward(
         order=(2, 1, 0),
     )
 
-    # Compute dw2
-    dout = tl.load(dout_ptrs, boundary_check=(1, 2), eviction_policy="evict_first")
-    out1 = tl.load(out1_ptrs, boundary_check=(1, 2), eviction_policy="evict_first")
-    w2_bfly = tl.load(w2_ptrs, boundary_check=(1,))
-    dw2_bfly = tl.dot(tl.trans(dout, 0, 2, 1), out1, out_dtype=out1.dtype)  # (BLOCK_SIZE_N, BLK1_OUT)
-    tl.store(dw2_ptrs, dw2_bfly, boundary_check=(1,))
+    w1_bfly = tl.load(w1_ptrs, boundary_check=(1, 2,), eviction_policy="evict_last")
+    # Stream-K along the seq dim
+    for s in range(0, MAX_BLOCK_SEQ_LEN, BLOCK_SIZE_SEQ):
+        dout = tl.load(dout_ptrs, boundary_check=(1, 2), eviction_policy="evict_first")
+        out1 = tl.load(out1_ptrs, boundary_check=(1, 2), eviction_policy="evict_first")
+        dout = tl.trans(dout, 0, 2, 1)
+        # Compute dw2
+        # (nblocks2, blk2_out, seq_dim) @ (nblocks2, seq_dim, blk1_out) -> (nblocks2, blk2_out, blk1_out)
+        dw2_bfly = tl.dot(dout, out1, out_dtype=out1.dtype)  # (BLOCK_SIZE_N, BLK1_OUT)
+        tl.advance(dout_ptrs, (0, BLOCK_SIZE_SEQ, 0))
+        tl.advance(out1_ptrs, (0, BLOCK_SIZE_SEQ, 0))
+        mask = (offs_n + tl.arange(0, BLOCK_SIZE_N) < BLK2_OUT)[None, :, None]
+        tl.atomic_add(dw2_ptrs, dw2_bfly, mask=mask)
+        # Compute dx and dw1_bfly
+        dout = tl.trans(dout, 0, 2, 1)  
+        dx = tl.zeros((N_BLK, BLOCK_SIZE_SEQ, BLOCK_SIZE_K), dtype=tl.float32)
+        
+        # Slice k alone the input dim
+        x = tl.load(x_ptrs, boundary_check=(1, 2), eviction_policy="evict_first")
+        for k in range(0, BLK2_OUT, BLOCK_SIZE_K):
+            w2_bfly = tl.load(w2_ptrs, boundary_check=(1,), eviction_policy="evict_first")
+            # (nblocks2, seq_dim, blk2_out) @ (nblocks2, blk2_out, blk2_in) -> (nblocks2, seq_dim, blk2_in)
+            dout1 = tl.dot(dout, w2_bfly, out_dtype=dout.dtype)  
+            dout1 = tl.trans(dout1, 0, 2, 1)
 
-    # Compute dout1 and dx
-    x = tl.load(x_ptrs, boundary_check=(1, 2))
-    dout1 = tl.dot(dout, w2_bfly, out_dtype=dout.dtype)  # (BLOCK_SIZE_SEQ, BLK1_OUT)
-    dx = tl.zeros((N_BLK, BLOCK_SIZE_SEQ, BLOCK_SIZE_K), dtype=tl.float32)
-
-    # Compute dx
-    for k in range(0, BLK1_IN, BLOCK_SIZE_K):
-        w1_bfly = tl.load(
-            w1_ptrs,
-            boundary_check=(
-                1,
-                2,
-            ),
-        )
-        dx += tl.dot(dout1, w1_bfly)  # fp32 accumulation
-        tl.advance(w1_ptrs, (0, 0, BLOCK_SIZE_K))
-    dx = dx.to(dtype=dout1.dtype)
-    tl.store(dx_ptrs, dx, boundary_check=(1, 2))
-
-    # Compute dw1_bfly
-    dw1_bfly = tl.dot(tl.trans(dout1, 0, 2, 1), x, out_dtype=dout1.dtype)  # (BLK1_OUT, BLK1_IN)
-    tl.store(
-        dw1_ptrs,
-        dw1_bfly,
-        boundary_check=(
-            1,
-            2,
-        ),
-    )
-
+            # (nblocks1, seq_dim, blk1_out) @ (nblocks1, blk1_out, blk1_in) -> (nblocks1, seq_dim, blk1_in)
+            dx += tl.dot(dout1, w1_bfly) # fp32 accumulation
+            # (nblocks2, blk2_in, seq_dim) @ (nblocks2, seq_dim, blk1_in) -> (nblocks2, blk2_in, blk1_in)
+            dw1_bfly = tl.dot(dout1, x, out_dtype=dout1.dtype)  
+            tl.advance(w2_ptrs, (0, BLOCK_SIZE_K, 0))
+        dx = dx.to(dtype=dout1.dtype)
+        tl.store(dx_ptrs, dx, boundary_check=(1, 2))
+        tl.store(x_ptrs, x, boundary_check=(1, 2))
+        # tl.store(dw1_ptrs, dw1_bfly, boundary_check=(1, 2,)
+        mask = (tl.arange(0, BLOCK_SIZE_N) < BLK1_IN)[None, None, :]
+        tl.atomic_add(dw1_ptrs, dw1_bfly, mask=mask)
+        tl.advance(dx_ptrs, (0, BLOCK_SIZE_SEQ, 0))
+        tl.advance(x_ptrs, (0, BLOCK_SIZE_SEQ, 0))
+        
 
 # fmt: off
 # Autotune can even make the kernel slower...
@@ -382,7 +375,7 @@ class MonarchKernel(torch.autograd.Function):
         x = x.conj()
 
         grid = lambda META: (
-            triton.cdiv(seq_dim, META["BLOCK_SIZE_SEQ"]) * triton.cdiv(blk2_out, META["BLOCK_SIZE_N"]),
+            triton.cdiv(seq_dim, META["MAX_BLOCK_SEQ_LEN"]) * triton.cdiv(blk1_in, META["BLOCK_SIZE_N"]),
         )
         # dw2_bfly = dw2_bfly if ctx.needs_input_grad[2] else None
         # dx = dx if ctx.needs_input_grad[0] else None

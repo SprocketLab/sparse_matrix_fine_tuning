@@ -94,5 +94,4 @@ RUN pip install ray==2.37.0
 RUN pip install pre-commit
 RUN chmod -R 777 .
 # build from the newest main branch with more potential fixes
-RUN git clone https://github.com/triton-lang/triton.git 
-RUN cd triton && pip install ninja cmake wheel pybind11 && pip install -e python
+RUN pip install triton==3.3.0
