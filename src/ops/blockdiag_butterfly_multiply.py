@@ -132,11 +132,12 @@ class BlockdiagButterflyMultiply(torch.autograd.Function):
             dw2_bfly = torch.bmm(dout_reshaped.transpose(-1, -2), out1.conj())
         if ctx.needs_input_grad[1] or ctx.needs_input_grad[0]:
             dout1 = torch.empty(nblocks2, seq_dim, blk2_in, device=x.device, dtype=x.dtype)
-            dout1 = torch.bmm(dout_reshaped, w2_bfly.conj(), out=dout1)  # -> (nblocks2, seq_dim, blk2_in)
+            # (nblocks2, seq_dim, blk2_out) @ (nblocks2, blk2_out, blk2_in) -> (nblocks2, seq_dim, blk2_in)
+            dout1 = torch.bmm(dout_reshaped, w2_bfly.conj(), out=dout1) 
             del dout_reshaped
             dout1 = (
                 dout1.permute(1, 2, 0).reshape(seq_dim, nblocks1, blk1_out).transpose(0, 1)
-            )  # -> (nblocks1, seq_dim, blk2_in)
+            )  
             if ctx.needs_input_grad[0]:
                 dx = torch.empty(seq_dim, nblocks1, blk1_in, device=x.device, dtype=x.dtype)
                 # (nblocks1, seq_dim, blk1_out) @ (nblocks1, blk1_out, blk1_in) -> (nblocks1, seq_dim, blk1_in)

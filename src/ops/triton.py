@@ -144,7 +144,7 @@ def monarch_backward(
         tl.advance(out1_ptrs, (0, BLOCK_SIZE_SEQ, 0))
         
         # Replace atomic_add with normal pointers for dw2
-        base_dw2 = dw2_bfly_ptr
+        base_dw2 = tl.zeros((1, 1, 1), dtype=tl.int32) + dw2_bfly_ptr
         n_blk = tl.arange(0, N_BLK)[:, None, None]
         i = tl.arange(0, BLOCK_SIZE_N)[None, :, None]
         j = tl.arange(0, BLK2_IN)[None, None, :]
@@ -153,24 +153,28 @@ def monarch_backward(
         mask = (offs_n + i) < BLK2_OUT
         tl.atomic_add(dw2_pointers, dw2_bfly, mask=mask)
 
-        # Compute dx and dw1_bfly
-        dx = tl.zeros((N_BLK, BLOCK_SIZE_SEQ, BLOCK_SIZE_K), dtype=tl.float32)
         
-        x = tl.load(x_ptrs, boundary_check=(1, 2), eviction_policy="evict_first")
+        # Compute dout1 
+        dout1 = tl.zeros((N_BLK, BLOCK_SIZE_SEQ, BLK2_IN), dtype=tl.float32)
         for k in range(0, BLK2_OUT, BLOCK_SIZE_K):
             w2_bfly = tl.load(w2_ptrs, boundary_check=(1,), eviction_policy="evict_first")
-            dout1 = tl.dot(dout, w2_bfly, out_dtype=dout.dtype)
-            dout1 = tl.trans(dout1, 1, 2, 0)
-            dout1 = tl.reshape(dout1, (BLOCK_SIZE_SEQ, N_BLK, BLK1_OUT))
-            dout1 = tl.trans(dout1, (1, 0, 2))
-
-            dx += tl.dot(dout1, w1_bfly)
-            dw1_bfly = tl.dot(tl.trans(dout1, 0, 2, 1), x, out_dtype=dout1.dtype)
+            # (nblocks2, seq_dim, blk2_out) @ (nblocks2, blk2_out, blk2_in) -> (nblocks2, seq_dim, blk2_in)
+            dout1 += tl.dot(dout, w2_bfly, out_dtype=dout.dtype)
             tl.advance(w2_ptrs, (0, BLOCK_SIZE_K, 0))
-        dx = dx.to(dtype=dout1.dtype)
+            
+        # Compute dx and dw1_bfly
+        dout1 = dout1.to(dtype=out1.dtype)
+        dout1 = tl.trans(dout1, 1, 2, 0)
+        dout1 = tl.reshape(dout1, (BLOCK_SIZE_SEQ, N_BLK, BLK1_OUT))
+        dout1 = tl.trans(dout1, (1, 0, 2))
+        # (nblocks1, seq_dim, blk1_out) @ (nblocks1, blk1_out, blk1_in) -> (nblocks1, seq_dim, blk1_in)
+        dx = tl.dot(dout1, w1_bfly)
+        dx = dx.to(dtype=out1.dtype)
         tl.store(dx_ptrs, dx, boundary_check=(1, 2))
-        tl.store(x_ptrs, x, boundary_check=(1, 2))
         
+        x = tl.load(x_ptrs, boundary_check=(1, 2), eviction_policy="evict_first")
+        # （nblocks2, blk2_in, seq_dim) @ (nblocks2, seq_dim, blk1_in) -> (nblocks2, blk2_in, blk1_in)
+        dw1_bfly = tl.dot(tl.trans(dout1, 0, 2, 1), x, out_dtype=dout1.dtype)
         # Replace atomic_add with normal pointers for dw1
         base_dw1 = dw1_bfly_ptr + pid * stride_w1l
         n_blk = tl.arange(0, N_BLK)[:, None, None]
@@ -181,6 +185,7 @@ def monarch_backward(
         dw1_pointers = base_dw1 + offsets
         mask = (offs_n_current + j) < BLK1_IN
         tl.atomic_add(dw1_pointers, dw1_bfly, mask=mask)
+        
         tl.advance(dx_ptrs, (0, BLOCK_SIZE_SEQ, 0))
         tl.advance(x_ptrs, (0, BLOCK_SIZE_SEQ, 0))
         
