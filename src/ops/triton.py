@@ -123,43 +123,52 @@ def monarch_backward(
         block_shape=(N_BLK, BLK1_OUT, BLOCK_SIZE_N),
         order=(2, 1, 0),
     )
-    w2_ptrs = tl.make_block_ptr(
-        w2_bfly_ptr,
-        shape=(N_BLK, BLK2_OUT, BLK2_IN),
-        strides=(stride_w2l, stride_w2n, stride_w2r),
-        offsets=(0, offs_n, 0),
-        block_shape=(N_BLK, BLOCK_SIZE_N, BLK2_IN),
-        order=(2, 1, 0),
-    )
 
+    # Replace atomic_add with normal pointers for dw1
+    base_dw1 = dw1_bfly_ptr + pid * stride_w1l
+    n_blk = tl.arange(0, N_BLK)[:, None, None]
+    k_dw1 = tl.arange(0, BLK1_OUT)[None, :, None]
+    j = tl.arange(0, BLOCK_SIZE_N)[None, None, :]
+    offs_n_current = offs_n
+    offsets = n_blk * stride_w1l + k_dw1 * stride_w1r + (offs_n_current + j) * stride_w1k
+    dw1_pointers = base_dw1 + offsets
+    mask_dw1 = (offs_n_current + j) < BLK1_IN
+    
+    # Replace atomic_add with normal pointers for dw2
+    base_dw2 = tl.zeros((1, 1, 1), dtype=tl.int32) + dw2_bfly_ptr
+    n_blk = tl.arange(0, N_BLK)[:, None, None]
+    i = tl.arange(0, BLOCK_SIZE_N)[None, :, None]
+    j = tl.arange(0, BLK2_IN)[None, None, :]
+    offsets = n_blk * stride_w2l + (offs_n + i) * stride_w2n + j * stride_w2r
+    dw2_pointers = base_dw2 + offsets
+    mask_dw2 = (offs_n + i) < BLK2_OUT
+    
     w1_bfly = tl.load(w1_ptrs, boundary_check=(1, 2), eviction_policy="evict_last")
     for s in range(0, MAX_BLOCK_SEQ_LEN, BLOCK_SIZE_SEQ):
+        w2_ptrs = tl.make_block_ptr(
+            w2_bfly_ptr,
+            shape=(N_BLK, BLK2_OUT, BLK2_IN),
+            strides=(stride_w2l, stride_w2n, stride_w2r),
+            offsets=(0, offs_n, 0),
+            block_shape=(N_BLK, BLOCK_SIZE_N, BLK2_IN),
+            order=(2, 1, 0),
+        )
         dout = tl.load(dout_ptrs, boundary_check=(1, 2), eviction_policy="evict_first")
         out1 = tl.load(out1_ptrs, boundary_check=(1, 2), eviction_policy="evict_first")
 
         # Compute dw2
-        dw2_bfly = tl.dot(tl.trans(dout, 0, 2, 1), out1, out_dtype=out1.dtype)
-        tl.advance(dout_ptrs, (0, BLOCK_SIZE_SEQ, 0))
-        tl.advance(out1_ptrs, (0, BLOCK_SIZE_SEQ, 0))
-        
-        # Replace atomic_add with normal pointers for dw2
-        base_dw2 = tl.zeros((1, 1, 1), dtype=tl.int32) + dw2_bfly_ptr
-        n_blk = tl.arange(0, N_BLK)[:, None, None]
-        i = tl.arange(0, BLOCK_SIZE_N)[None, :, None]
-        j = tl.arange(0, BLK2_IN)[None, None, :]
-        offsets = n_blk * stride_w2l + (offs_n + i) * stride_w2n + j * stride_w2r
-        dw2_pointers = base_dw2 + offsets
-        mask = (offs_n + i) < BLK2_OUT
-        tl.atomic_add(dw2_pointers, dw2_bfly, mask=mask)
+        dw2_bfly = tl.dot(tl.trans(dout, 0, 2, 1), out1)#, out_dtype=out1.dtype)
+        dout_ptrs = tl.advance(dout_ptrs, (0, BLOCK_SIZE_SEQ, 0))
+        out1_ptrs = tl.advance(out1_ptrs, (0, BLOCK_SIZE_SEQ, 0))
+        tl.atomic_add(dw2_pointers, dw2_bfly.to(out1.dtype), mask=mask_dw2)
 
-        
         # Compute dout1 
         dout1 = tl.zeros((N_BLK, BLOCK_SIZE_SEQ, BLK2_IN), dtype=tl.float32)
         for k in range(0, BLK2_OUT, BLOCK_SIZE_K):
             w2_bfly = tl.load(w2_ptrs, boundary_check=(1,), eviction_policy="evict_first")
             # (nblocks2, seq_dim, blk2_out) @ (nblocks2, blk2_out, blk2_in) -> (nblocks2, seq_dim, blk2_in)
             dout1 += tl.dot(dout, w2_bfly, out_dtype=dout.dtype)
-            tl.advance(w2_ptrs, (0, BLOCK_SIZE_K, 0))
+            w2_ptrs = tl.advance(w2_ptrs, (0, BLOCK_SIZE_K, 0))
             
         # Compute dx and dw1_bfly
         dout1 = dout1.to(dtype=out1.dtype)
@@ -174,19 +183,10 @@ def monarch_backward(
         x = tl.load(x_ptrs, boundary_check=(1, 2), eviction_policy="evict_first")
         # （nblocks2, blk2_in, seq_dim) @ (nblocks2, seq_dim, blk1_in) -> (nblocks2, blk2_in, blk1_in)
         dw1_bfly = tl.dot(tl.trans(dout1, 0, 2, 1), x, out_dtype=dout1.dtype)
-        # Replace atomic_add with normal pointers for dw1
-        base_dw1 = dw1_bfly_ptr + pid * stride_w1l
-        n_blk = tl.arange(0, N_BLK)[:, None, None]
-        k = tl.arange(0, BLK1_OUT)[None, :, None]
-        j = tl.arange(0, BLOCK_SIZE_N)[None, None, :]
-        offs_n_current = offs_n
-        offsets = n_blk * stride_w1l + k * stride_w1r + (offs_n_current + j) * stride_w1k
-        dw1_pointers = base_dw1 + offsets
-        mask = (offs_n_current + j) < BLK1_IN
-        tl.atomic_add(dw1_pointers, dw1_bfly, mask=mask)
+        tl.atomic_add(dw1_pointers, dw1_bfly, mask=mask_dw1)
         
-        tl.advance(dx_ptrs, (0, BLOCK_SIZE_SEQ, 0))
-        tl.advance(x_ptrs, (0, BLOCK_SIZE_SEQ, 0))
+        dx_ptrs = tl.advance(dx_ptrs, (0, BLOCK_SIZE_SEQ, 0))
+        x_ptrs = tl.advance(x_ptrs, (0, BLOCK_SIZE_SEQ, 0))
         
 # fmt: off
 # Autotune can even make the kernel slower...

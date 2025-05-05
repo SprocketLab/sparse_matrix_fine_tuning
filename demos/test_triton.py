@@ -21,7 +21,7 @@ seq_len = 1024
 nblocks = 4
 in_dim = 1024
 out_dim = 1024
-blk_r = 16
+block_rank = 16
 
 warmup_iter = 5
 num_bench_iter = 500
@@ -36,7 +36,7 @@ def main(args):
     # https://github.com/triton-lang/triton/issues/5211
     # https://github.com/triton-lang/triton/pull/5285
     monarch = MonarchLinear(
-        in_dim, out_dim, nblocks, blk_r=blk_r, bias=False, as_adapter=False, use_triton=False, dtype=torch.float16
+        in_dim, out_dim, nblocks, blk_r=block_rank, bias=False, as_adapter=False, use_triton=False, dtype=torch.float16
     ).cuda()
     if os.environ.get("TRITON_INTERPRET", None) == "1":
         warnings.warn(
