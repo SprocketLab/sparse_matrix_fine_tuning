@@ -107,7 +107,6 @@ def monarch_backward(
         block_shape=(N_BLK, BLOCK_SIZE_SEQ, BLK1_OUT),
         order=(2, 1, 0),
     )
-
     dout_ptrs = tl.make_block_ptr(
         dout_ptr,
         shape=(N_BLK, SEQ_DIM, BLK2_OUT),

@@ -24,7 +24,7 @@ out_dim = 1024
 blk_r = 16
 
 warmup_iter = 5
-num_bench_iter = 200
+num_bench_iter = 500
 
 
 def main(args):
@@ -56,8 +56,8 @@ def main(args):
         assert_close(out1_torch, out1_triton, rtol=1e-3, atol=1e-3)
         assert_close(out2_torch, out2_triton, rtol=1e-3, atol=1e-3)
         # Backward
-        # out2_torch.sum().backward()
-        # out2_triton.sum().backward()
+        out2_torch.sum().backward()
+        out2_triton.sum().backward()
         # assert_close(monarch.blkdiag1.grad, blkdiag1_copy.grad, rtol=1e-3, atol=1e-3)
         # assert_close(monarch.blkdiag2.grad, blkdiag2_copy.grad, rtol=1e-3, atol=1e-3)
         # assert_close(x.grad, x_copy.grad, rtol=1e-3, atol=1e-3)
@@ -72,18 +72,19 @@ def main(args):
 
         mem_before = torch.cuda.max_memory_allocated() / 1024**2
         out2_torch, out1_torch = blockdiag_butterfly_multiply(x, monarch.blkdiag1, monarch.blkdiag2, True)
+        out2_torch.sum().backward()
         mem = torch.cuda.max_memory_allocated() / 1024**2 - mem_before
         print(f"PyTorch peak (activation) memory usage: {mem} MB")
-        del out1_torch, out2_torch
-
+        del out1_torch, out2_torch, x.grad, monarch.blkdiag1.grad, monarch.blkdiag2.grad
         torch.cuda.empty_cache()
         torch.cuda.reset_peak_memory_stats()
 
         mem_before = torch.cuda.max_memory_allocated() / 1024**2
         out2_triton, out1_triton = monarch_kernel(x, monarch.blkdiag1, monarch.blkdiag2, True)
+        out2_triton.sum().backward()
         mem = torch.cuda.max_memory_allocated() / 1024**2 - mem_before
         print(f"Triton peak (activation) memory usage: {mem} MB")
-        del out1_triton, out2_triton
+        del out1_triton, out2_triton, x.grad, blkdiag1_copy.grad, blkdiag2_copy.grad
         torch.cuda.empty_cache()
 
     if args.benchmark:
