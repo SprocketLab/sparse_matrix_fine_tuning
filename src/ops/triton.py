@@ -122,7 +122,14 @@ def monarch_backward(
         block_shape=(N_BLK, BLK1_OUT, BLOCK_SIZE_N),
         order=(2, 1, 0),
     )
-
+    w2_ptrs = tl.make_block_ptr(
+        w2_bfly_ptr,
+        shape=(N_BLK, BLK2_OUT, BLK2_IN),
+        strides=(stride_w2l, stride_w2n, stride_w2r),
+        offsets=(0, 0, 0),
+        block_shape=(N_BLK, BLOCK_SIZE_N, BLK2_IN),
+        order=(2, 1, 0),
+    )
     # Replace atomic_add with normal pointers for dw1 (nblocks, blk2_in, seq_dim)
     base_dw1 = dw1_bfly_ptr #s+ pid * stride_w1l
     nblocks = tl.arange(0, N_BLK)[:, None, None]
@@ -140,14 +147,6 @@ def monarch_backward(
     
     w1_bfly = tl.load(w1_ptrs, boundary_check=(1, 2), eviction_policy="evict_last")
     for s in range(0, MAX_BLOCK_SEQ_LEN, BLOCK_SIZE_SEQ):
-        w2_ptrs = tl.make_block_ptr(
-            w2_bfly_ptr,
-            shape=(N_BLK, BLK2_OUT, BLK2_IN),
-            strides=(stride_w2l, stride_w2n, stride_w2r),
-            offsets=(0, 0, 0),
-            block_shape=(N_BLK, BLOCK_SIZE_N, BLK2_IN),
-            order=(2, 1, 0),
-        )
         dout = tl.load(dout_ptrs, boundary_check=(1, 2), eviction_policy="evict_first")
         out1 = tl.load(out1_ptrs, boundary_check=(1, 2), eviction_policy="evict_first")
 
@@ -163,7 +162,7 @@ def monarch_backward(
             w2_bfly = tl.load(w2_ptrs, boundary_check=(1,), eviction_policy="evict_first")
             dout = tl.load(dout_k_ptrs, boundary_check=(1, 2), eviction_policy="evict_first")
             # (nblocks2, seq_dim, blk2_out) @ (nblocks2, blk2_out, blk2_in) -> (nblocks2, seq_dim, blk2_in)
-            dout1 += tl.dot(dout, w2_bfly, out_dtype=dout.dtype)
+            dout1 += tl.dot(dout, w2_bfly, out_dtype=tl.float32)
             w2_ptrs = tl.advance(w2_ptrs, (0, BLOCK_SIZE_K, 0))
             dout_k_ptrs = tl.advance(dout_k_ptrs, (0, 0, BLOCK_SIZE_K))
             
