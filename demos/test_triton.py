@@ -58,6 +58,7 @@ def main(args):
         # Backward
         out2_torch.sum().backward()
         out2_triton.sum().backward()
+
         # assert_close(monarch.blkdiag1.grad, blkdiag1_copy.grad, rtol=1e-3, atol=1e-3)
         # assert_close(monarch.blkdiag2.grad, blkdiag2_copy.grad, rtol=1e-3, atol=1e-3)
         # assert_close(x.grad, x_copy.grad, rtol=1e-3, atol=1e-3)
@@ -99,7 +100,7 @@ def main(args):
             out2_torch, out1_torch = blockdiag_butterfly_multiply(x, monarch.blkdiag1, monarch.blkdiag2, True)
         end_event.record()
         end_event.synchronize()
-        print(f"PyTorch time: {start_event.elapsed_time(end_event)} ms")
+        print(f"PyTorch forward time: {start_event.elapsed_time(end_event)} ms")
 
         # Warmup
         for _ in range(10):
@@ -110,7 +111,21 @@ def main(args):
             out2_triton, out1_triton = monarch_kernel(x, monarch.blkdiag1, monarch.blkdiag2, True)
         end_event.record()
         end_event.synchronize()
-        print(f"Triton time: {start_event.elapsed_time(end_event)} ms")
+        print(f"Triton forward time: {start_event.elapsed_time(end_event)} ms")
+
+        start_event.record()
+        for _ in range(num_bench_iter):
+            out2_torch.sum().backward(retain_graph=True)
+        end_event.record()
+        end_event.synchronize()
+        print(f"PyTorch backward time: {start_event.elapsed_time(end_event)} ms")
+
+        start_event.record()
+        for _ in range(num_bench_iter):
+            out2_triton.sum().backward(retain_graph=True)
+        end_event.record()
+        end_event.synchronize()
+        print(f"Triton backward time: {start_event.elapsed_time(end_event)} ms")
 
 
 if __name__ == "__main__":

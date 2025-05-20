@@ -54,11 +54,11 @@ def monarch_backward(
     stride_xl, stride_xm, stride_xk,
     stride_w1l, stride_w1r, stride_w1k,
     stride_w2l, stride_w2n, stride_w2r,
-    BLOCK_SIZE_SEQ: tl.constexpr = 32,
     BLOCK_SIZE_N: tl.constexpr = 32,
+    BLOCK_SIZE_M: tl.constexpr = 32,
     BLOCK_SIZE_K: tl.constexpr = 32,
     GROUP_SIZE_M: tl.constexpr = 8,
-    MAX_BLOCK_SEQ_LEN: tl.constexpr = 512,
+    BLOCK_SIZE_SEQ: tl.constexpr = 64,
 ):
     tl.static_assert(SEQ_DIM > 0, "SEQ_DIM must be positive")
     tl.static_assert(N_BLK > 0, "N_BLK must be positive")
@@ -67,9 +67,10 @@ def monarch_backward(
     BLK2_IN: tl.constexpr = BLK1_OUT
     # pid_batch = tl.program_id(0)
     pid = tl.program_id(0)
-
-    # Compute grouped row ids
-    num_pid_m = tl.cdiv(SEQ_DIM, MAX_BLOCK_SEQ_LEN)
+    pid_seq = tl.program_id(1)
+    
+    # Compute grouped row ids for M x K x N
+    num_pid_m = tl.cdiv(BLK2_OUT, BLOCK_SIZE_M)
     num_pid_n = tl.cdiv(BLK1_IN, BLOCK_SIZE_N)
     num_pid_in_group = GROUP_SIZE_M * num_pid_n
     group_id = pid // num_pid_in_group
@@ -78,15 +79,17 @@ def monarch_backward(
     pid_m = first_pid_m + (pid % group_size_m)
     pid_n = (pid % num_pid_in_group) // group_size_m
 
-    offs_m = pid_m * MAX_BLOCK_SEQ_LEN
-    offs_n = pid_n * BLOCK_SIZE_N
+    pid_m_in_group = pid % GROUP_SIZE_M
 
-    # Load pointers with 3D shapes using block pointers
+    offs_m = pid_m * BLOCK_SIZE_M
+    offs_n = pid_n * BLOCK_SIZE_N
+    offs_seq = pid_seq * BLOCK_SIZE_SEQ
+
     x_ptrs = tl.make_block_ptr(
         x_ptr,
         shape=(N_BLK, SEQ_DIM, BLK1_IN),
         strides=(stride_xl, stride_xm, stride_xk),
-        offsets=(0, offs_m, offs_n),
+        offsets=(0, offs_seq, offs_n),
         block_shape=(N_BLK, BLOCK_SIZE_SEQ, BLOCK_SIZE_N),
         order=(2, 1, 0),
     )
@@ -94,15 +97,15 @@ def monarch_backward(
         dx_ptr,
         shape=(N_BLK, SEQ_DIM, BLK1_IN),
         strides=(stride_xl, stride_xm, stride_xk),
-        offsets=(0, offs_m, offs_n),
-        block_shape=(N_BLK, BLOCK_SIZE_SEQ, BLOCK_SIZE_K),
+        offsets=(0, offs_seq, offs_n),
+        block_shape=(N_BLK, BLOCK_SIZE_SEQ, BLOCK_SIZE_N),
         order=(2, 1, 0),
     )
     out1_ptrs = tl.make_block_ptr(
         out1_ptr,
         shape=(N_BLK, SEQ_DIM, BLK1_OUT),
         strides=(stride_out1_l, stride_out1_m, stride_out1_r),
-        offsets=(0, offs_m, 0),
+        offsets=(0, offs_seq, 0),
         block_shape=(N_BLK, BLOCK_SIZE_SEQ, BLK1_OUT),
         order=(2, 1, 0),
     )
@@ -110,8 +113,8 @@ def monarch_backward(
         dout_ptr,
         shape=(N_BLK, SEQ_DIM, BLK2_OUT),
         strides=(stride_dout_l, stride_dout_m, stride_dout_n),
-        offsets=(0, offs_m, offs_n),
-        block_shape=(N_BLK, BLOCK_SIZE_SEQ, BLOCK_SIZE_N),
+        offsets=(0, offs_seq, offs_m),
+        block_shape=(N_BLK, BLOCK_SIZE_SEQ, BLOCK_SIZE_M),
         order=(2, 1, 0),
     )
     w1_ptrs = tl.make_block_ptr(
@@ -126,8 +129,8 @@ def monarch_backward(
         w2_bfly_ptr,
         shape=(N_BLK, BLK2_OUT, BLK2_IN),
         strides=(stride_w2l, stride_w2n, stride_w2r),
-        offsets=(0, 0, 0),
-        block_shape=(N_BLK, BLOCK_SIZE_N, BLK2_IN),
+        offsets=(0, offs_m, 0),
+        block_shape=(N_BLK, BLOCK_SIZE_M, BLK2_IN),
         order=(2, 1, 0),
     )
     # Replace atomic_add with normal pointers for dw1 (nblocks, blk2_in, seq_dim)
@@ -137,42 +140,37 @@ def monarch_backward(
     j_dw1 = tl.arange(0, BLOCK_SIZE_N)[None, None, :]
     
     # Replace atomic_add with normal pointers for dw2 (nblocks2, blk2_out, blk2_in)
-    base_dw2 = tl.zeros((1, 1, 1), dtype=tl.int32) + dw2_bfly_ptr
-    i = tl.arange(0, BLOCK_SIZE_N)[None, :, None]
-    j = tl.arange(0, BLK2_IN)[None, None, :]
-    offsets = nblocks * stride_w2l + i * stride_w2n + j * stride_w2r
-    dw2_pointers = base_dw2 + offsets
-    # mask_dw2 = (offs_n + i) < BLK2_OUT
-    mask_dw2 = (i < BLK2_OUT) & (j < BLK2_IN)
-    
     w1_bfly = tl.load(w1_ptrs, boundary_check=(1, 2), eviction_policy="evict_last")
-    for s in range(0, MAX_BLOCK_SEQ_LEN, BLOCK_SIZE_SEQ):
-        dout = tl.load(dout_ptrs, boundary_check=(1, 2), eviction_policy="evict_first")
-        out1 = tl.load(out1_ptrs, boundary_check=(1, 2), eviction_policy="evict_first")
-
-        # Compute dw2
-        # (nblocks2, blk2_out, seq_dim) @ (nblocks2, seq_dim, blk1_out) -> (nblocks2, blk2_out, blk1_out)
-        dw2_bfly = tl.dot(tl.trans(dout, 0, 2, 1), out1)#, out_dtype=out1.dtype)
+    out1 = tl.load(out1_ptrs, boundary_check=(1, 2), eviction_policy="evict_first")
+    dout = tl.load(dout_ptrs, boundary_check=(1, 2), eviction_policy="evict_first")
+    # Compute dw2
+    # (nblocks2, blk2_out, seq_dim) @ (nblocks2, seq_dim, blk1_out) -> (nblocks2, blk2_out, blk1_out)
+    dw2_bfly = tl.dot(dout.trans(0, 2, 1), out1)#, out_dtype=out1.dtype)
+    if pid_n == 0:
+        base_dw2 = tl.zeros((1, 1, 1), dtype=tl.int32) + dw2_bfly_ptr
+        i = tl.arange(0, BLOCK_SIZE_M)[None, :, None]
+        j = tl.arange(0, BLK2_IN)[None, None, :]
+        offsets = nblocks * stride_w2l + (i + offs_m)  * stride_w2n + j * stride_w2r
+        dw2_pointers = base_dw2 + offsets
+        mask_dw2 = (offs_m + i < BLK2_OUT) & (j < BLK2_IN)
         tl.atomic_add(dw2_pointers, dw2_bfly.to(out1.dtype), mask=mask_dw2)
 
-        # Compute dout1 by looping over blk2_out ()
+    # Split-k over block2 output dim, because we will use this intermediate result
+    if pid_m_in_group == 0: 
         dout1 = tl.zeros((N_BLK, BLOCK_SIZE_SEQ, BLK2_IN), dtype=tl.float32)
-        dout_k_ptrs = dout_ptrs
-        for k in range(0, BLK2_OUT, BLOCK_SIZE_K):
+        for _ in range(0, BLK2_OUT, BLOCK_SIZE_M):
             w2_bfly = tl.load(w2_ptrs, boundary_check=(1,), eviction_policy="evict_first")
-            dout = tl.load(dout_k_ptrs, boundary_check=(1, 2), eviction_policy="evict_first")
             # (nblocks2, seq_dim, blk2_out) @ (nblocks2, blk2_out, blk2_in) -> (nblocks2, seq_dim, blk2_in)
             dout1 += tl.dot(dout, w2_bfly, out_dtype=tl.float32)
-            w2_ptrs = tl.advance(w2_ptrs, (0, BLOCK_SIZE_K, 0))
-            dout_k_ptrs = tl.advance(dout_k_ptrs, (0, 0, BLOCK_SIZE_K))
-            
-        dout_ptrs = tl.advance(dout_ptrs, (0, BLOCK_SIZE_SEQ, 0))
-        out1_ptrs = tl.advance(out1_ptrs, (0, BLOCK_SIZE_SEQ, 0))
-        # Compute dx and dw1_bfly
-        dout1 = dout1.to(dtype=out1.dtype)
-        dout1 = tl.trans(dout1, 1, 2, 0)
-        dout1 = tl.reshape(dout1, (BLOCK_SIZE_SEQ, N_BLK, BLK1_OUT))
-        dout1 = tl.trans(dout1, (1, 0, 2))
+            w2_ptrs = tl.advance(w2_ptrs, (0, BLOCK_SIZE_M, 0))
+            dout_ptrs = tl.advance(dout_ptrs, (0, 0, BLOCK_SIZE_M))            
+            dout = tl.load(dout_ptrs, boundary_check=(1, 2), eviction_policy="evict_first")
+        
+    # Compute dx and dw1_bfly
+        dout1 = dout1.to(dtype=out1.dtype)                         
+        dout1 = dout1.trans(1, 2, 0)
+        dout1 = dout1.reshape(BLOCK_SIZE_SEQ, N_BLK, BLK1_OUT)
+        dout1 = dout1.trans(1, 0, 2)
         # (nblocks1, seq_dim, blk1_out) @ (nblocks1, blk1_out, blk1_in) -> (nblocks1, seq_dim, blk1_in)
         dx = tl.dot(dout1, w1_bfly)
         dx = dx.to(dtype=out1.dtype)
@@ -187,10 +185,7 @@ def monarch_backward(
         dw1_pointers = base_dw1 + offsets_dw1
         mask_dw1 = (offs_n_current + j_dw1) < BLK1_IN
         tl.atomic_add(dw1_pointers, dw1_bfly, mask=mask_dw1)
-
-        dx_ptrs = tl.advance(dx_ptrs, (0, BLOCK_SIZE_SEQ, 0))
-        x_ptrs = tl.advance(x_ptrs, (0, BLOCK_SIZE_SEQ, 0))
-        
+            
 # fmt: off
 # Autotune can even make the kernel slower...
 # @triton.autotune(
@@ -202,7 +197,11 @@ def monarch_backward(
 @triton.jit
 def monarch_forward(
     x_ptr, o_ptr1, o_ptr2, w1_bfly_ptr, w2_bfly_ptr,
-    SEQ_DIM, N_BLK:tl.constexpr, BLK1_IN, BLK1_OUT: tl.constexpr, BLK2_OUT: tl.constexpr,
+    SEQ_DIM,
+    N_BLK:tl.constexpr,
+    BLK1_IN:tl.constexpr,
+    BLK1_OUT: tl.constexpr,
+    BLK2_OUT: tl.constexpr,
     stride_xl, stride_xm, stride_xk,
     stride_w1l, stride_w1r, stride_w1k,
     stride_w2l, stride_w2n, stride_w2r,
@@ -211,7 +210,7 @@ def monarch_forward(
     BLOCK_SIZE_SEQ: tl.constexpr = 64,
     BLOCK_SIZE_N: tl.constexpr = 32,
     BLOCK_SIZE_K: tl.constexpr = 32,
-    GROUP_SIZE_M: tl.constexpr = 8,
+    GROUP_SIZE_SEQ: tl.constexpr = 8,
 ):
     # fmt: on
     """
@@ -222,14 +221,15 @@ def monarch_forward(
     BLK2_IN: tl.constexpr = BLK1_OUT  # This is the block rank (usually small, e.g. 4 for PEFT)
 
     pid = tl.program_id(0)
+    
     # Grouped ordering for better l2 cache reuse
     num_pid_m = tl.cdiv(SEQ_DIM, BLOCK_SIZE_SEQ)
     num_pid_n = tl.cdiv(BLK2_OUT, BLOCK_SIZE_N)
-    num_pid_in_group = GROUP_SIZE_M * num_pid_n
+    num_pid_in_group = GROUP_SIZE_SEQ * num_pid_n
     group_id = pid // num_pid_in_group
 
-    first_pid_m = group_id * GROUP_SIZE_M
-    group_size_m = min(num_pid_m - first_pid_m, GROUP_SIZE_M)
+    first_pid_m = group_id * GROUP_SIZE_SEQ
+    group_size_m = min(num_pid_m - first_pid_m, GROUP_SIZE_SEQ)
     pid_m = first_pid_m + (pid % group_size_m)
     pid_n = (pid % num_pid_in_group) // group_size_m
 
@@ -282,9 +282,9 @@ def monarch_forward(
     )
 
     x = tl.load(x_ptrs, boundary_check=(1, 2), eviction_policy="evict_first", padding_option="zero")  # Prefetch
-    dtype = x.dtype  # For autocast
-    out1 = tl.zeros((N_BLK, BLOCK_SIZE_SEQ, BLK1_OUT), dtype=tl.float32) # Tensor core doesn't support bf16 accumulation
-
+    dtype = x.dtype  
+    out1 = tl.zeros((N_BLK, BLOCK_SIZE_SEQ, BLK1_OUT), dtype=tl.float32) 
+    # Do NOT use split-k + atomic here, which requires a round trip to HBM and cross-block sync
     for k in range(0, BLK1_IN, BLOCK_SIZE_K):
         w1_bfly = tl.load(w1_ptrs, boundary_check=(2, ), eviction_policy="evict_first", padding_option="zero").to(dtype)
         w1_bfly = tl.trans(w1_bfly, 0, 2, 1)  # -> (n_blk, blk1_in, blk1_out)
@@ -334,7 +334,7 @@ class MonarchKernel(torch.autograd.Function):
         # seq_dim for math and Alpaca tuning is small; hidden_dim is 4096 for Llama 7B. e.g. (4, 666, 1024)
         # We launch a 2d grid of blocks sized (1, BLOCK_SIZE_SEQ * BLOCK_SIZE_N), fusing the batch dim together.
         grid = lambda META: (
-            triton.cdiv(seq_dim, META["BLOCK_SIZE_SEQ"]) * triton.cdiv(blk2_out, META["BLOCK_SIZE_N"]),
+            triton.cdiv(seq_dim, META["BLOCK_SIZE_SEQ"]) * triton.cdiv(blk2_out, META["BLOCK_SIZE_N"]), 
         )
         # fmt: off
         monarch_forward[grid](
@@ -372,9 +372,9 @@ class MonarchKernel(torch.autograd.Function):
         # Allocate buffers
         # (nblocks2, seq_dim, blk2_out)
         dout = dout.view(seq_dim, blk2_out, nblocks2).permute(2, 0, 1).contiguous()
-        dw1_bfly = torch.empty(nblocks1, blk2_in, blk1_in, device=w1_bfly.device, dtype=w1_bfly.dtype)
-        dw2_bfly = torch.empty(nblocks2, blk2_out, blk2_in, device=w2_bfly.device, dtype=w2_bfly.dtype)
-        dx = torch.empty(nblocks1, seq_dim, blk1_in, device=x.device, dtype=x.dtype)
+        dw1_bfly = torch.zeros(nblocks1, blk2_in, blk1_in, device=w1_bfly.device, dtype=w1_bfly.dtype)
+        dw2_bfly = torch.zeros(nblocks2, blk2_out, blk2_in, device=w2_bfly.device, dtype=w2_bfly.dtype)
+        dx = torch.zeros(nblocks1, seq_dim, blk1_in, device=x.device, dtype=x.dtype)
         # Triton doesn't have conjugate?
         w1_bfly = w1_bfly.conj()
         w2_bfly = w2_bfly.conj()
@@ -382,7 +382,8 @@ class MonarchKernel(torch.autograd.Function):
         x = x.conj()
 
         grid = lambda META: (
-            triton.cdiv(seq_dim, META["MAX_BLOCK_SEQ_LEN"]) * triton.cdiv(blk1_in, META["BLOCK_SIZE_N"]),
+            triton.cdiv(blk2_out, META["BLOCK_SIZE_M"]) * triton.cdiv(blk1_in, META["BLOCK_SIZE_N"]),
+            triton.cdiv(seq_dim, META["BLOCK_SIZE_SEQ"])
         )
         # dw2_bfly = dw2_bfly if ctx.needs_input_grad[2] else None
         # dx = dx if ctx.needs_input_grad[0] else None
